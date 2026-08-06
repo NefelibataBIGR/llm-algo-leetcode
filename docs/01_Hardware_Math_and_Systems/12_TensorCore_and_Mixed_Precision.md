@@ -26,7 +26,7 @@
 
 - [25. Quantization W8A16 | W8A16 量化](../02_PyTorch_Algorithms/25_Quantization_W8A16.md)
 - [26. QLoRA and 4bit Quantization | QLoRA 与 4-bit 量化](../02_PyTorch_Algorithms/26_QLoRA_and_4bit_Quantization.md)
-- [31. Inference Performance Comparison | 推理性能对比实验](../02_PyTorch_Algorithms/31_Inference_Performance_Comparison.md)
+- [66. Inference Performance Comparison | 推理性能对比实验](../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.md)
 
 ## Q1：Tensor Core 到底是什么，为什么它比普通 CUDA Core 更适合矩阵计算？
 

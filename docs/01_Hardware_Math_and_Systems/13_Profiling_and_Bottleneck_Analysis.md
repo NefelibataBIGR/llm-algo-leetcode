@@ -24,8 +24,8 @@
 
 **导语：** 把 profiling 放到推理和训练实战里看，更容易验证结论。
 
-- [31. Inference Performance Comparison | 推理性能对比实验](../02_PyTorch_Algorithms/31_Inference_Performance_Comparison.md)
-- [32. Training Performance Analysis | 训练性能分析](../02_PyTorch_Algorithms/32_Training_Performance_Analysis.md)
+- [66. Inference Performance Comparison | 推理性能对比实验](../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.md)
+- [73. Training Performance Analysis | 训练性能分析](../02_PyTorch_Algorithms/73_Training_Performance_Analysis.md)
 - [05. Triton 性能调优与基准测试 (Autotune & Profiling)](../03_Triton_Kernels/05_Triton_Autotune_and_Profiling.md)
 
 ## 常用工具链
