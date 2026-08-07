@@ -22,8 +22,16 @@ Profiling 之所以重要，是因为大模型训练和推理中的很多瓶颈�
 | 来源 | 适合纳入的内容 |
 |:---|:---|
 | `Part 0E` | 调试、显存和性能判断的前置桥 |
-| `Part 1` | profiling 方法论、工具入口、显存与通信的观测基础 |
+| `Part 1A / 1B / 1C / 1D / 1E` | profiling 方法论、工具入口、显存 / 通信 / 调度 / 编译的观测基础 |
 | `Part 2` | 训练 / 推理 / 显存相关任务里的验证、回改和复测 |
+
+## Part 1 相关前置
+
+- [1A](../../01_Hardware_Math_and_Systems/1A.md)：先看数量级与资源账本，知道 profiling 结果应该怎么和规模估算对齐。
+- [1B](../../01_Hardware_Math_and_Systems/1B.md)：先看单卡硬件和访存路径，知道显存和带宽瓶颈从哪里来。
+- [1C](../../01_Hardware_Math_and_Systems/1C.md)：先看多卡通信和显存共享，知道什么时候 profiling 要盯通信等待。
+- [1D](../../01_Hardware_Math_and_Systems/1D.md)：先看执行模型和调度边界，知道 stream、kernel 和 runtime 行为怎么被观测。
+- [1E](../../01_Hardware_Math_and_Systems/1E.md)：先看图优化和后端成本模型，知道 profiling 结果如何回到 backend 视角。
 
 ## 章节跳转
 
@@ -40,7 +48,7 @@ Profiling 之所以重要，是因为大模型训练和推理中的很多瓶颈�
 | `2.6` | FlashAttention、decode 和 PagedAttention 的推理侧观察点 | [2.6 核心推理优化](../../02_PyTorch_Algorithms/2_6.md) |
 | `20-22` | 推理侧 benchmark、缓存增长和系统行为 | [20 FlashAttention Sim](../../02_PyTorch_Algorithms/20_FlashAttention_Sim.md) / [21 Decoding Strategies](../../02_PyTorch_Algorithms/21_Decoding_Strategies.md) / [22 vLLM PagedAttention](../../02_PyTorch_Algorithms/22_vLLM_PagedAttention.md) |
 | `2.8` | 多卡并行与通信边界的观测入口 | [2.8 分布式并行策略](../../02_PyTorch_Algorithms/2_8.md) |
-| `33-34-42` | 端到端 profiling、分布式基准与通信热点分析 | [33 Profiling Driven End-to-End Optimization](../../02_PyTorch_Algorithms/33_Profiling_Driven_End_to_End_Optimization.md) / [34 Distributed Parallel Benchmark](../../02_PyTorch_Algorithms/34_Distributed_Parallel_Benchmark.md) / [42 Communication Profiling with NCCL](../../02_PyTorch_Algorithms/42_Communication_Profiling_with_NCCL.md) |
+| `74-79-46` | 端到端 profiling、分布式基准与通信热点分析 | [74 Profiling Driven End-to-End Optimization](../../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.md) / [79 Distributed Parallel Benchmark](../../02_PyTorch_Algorithms/79_Distributed_Parallel_Benchmark.md) / [46 Communication Profiling with NCCL](../../02_PyTorch_Algorithms/46_Communication_Profiling_with_NCCL.md) |
 
 ```mermaid
 flowchart TD
@@ -69,7 +77,7 @@ flowchart TD
 
 - 第一入口：`Part 1` + `0E -> 17 -> 18 -> 19 -> 20`，先把观测、排错和性能判断立住。
 - 第二入口：`2.5 -> 2.6 -> 2.8`，把训练、推理和并行里的 profiling 现象看清楚。
-- 验证入口：`33 -> 34 -> 42 -> 2.9`，把端到端优化、分布式基准和通信热点收进闭环。
+- 验证入口：`74 -> 79 -> 46 -> 2.9`，把端到端优化、分布式基准和通信热点收进闭环。
 
 ## 正文页
 
@@ -94,7 +102,7 @@ flowchart TD
 
 - 先看 `2.5 -> 19`，把训练侧反向传播和 checkpointing 的显存收益看清楚。
 - 再看 `2.6 -> 20-22`，把推理侧 attention、解码和 cache 行为看清楚。
-- 然后看 `2.8 -> 33-34-42`，把多卡并行、分布式 benchmark 和通信热点串起来。
+- 然后看 `2.8 -> 74-79-46`，把多卡并行、分布式 benchmark 和通信热点串起来。
 - 最后看 `2.9`，把 profiling 结论收进项目验证闭环。
 
 ## 读法建议
@@ -103,13 +111,13 @@ flowchart TD
 - 如果你想先补前置桥，可以按 `0E -> 17 -> 18 -> 19 -> 20` 这条线过一遍。
 - 先用 `Part 1` 建立“怎么看”的框架。
 - 再用 `2.5` 和 `2.6` 观察训练与推理中的性能现象。
-- 最后回到 `33 / 34 / 42`，把方法沉到可复用的优化闭环里。
+- 最后回到 `74 / 79 / 46`，把方法沉到可复用的优化闭环里。
 
 ## 建设方式
 
 - 入口页只负责告诉读者从哪进、怎么选路径、怎么回到 Part。
 - 具体的采集、归因、验证和工具读法都放到正文页展开。
-- 后续新增内容优先沿着 `17 / 20 / 13 / 33 / 34 / 42` 回收。
+- 后续新增内容优先沿着 `17 / 20 / 13 / 74 / 79 / 46` 回收。
 
 ## 专题状态
 当前为专题入口页，后续将逐步补充更完整的跨 Part 索引、工具读法和案例拆解。
