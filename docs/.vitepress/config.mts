@@ -211,6 +211,28 @@ export default defineConfig({
         items: [
           { text: '部分导读', link: '/02_PyTorch_Algorithms/intro' },
           {
+            text: '2.9 稳定项目入口',
+            collapsed: true,
+            items: [
+              { text: '组内导读', link: '/02_PyTorch_Algorithms/2_9' },
+              { text: '60. LoRA 微调项目', link: '/02_PyTorch_Algorithms/60_LoRA_Fine_Tuning_Project' },
+              { text: '61. 架构验证项目', link: '/02_PyTorch_Algorithms/61_Model_Architecture_Exploration' },
+              { text: '62. 指令微调项目', link: '/02_PyTorch_Algorithms/62_Instruction_Fine_Tuning_Project' },
+              { text: '63. LoRA 变体对比', link: '/02_PyTorch_Algorithms/63_LoRA_Variants_Benchmark' },
+              { text: '66. 推理性能对比实验', link: '/02_PyTorch_Algorithms/66_Inference_Performance_Comparison' },
+              { text: '67. 量化推理与部署项目', link: '/02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment' },
+              { text: '68. 推测解码基准', link: '/02_PyTorch_Algorithms/68_Speculative_Decoding_Benchmark' },
+              { text: '69. 前缀缓存基准', link: '/02_PyTorch_Algorithms/69_Prefix_Caching_Benchmark' },
+              { text: '73. 训练性能分析', link: '/02_PyTorch_Algorithms/73_Training_Performance_Analysis' },
+              { text: '74. Profiling 驱动端到端优化', link: '/02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization' },
+              { text: '79. 分布式并行基准', link: '/02_PyTorch_Algorithms/79_Distributed_Parallel_Benchmark' },
+              { text: '80. MoE 专家并行 benchmark', link: '/02_PyTorch_Algorithms/80_MoE_Expert_Parallel_Benchmark' },
+              { text: '84. DPO 偏好优化项目', link: '/02_PyTorch_Algorithms/84_DPO_Preference_Project' },
+              { text: '85. GRPO 组内对齐项目', link: '/02_PyTorch_Algorithms/85_GRPO_Groupwise_Alignment_Project' },
+              { text: '86. DPO 在线基准', link: '/02_PyTorch_Algorithms/86_DPO_Online_Benchmark' }
+            ]
+          },
+          {
             text: '2.1 基础算子',
             collapsed: true,
             items: [
