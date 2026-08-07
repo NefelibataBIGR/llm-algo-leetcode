@@ -21,6 +21,12 @@
 | `Part 2.8` | ZeRO、Pipeline Parallelism、Tensor Parallelism 的主线实现 |
 | `Part 2.9` | 分布式并行基准项目和工程选型验证 |
 
+## Part 1 相关前置
+
+- [1C](../../01_Hardware_Math_and_Systems/1C.md)：先看通信拓扑和显存共享，知道多卡为什么一定会带来通信代价。
+- [05](../../01_Hardware_Math_and_Systems/05_Communication_Topologies.md)：先看通信拓扑和显存共享关系，确认多卡切分前需要看什么。
+- [20](../../01_Hardware_Math_and_Systems/20_NCCL_and_AllReduce_Basics.md)：先看 NCCL / AllReduce 基础原语，知道通信语义怎么落到实现。
+
 ## 章节跳转
 
 | 章节 | 你会看到什么 | 跳转 |
@@ -33,20 +39,20 @@
 | `27` | ZeRO 的显存分摊与收益，适合看 Step 1-4 的收益与代价 | [27 ZeRO Optimizer Sim](../02_PyTorch_Algorithms/27_ZeRO_Optimizer_Sim.md) |
 | `28` | Pipeline 的 micro-batch 时序，适合看 Step 1-4 的气泡和排布 | [28 Pipeline Parallelism MicroBatch](../02_PyTorch_Algorithms/28_Pipeline_Parallelism_MicroBatch.md) |
 | `29` | Tensor Parallelism 的通信开销，适合看 Step 1-4 的切分与代价 | [29 Tensor Parallelism Sim](../02_PyTorch_Algorithms/29_Tensor_Parallelism_Sim.md) |
-| `42` | NCCL 通信热点与等待时间，适合先看 Step 1-4 的观测流程 | [42 Communication Profiling with NCCL](../02_PyTorch_Algorithms/42_Communication_Profiling_with_NCCL.md) |
-| `34` | 分布式并行基准项目，适合先看 Step 1-4 的实验设置和结果汇总 | [34 Distributed Parallel Benchmark](../02_PyTorch_Algorithms/34_Distributed_Parallel_Benchmark.md) |
+| `46` | NCCL 通信热点与等待时间，适合先看 Step 1-4 的观测流程 | [46 Communication Profiling with NCCL](../02_PyTorch_Algorithms/46_Communication_Profiling_with_NCCL.md) |
+| `79` | 分布式并行基准项目，适合先看 Step 1-4 的实验设置和结果汇总 | [79 Distributed Parallel Benchmark](../02_PyTorch_Algorithms/79_Distributed_Parallel_Benchmark.md) |
 
 ## 推荐入口
 
 - 先看 `Part 1C`，把“为什么多卡一定会带来通信问题”先立住。
 - 再看 `2.8`，把 ZeRO、Pipeline 和 Tensor Parallelism 的策略边界串起来。
-- 如果想看通信代价如何被量化，再回到 `42` 和 `34`。
+- 如果想看通信代价如何被量化，再回到 `46` 和 `79`。
 
 ## 入口摘要
 
 - 第一入口：`Part 1C` + `05 -> 20 -> 06 -> 13`，先把通信原语、显存分摊和观测基础立住。
 - 第二入口：`2.8 -> 27 -> 28 -> 29`，把 ZeRO、Pipeline 和 Tensor Parallelism 的主线补齐。
-- 验证入口：`42 -> 34 -> 31`，把通信热点、分布式基准和最终收益连起来。
+- 验证入口：`46 -> 79 -> 66`，把通信热点、分布式基准和最终收益连起来。
 
 ## 正文页
 
@@ -69,24 +75,24 @@
 ### Part 2 入口
 
 - 先看 `2.8 -> 27 -> 28 -> 29`，把 ZeRO、Pipeline 和 Tensor Parallelism 的主线补齐。
-- 再看 `42 -> 34`，把通信 profiling 和分布式 benchmark 连接起来。
-- 如果需要回看收益证明，再回到 `31` 看最终验证口径。
+- 再看 `46 -> 79`，把通信 profiling 和分布式 benchmark 连接起来。
+- 如果需要回看收益证明，再回到 `66` 看最终验证口径。
 
 ## 典型阅读链
 
 - 如果你想先理解多卡通信原理，先读 `05 -> 20`，把通信拓扑和 AllReduce 先讲通。
 - 如果你想先理解显存是怎么被并行策略切开的，先读 `06 -> 27`，把 ZeRO 的收益和代价讲清楚。
 - 如果你想先理解流水线为什么会有气泡，先读 `28 -> 34`，把 micro-batch、排布和基准结果串起来。
-- 如果你想先理解张量切分的通信压力，先读 `29 -> 42`，把切分方式和通信热点串起来。
-- 如果你想先看并行策略值不值，先读 `42 -> 34 -> 31`，把通信 profile、分布式 benchmark 和最终收益连起来。
+- 如果你想先理解张量切分的通信压力，先读 `29 -> 46`，把切分方式和通信热点串起来。
+- 如果你想先看并行策略值不值，先读 `46 -> 79 -> 66`，把通信 profile、分布式 benchmark 和最终收益连起来。
 
 ## 读法建议
 
 - 如果你关心“通信原语怎么工作”，先看 `05 -> 20`。
 - 如果你关心“多卡训练怎么切”，先看 `06 -> 27 -> 28 -> 29`。
-- 如果你关心“怎么证明并行策略值不值”，先看 `42 -> 34`。
+- 如果你关心“怎么证明并行策略值不值”，先看 `46 -> 79`。
 - 如果你想先补前置桥，可以先看 `Part 1C` 的 Group Overview，再回到 `05 / 06 / 20`。
-- 如果你关心“如何把并行策略和性能验证连起来”，先看 `06 -> 27 -> 28 -> 29 -> 42 -> 34`。
+- 如果你关心“如何把并行策略和性能验证连起来”，先看 `06 -> 27 -> 28 -> 29 -> 46 -> 79`。
 
 ## 建设方式
 
