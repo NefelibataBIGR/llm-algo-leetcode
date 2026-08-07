@@ -1,4 +1,4 @@
-# 19. Activation Checkpointing and Activation Offload | 激活检查点与激活卸载
+# 19. Activation Checkpointing and Activation Offload | 激活检查点
 
 **难度：** Hard | **环境：** GPU required
 
@@ -9,23 +9,21 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/19_Activation_Checkpointing_and_Activation_Offload.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-**标签：** `激活显存优化`, `Checkpointing`, `Offload` | **目标人群：** 模型微调与工程部署
+**标签：** `激活显存优化`, `Checkpointing` | **目标人群：** 模型微调与工程部署
 
 ---
 
 ## 本节导读
 
-训练大模型时，显存压力不只来自参数本身。前向传播为了后面反向传播，需要保存大量中间激活；层数越深、序列越长、batch 越大，这部分显存就越容易先把训练卡住。问题变成：能不能少存一些激活，但仍然正确完成反向传播？
+训练大模型时，显存压力不只来自参数本身。前向传播为了后面的反向传播，需要保存大量中间激活；层数越深、序列越长、batch 越大，这部分显存就越容易先把训练卡住。问题变成：能不能少存一些激活，但仍然正确完成反向传播？
 
-本节关注两条训练显存优化路线：activation checkpointing 用重新计算换显存，activation offload 把部分激活临时搬到 CPU 或其他存储层级。我们不会追求完整训练框架，而是通过最小实验观察“省显存”和“多耗时”之间的取舍，为后面的训练性能分析和显存账本打基础。
+本节专注 `activation checkpointing`：用重新计算换显存。我们不会追求完整训练框架，而是通过最小实验观察“省显存”和“多耗时”之间的取舍，为后面的训练性能分析和显存账本打基础。`Activation Offload` 作为搬运路线，后面单独看 `47`。
 
-**关键词：** `checkpointing`, `offload`, `recompute`
-
----
+**关键词：** `checkpointing`, `recompute`
 
 ## 前置阅读
 
-**导语：** 先看训练闭环、反向传播和显存账本，再进入 checkpointing / offload：本节关注的是训练过程中哪些激活必须保存，哪些可以通过重算或搬运来换取显存空间。
+**导语：** 先看训练闭环、反向传播和显存账本，再进入 checkpointing：本节关注的是训练过程中哪些激活必须保存，哪些可以通过重算来换取显存空间。
 
 - [P0: 13. Simple Neural Network Training | 简单神经网络训练循环](../00_Prerequisites/13_Simple_Neural_Network_Training.md)
 - [18. Activation and Loss Backward | 激活与损失反向](../02_PyTorch_Algorithms/18_Activation_and_Loss_Backward.md)
@@ -37,7 +35,8 @@
 **导语：** 学完激活显存优化后，可以继续看训练性能分析，也可以转向 attention 侧的显存优化，理解训练和推理里的 memory bottleneck 如何分别出现。
 
 - [20. FlashAttention Sim | FlashAttention 模拟](../02_PyTorch_Algorithms/20_FlashAttention_Sim.md)
-- [32. Training Performance Analysis | 训练性能分析](../02_PyTorch_Algorithms/32_Training_Performance_Analysis.md)
+- [73. Training Performance Analysis | 训练性能分析](../02_PyTorch_Algorithms/73_Training_Performance_Analysis.md)
+- [42. Activation Offload | 激活卸载](../02_PyTorch_Algorithms/42_Activation_Offload.md)
 - [P1: 13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
 
 ---
@@ -59,14 +58,20 @@
 在 PyTorch 中，这可以通过调用 `torch.utils.checkpoint.checkpoint` 轻松实现。你只需要将需要重计算的前向传播函数包装进去即可。底层的 Autograd 会自动替你管理何时释放、何时重新计算激活图。
 这里的实现单位是 Transformer Block 级别的 checkpoint，而不是子层级别的 checkpoint。
 
-###  Step 4: 动手实战
+### Step 4: 动手实战
 
 **要求**：请补全下方 `run_with_checkpointing` 函数。使用原生 PyTorch 提供的 `torch.utils.checkpoint` 模块，包裹我们传入的一系列神经网络层（如 Transformer Blocks）。
+
+### 提示
+
+- 这一题只需要把 `checkpoint(...)` 包在每个 block 前向外面。
+- `use_reentrant=False` 是当前 PyTorch 更推荐的写法，能避免一些旧接口行为差异。
+- 先把单层 checkpoint 跑通，再去看选择性 checkpoint / 分段 checkpoint 的对比。
 
 ### 工程要点
 
 - `Gradient Checkpointing` 的本质是 **时间换空间**：不保留所有中间激活，而是在反向时重算一小段前向。
-- 这和 `Activation Offload` 的思路不同：checkpointing 更偏向“重算”，offload 更偏向“搬运到别的存储层”。
+- 这和 `Activation Offload` 的思路不同：checkpointing 更偏向“重算”，offload 更偏向“搬运到别的存储层”。如果你想看搬运路线，后面单独看 `47`。
 - 在更深的模型、更长的序列里，激活值占比会更高，因此 checkpointing 的收益通常更明显。
 - 本节的实现只需要把 `checkpoint(...)` 包裹到每个 block 上，所以题目区只保留一个核心 TODO 即可。
 
@@ -117,6 +122,9 @@ def run_with_checkpointing(blocks: nn.ModuleList, x: torch.Tensor):
 
 ```
 
+### 测试
+
+运行下面的测试单元，确认开启 checkpointing 后的输出和反向传播都正常，且峰值显存低于基线。
 
 ```python
 # 运行此单元格以测试你的实现

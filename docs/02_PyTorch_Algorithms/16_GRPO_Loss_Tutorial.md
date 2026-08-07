@@ -47,6 +47,31 @@ GRPO 的重点就是把这种“组内比较”变成训练信号：先把同组
 > - 可以和策略比率裁剪一起使用，限制一次更新的幅度。
 > - 在某些场景下可以减少对显式 Critic 的依赖。
 
+#### 组内比较为什么更稳
+
+GRPO 的关键不是“再造一个 PPO 变体”，而是把一个 prompt 下的多个候选答案放在同一个组里比较，从而降低奖励尺度波动带来的训练不稳定。
+
+| 维度 | 单样本 reward | 组内相对 reward |
+|:---|:---|:---|
+| 评价方式 | 直接看绝对奖励 | 看同组里谁更好 |
+| 稳定性 | 容易受奖励尺度影响 | 先中心化再标准化，方差更小 |
+| 数据组织 | 一条样本就能训练 | 需要同一 prompt 下的多个候选 |
+| 训练直觉 | 绝对分数高就更新 | 组内相对更优的样本获得更强信号 |
+
+#### 一个最小例子
+
+假设同一个 prompt 生成了 4 个候选：
+
+- `group 0`: reward = `[1.0, 2.0]`
+- `group 1`: reward = `[0.5, 1.5]`
+
+GRPO 不直接拿这 4 个分数去做全局比较，而是分别在各自组内做均值和标准差归一化。这样做的结果是：
+
+- 组内平均值被拉回 0，避免组与组之间的绝对奖励尺度干扰更新。
+- 高于组均值的候选得到正优势，低于组均值的候选得到负优势。
+- 策略更新更关注“同一个 prompt 下谁更好”，而不是“不同 prompt 的 reward 绝对值有多大”。
+
+这也是 GRPO 适合做组内排序、候选比较和生成优化的原因。
 ### Step 2: 数学形式
 
 给定同一组中的奖励 $r_i$，先计算组内均值和标准差：
@@ -68,10 +93,48 @@ L = -\mathbb{E}[\min(ratio \cdot A, clip(ratio) \cdot A)]
 $$
 这一节的实现链路就是先做组内归一化，再构造 clipped surrogate，最后汇总成 GRPO loss。
 
+### Step 3: 代码实现框架与任务拆解
+
+这一节的实现顺序很简单：先把同一组候选的奖励做组内归一化，再构造策略比率和 clipped surrogate，最后汇总成 GRPO loss。
+
+#### 实现顺序
+
+1. `advantages`：按 `group_ids` 分组，把 reward 做去均值和标准差归一化。
+2. `ratio / surr1 / surr2`：再算策略比率，并构造两个 surrogate 目标。
+3. `loss`：最后取更保守的一侧，得到最终的 GRPO loss。
+
+#### 实现节奏
+
+- 如果 `advantages` 的组内中心化错了，后面的 loss 没有意义。
+- 如果 `ratio` 或 `clamp` 口径错了，GRPO 就会退化成错误的策略更新。
+- 如果 `loss` 没有取 `min(surr1, surr2)`，就失去了 clipped objective 的稳定性。
 
 ```python
-import torch
+def compute_grpo_loss(log_probs_new, log_probs_old, rewards, group_ids, clip_range=0.2, eps=1e-6):
+    """
+    简化版 GRPO Loss。
+    rewards/group_ids 允许把同一 prompt 下的多个候选答案分到一组。
+    """
+    if not (log_probs_new.shape == log_probs_old.shape == rewards.shape == group_ids.shape):
+        raise ValueError("log_probs_new / log_probs_old / rewards / group_ids 的形状必须一致")
 
+    # 先做组内中心化 + 标准化，得到更稳的相对优势
+    advantages = torch.zeros_like(rewards)
+    for gid in group_ids.unique(sorted=True):
+        mask = group_ids == gid
+        group_rewards = rewards[mask]
+        centered = group_rewards - group_rewards.mean()
+        denom = group_rewards.std(unbiased=False).clamp_min(eps)
+        advantages[mask] = centered / denom
+
+    # 策略比率与 PPO 式裁剪目标
+    ratio = torch.exp(log_probs_new - log_probs_old)
+    surr1 = ratio * advantages
+    surr2 = torch.clamp(ratio, 1.0 - clip_range, 1.0 + clip_range) * advantages
+
+    # 组内相对优势越高，loss 越小；反之则增大
+    loss = -torch.min(surr1, surr2).mean()
+    return loss, advantages
 ```
 
 
@@ -153,7 +216,6 @@ test_grpo_loss()
 ## 参考代码与解析
 
 ### 代码
-
 
 ```python
 import torch

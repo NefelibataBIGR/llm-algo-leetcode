@@ -78,6 +78,12 @@ $$ dK = \frac{dS^T \cdot Q}{\sqrt{d}} $$
 
 **要求**：完成 `backward` 函数中 TODO 的数学推导代码。你可以使用 `ctx.saved_tensors` 来获取前向传播时保存的 $Q, K, V, P$ 等变量。
 这一节的实现顺序就是先求 `dV / dP`，再穿过 Softmax 得到 `dS`，最后回到 `dQ / dK`。
+### 提示
+
+- 反向顺序可以记成 `dV -> dP -> dS -> dQ / dK`，先把最容易的分支算出来，再往 Softmax 和输入侧回推。
+- `ctx.save_for_backward` 里保存的是反向需要的最小状态，不是把所有中间量都留下。
+- Softmax 的反向不要去构造完整雅可比，按行做修正项即可。
+
 
 ```python
 import torch
@@ -141,6 +147,9 @@ class CustomAttention(torch.autograd.Function):
 
 ```
 
+### 测试
+
+运行下面的测试单元，确认手写 `backward` 和 PyTorch 自动求导保持一致。
 
 ```python
 # 运行此单元格以测试你的实现

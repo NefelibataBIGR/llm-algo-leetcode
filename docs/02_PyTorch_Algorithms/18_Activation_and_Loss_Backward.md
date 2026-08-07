@@ -58,11 +58,24 @@
 
 理解这一点很重要，因为很多训练问题并不出在模型主体，而是出在 loss 的定义、归一化方式或 label 处理上。
 
-### Step 3: 最小代码实现
+### Step 3: 最小代码实现与口径校验
 
 下面用两个最小函数把上面的直觉跑出来：一个演示 ReLU 的逐元素反向，一个演示交叉熵的梯度如何回到 logits。
 
 这一页的实现顺序就是先做 ReLU backward，再核对交叉熵梯度，最后和 PyTorch 自动求导对比。
+
+#### 训练里的口径
+
+- `reduction="mean"` 会影响梯度缩放，做手写实现时要和参考实现保持一致。
+- `ignore_index`、padding 和 label 的处理会直接决定哪些 token 会参与反向传播。
+- 这一节的代码重点不是做复杂网络，而是把 ReLU 门控和交叉熵的梯度口径写对。
+
+### 提示
+
+- ReLU backward 本质上就是逐元素门控：正半轴保留梯度，非正半轴置零。
+- 交叉熵梯度通常可化成 `prob - one_hot` 的形式，但要注意 batch 维上的平均口径。
+- 如果后面要接 `09 / 13 / 30`，这节的目标是把“loss 怎么把信号送回前面”说清，而不是扩成完整训练循环。
+
 
 ```python
 import torch
@@ -92,6 +105,9 @@ def softmax_ce_loss_and_grad(logits, labels):
 
 ```
 
+### 测试
+
+运行下面的测试单元，确认手写 ReLU / CrossEntropy backward 和 PyTorch 自动求导一致。
 
 ```python
 def test_activation_and_loss_backward():
