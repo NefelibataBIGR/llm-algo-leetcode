@@ -62,6 +62,29 @@ RMSNorm 的核心洞察很朴素：既然大模型的中间层均值通常已接
    $$ y = \frac{x}{\text{RMS}(x)} \odot \gamma $$
    其中 $\gamma \in \mathbb{R}^d$ 是可学习的权重参数（Weight）。**RMSNorm 没有偏置项 (Bias)**。
 
+#### 图解：RMSNorm 在 Block 里归一化什么
+
+RMSNorm 作用在每个 token 的 hidden dimension 上，输入输出形状不变。
+
+```text
+x [B, T, D]
+│
+├─ token 0: [d0 d1 d2 ... dD] ──► RMS over D ──► scale by weight
+├─ token 1: [d0 d1 d2 ... dD] ──► RMS over D ──► scale by weight
+└─ token T: [d0 d1 d2 ... dD] ──► RMS over D ──► scale by weight
+
+output [B, T, D]
+```
+
+放回 LLaMA block 里看，RMSNorm 是 attention / MLP 前的稳定器：
+
+```text
+x ─► RMSNorm ─► Attention ─► residual add
+h ─► RMSNorm ─► MLP       ─► residual add
+```
+
+它不改变 token 数，也不混合 token 之间的信息；它只让每个 token 自己的 hidden 向量尺度更稳定。
+
 ### Step 3: 代码实现与混合精度 (AMP) 陷阱
 
 数学公式翻译成代码并不难，真正需要小心的是混合精度训练时的数值稳定性——FP16 下平方运算极易溢出，这里给出标准处理方案。

@@ -90,6 +90,40 @@ $$ \text{Attention}(Q, K, V) = \text{Softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right
 4. 加权 Value：`Scores @ V` -> `[B, H, S, S] @ [B, H, S, D]` -> `[B, H, S, D]`
 5. 最后合并多头：转置回 `[B, S, H, D]` 并 `reshape` 成 `[B, S, H * D]`。
 
+#### 可视化：MHA 和 GQA 的 head 关系
+
+MHA、MQA、GQA 的主要差异是 Query head 和 KV head 的配比。Query 通常保持多头，KV 可以减少以节省 KV cache。
+
+```text
+MHA: n_q_heads = n_kv_heads
+Q0 ─ K0,V0
+Q1 ─ K1,V1
+Q2 ─ K2,V2
+Q3 ─ K3,V3
+
+GQA: n_q_heads > n_kv_heads
+Q0 ┐
+Q1 ┘─ K0,V0
+Q2 ┐
+Q3 ┘─ K1,V1
+
+MQA: n_kv_heads = 1
+Q0 ┐
+Q1 ┤
+Q2 ┤─ K0,V0
+Q3 ┘
+```
+
+为什么这会影响推理显存：
+
+| 结构 | KV cache 规模 | 直觉 |
+|:---|:---|:---|
+| MHA | 最大 | 每个 Q head 都有独立 K/V |
+| GQA | 中等 | 多个 Q head 共享一组 K/V |
+| MQA | 最小 | 所有 Q head 共享一组 K/V |
+
+本页代码里的 `repeat_kv` 就是在计算时把较少的 KV head 临时扩展到 Query head 数量，便于复用同一套 attention 计算逻辑。
+
 ### Step 3: 工业界源码映射
 
 将核心概念与真实工业界实现代码对应起来，有助于理解 TODO 在工程中的具体落点。

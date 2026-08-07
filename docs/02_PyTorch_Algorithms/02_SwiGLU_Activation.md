@@ -82,6 +82,27 @@ SwiGLU 用两条并行分支做门控：一条提供候选特征，另一条决�
    解得：$h = \mathbf{\frac{8}{3}d}$
    
 这正是 LLaMA 源码中对中间层维度进行 `int(8 * hidden_size / 3)`计算，并进一步对齐到特定倍数（如 256）的根本原因。
+#### 图解：SwiGLU 的 gate / up / down 三条线
+
+SwiGLU 可以理解成“先升维成两条分支，一条产生内容，一条产生门控，再降回 hidden size”。
+
+```text
+x [B, T, D]
+│
+├─ gate_proj ─► gate [B, T, I] ─► silu(gate) ┐
+│                                             ├─ elementwise multiply ─► down_proj ─► [B, T, D]
+└─ up_proj   ─► up   [B, T, I] ──────────────┘
+```
+
+和普通 FFN 对比：
+
+| 结构 | 中间路径 | 直觉 |
+|:---|:---|:---|
+| FFN | `up -> activation -> down` | 所有维度统一经过非线性 |
+| SwiGLU | `gate/up -> multiply -> down` | gate 决定哪些信息通过 |
+
+因此 LLaMA MLP 常见三个投影：`gate_proj / up_proj / down_proj`。后面做 LoRA 时，如果 target modules 扩到 MLP，通常就是这三处。
+
 ### Step 3: 工业级实现框架与性能陷阱 (Memory Bound)
 
 公式和维度都对齐了，接下来进入真实的训练框架。SwiGLU 的实现远比写三行 Linear 复杂——融合矩阵、并行计算、内存带宽，每一步都藏着工程取舍。
