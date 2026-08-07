@@ -16,9 +16,9 @@
 
 大模型微调最直接的做法是更新全部参数，但这会把显存压力迅速放大：除了模型权重，还要保存梯度和优化器状态。很多场景里，我们真正需要的不是重写整个模型，而是在已有能力上做小幅适配。
 
-LoRA 的思路就是冻结原始权重，只在旁边加一条低秩可训练旁路。本节会实现一个最小 `LoRALinear`，看清矩阵 A、B 如何构成 $\Delta W$，以及为什么它能用很少的可训练参数完成微调。完成后，你应该能把 LoRA 接到后面的端到端微调实验和 QLoRA 低比特微调里。
+LoRA 的思路就是冻结原始权重，只在旁边加一条低秩可训练旁路。本节会实现一个最小 `LoRALinear`，看清矩阵 A、B 如何构成 $\Delta W$，为什么它能用很少的可训练参数完成微调，以及 `target modules / r / alpha / dropout` 这些工程选择如何影响后续 SFT 实验和 LoRA 项目。
 
-**关键词：** `LoRA`, `PEFT`, `adapter`
+**关键词：** `LoRA`, `PEFT`, `adapter`, `target modules`
 
 ---
 ## 前置阅读
@@ -43,35 +43,79 @@ LoRA 的思路就是冻结原始权重，只在旁边加一条低秩可训练旁
 全参微调的主要成本来自保存和更新完整参数，而 LoRA 的思路是只训练一条低秩旁路。
 
 > **为什么需要 LoRA？**
-> 全参微调 (Full Fine-tuning) 一个 7B 模型需要大规模的显存来保存优化器状态（Adam 需要保存参数的动量和方差，占用额外 8 倍参数量的显存）。绝大多数中小企业和个人开发者无法承担。
+> 全参微调 (Full Fine-tuning) 一个 7B 模型需要大规模显存来保存参数、梯度和优化器状态。很多微调任务并不需要改动所有权重，只需要在已有能力上做局部适配。
+>
 > **LoRA 的本质：**
-> 冻结原始的预训练模型权重，并在每个 Dense 层旁边注入可训练的“旁路”降秩矩阵（A 和 B）。微调时只更新这非常少量的参数。最终推理时，可以将旁路权重无损“合并（Merge）”回主权重中。
+> 冻结原始的预训练模型权重，并在目标 Linear 层旁边注入可训练的低秩矩阵 A 和 B。微调时只更新这少量参数；最终推理时，可以将旁路权重合并（merge）回主权重中。
+
+工程上最先要回答的不是“LoRA 公式是什么”，而是“插到哪些层上”。常见选择是：
+
+- **Attention 投影层**：`q_proj / k_proj / v_proj / o_proj`，优先影响注意力模式和指令跟随。
+- **MLP 投影层**：`gate_proj / up_proj / down_proj`，优先影响表示变换和任务适配容量。
+- **入门默认**：先从 `q_proj / v_proj` 或 `q_proj / k_proj / v_proj / o_proj` 开始，再根据任务和显存预算扩展到 MLP。
+
+本节用单个 `LoRALinear` 讲清低秩旁路；后面的项目页再把它放回完整模型和训练报告里。
 
 ### Step 2: LoRA 代码框架
 
-在 PyTorch 实现中，除了保留原始冻结的线性层权重外，我们需要并排初始化两个很小的可训练矩阵 A 和 B。A 通常用 Kaiming 均匀分布或高斯分布初始化，而 B 严格初始化为零，以保证训练开始时 $W = W_0 + B A \approx W_0$。
+在 PyTorch 实现中，除了保留原始冻结的线性层权重外，我们需要并排初始化两个很小的可训练矩阵 A 和 B。A 通常用 Kaiming 均匀分布或高斯分布初始化，而 B 严格初始化为零，以保证训练开始时 $\Delta W = B A \approx 0$，模型输出基本等于冻结基座的输出。
+
+本节还会记录可训练参数量。判断 LoRA 是否真的生效，不能只看 loss 是否下降，还要确认：
+
+- base linear weight 已冻结。
+- 只有 `lora_A / lora_B` 参与训练。
+- 可训练参数量等于 `r * (in_features + out_features)`。
+- merge 前后输出一致，说明部署时可以消除 LoRA 分支带来的额外推理计算。
 
 ###  Step 3: 核心公式与张量维度
 
 LoRA 的核心公式可以拆成两部分：冻结的原始权重输出，以及由低秩矩阵 A、B 构成的增量输出。
 
 **前向传播公式：**
-给定预训练权重 $W_0 \in \mathbb{R}^{d \times k}$，输入 $x$，LoRA 修改后的输出为：
+以列向量约定书写，给定预训练权重 $W_0 \in \mathbb{R}^{d \times k}$，输入 $x \in \mathbb{R}^{k}$，LoRA 修改后的输出为：
 $$ h = W_0 x + \Delta W x = W_0 x + \frac{\alpha}{r} B A x $$
 
-*   $A \in \mathbb{R}^{r \times k}$：降维矩阵，通常使用随机高斯分布初始化（Kaiming Uniform）。
+*   $A \in \mathbb{R}^{r \times k}$：降维矩阵，通常使用随机初始化。
 *   $B \in \mathbb{R}^{d \times r}$：升维矩阵，**必须初始化为全 0**，以保证初始状态下 $\Delta W = 0$，也就是微调前的输出和预训练模型完全一致。
-*   $r$ (rank)：矩阵的秩，通常设置极小，如 8 或 16。
-*   $\alpha$：缩放因子（Scaling Factor），用来控制 $\Delta W$ 的影响程度。
+*   $r$ (rank)：低秩瓶颈大小。越大，可训练参数越多，表达能力越强，显存和过拟合风险也更高。
+*   $\alpha$：缩放因子，通常通过 `alpha / r` 控制 LoRA 更新幅度。
+*   `dropout`：只作用在 LoRA 分支输入上，用于小数据微调时抑制过拟合；推理和 merge 前通常关闭。
+
+代码里输入 `x` 通常是批量行向量，所以实现写成 `(x @ A.T) @ B.T * scaling`，和上面的列向量公式是同一个低秩更新。
 
 **推理时合并权重 (Merge Weights)：**
 $$ W_{\text{merged}} = W_0 + \frac{\alpha}{r} B A $$
 这样在部署时，计算图里没有 A 和 B，完全没有额外的推理耗时（No Inference Latency）。
 
+#### 图解：LoRA 旁路插在哪里
+
+LoRA 不替换原始 Linear，而是在冻结主分支旁边加一条可训练低秩分支。
+
+```text
+                 frozen base branch
+x ─────────────── W0 ───────────────────► base_out
+│                                           │
+│                trainable LoRA branch      ▼
+└──── dropout ──► A: k -> r ─► B: r -> d ─► + ─► output
+                         │          │
+                         └── alpha / r scaling
+```
+
+在完整 LLaMA block 里，LoRA 通常挂在这些 Linear 上：
+
+| 位置 | 常见 target modules | 作用 | 入门优先级 |
+|:---|:---|:---|:---:|
+| Attention | `q_proj`, `v_proj` | 改变指令跟随和注意力读写 | P0 |
+| Attention | `q_proj`, `k_proj`, `v_proj`, `o_proj` | 更完整地适配注意力路径 | P1 |
+| MLP | `gate_proj`, `up_proj`, `down_proj` | 增加任务表达容量 | P1/P2 |
+
+先少挂、能收敛、能解释，再扩展 target modules。项目报告里要同时记录 target modules、rank、alpha、dropout 和 trainable ratio。
+
 ###  Step 4: 动手实战
 
-
 **要求**：请补全下方 `LoRALinear` 的初始化、前向传播和合并权重的 `TODO` 逻辑。
+
+额外检查点：实现后要能统计 LoRA 的可训练参数量，并验证 merge 前后的输出一致。这会直接服务后面的 LoRA 微调项目报告。
 
 
 ```python
@@ -83,12 +127,17 @@ import math
 
 
 ```python
+def count_trainable_parameters(module: nn.Module) -> int:
+    return sum(p.numel() for p in module.parameters() if p.requires_grad)
+
+
 class LoRALinear(nn.Module):
-    def __init__(self, in_features: int, out_features: int, r: int = 8, lora_alpha: int = 16):
+    def __init__(self, in_features: int, out_features: int, r: int = 8, lora_alpha: int = 16, lora_dropout: float = 0.0):
         super().__init__()
         self.r = r
         self.lora_alpha = lora_alpha
         self.scaling = self.lora_alpha / self.r
+        self.lora_dropout = nn.Dropout(lora_dropout)
         
         # ==========================================
         # 主权重冻结，只让低秩旁路参与训练。
@@ -98,7 +147,7 @@ class LoRALinear(nn.Module):
         # self.linear.weight.requires_grad = ???
         # self.lora_A = ???
         # self.lora_B = ???
-        pass
+        #pass
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -117,11 +166,12 @@ class LoRALinear(nn.Module):
         # 先走主分支，再叠加低秩旁路的增量。
         # TODO 3: 实现前向传播
         # 1. 计算主权重的输出
-        # 2. 计算 LoRA 分支的输出（先降维再升维，最后乘以缩放因子）
-        # 3. 将两者相加
-        # 提示: 注意矩阵转置和乘法顺序
+        # 2. 对 LoRA 分支输入应用 dropout
+        # 3. 计算 LoRA 分支的输出（先降维再升维，最后乘以缩放因子）
+        # 4. 将两者相加
         # ==========================================
         # result = ???
+        # dropped = ???
         # lora_out = ???
         return result
 
@@ -142,7 +192,7 @@ def test_lora():
     try:
         in_dim, out_dim = 128, 256
         batch_size, seq_len = 32, 10
-        layer = LoRALinear(in_dim, out_dim, r=8, lora_alpha=16)
+        layer = LoRALinear(in_dim, out_dim, r=8, lora_alpha=16, lora_dropout=0.0)
 
         x = torch.randn(batch_size, seq_len, in_dim)
 
@@ -152,18 +202,25 @@ def test_lora():
             out_base = layer.linear(x)
             assert torch.allclose(out_lora, out_base), "初始化错误: lora_B 未被初始化为 0"
 
-        # 2. 模拟训练一步，改变 B 的值
+        # 2. 验证只训练 LoRA 参数
+        expected_trainable = 8 * (in_dim + out_dim)
+        assert not layer.linear.weight.requires_grad, "主权重应该被冻结"
+        assert count_trainable_parameters(layer) == expected_trainable, "LoRA 可训练参数量统计错误"
+
+        # 3. 模拟训练一步，改变 B 的值
         layer.lora_B.data.normal_(0, 0.02)
 
         out_trained = layer(x)
         assert not torch.allclose(out_trained, out_base), "前向传播错误: 旁路未能注入梯度值"
 
-        # 3. 验证合并权重的正确性
+        # 4. 验证合并权重的正确性
+        layer.eval()
+        out_trained = layer(x)
         layer.merge_weights()
         out_merged = layer.linear(x)
         assert torch.allclose(out_trained, out_merged, atol=1e-5), "权重合并错误: 合并后的输出与分离时的输出不一致！"
 
-        print("\n✅ All Tests Passed! LoRA 核心算子实现正确。")
+        print("\n✅ All Tests Passed! LoRA 核心算子、参数统计和 merge 逻辑实现正确。")
 
     except NotImplementedError:
         print("请先完成 TODO 部分的代码！")
@@ -179,6 +236,7 @@ def test_lora():
         raise
 
 test_lora()
+
 ```
 
 ---
@@ -196,12 +254,17 @@ test_lora()
 
 
 ```python
+def count_trainable_parameters(module: nn.Module) -> int:
+    return sum(p.numel() for p in module.parameters() if p.requires_grad)
+
+
 class LoRALinear(nn.Module):
-    def __init__(self, in_features: int, out_features: int, r: int = 8, lora_alpha: int = 16):
+    def __init__(self, in_features: int, out_features: int, r: int = 8, lora_alpha: int = 16, lora_dropout: float = 0.0):
         super().__init__()
         self.r = r
         self.lora_alpha = lora_alpha
         self.scaling = self.lora_alpha / self.r
+        self.lora_dropout = nn.Dropout(lora_dropout)
         
         # TODO 1: 初始化主权重和 LoRA 矩阵
         self.linear = nn.Linear(in_features, out_features, bias=False)
@@ -215,14 +278,14 @@ class LoRALinear(nn.Module):
     def reset_parameters(self):
         # TODO 2: 初始化权重
         nn.init.kaiming_uniform_(self.linear.weight, a=math.sqrt(5))
-        
         nn.init.kaiming_uniform_(self.lora_A, a=math.sqrt(5))
         nn.init.zeros_(self.lora_B)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # TODO 3: 实现前向传播
         result = self.linear(x)
-        lora_out = (x @ self.lora_A.T) @ self.lora_B.T * self.scaling
+        dropped = self.lora_dropout(x)
+        lora_out = (dropped @ self.lora_A.T) @ self.lora_B.T * self.scaling
         result += lora_out
         return result
 
@@ -254,24 +317,27 @@ class LoRALinear(nn.Module):
 - **实现方式**：
   ```python
   result = self.linear(x)
-  lora_out = (x @ self.lora_A.T) @ self.lora_B.T * self.scaling
+  dropped = self.lora_dropout(x)
+  lora_out = (dropped @ self.lora_A.T) @ self.lora_B.T * self.scaling
   result += lora_out
   ```
-- **数学公式**：$h = W_0 x + \frac{\alpha}{r} B A x$
+- **数学公式**：$h = W_0 x + \frac{\alpha}{r} B A x$。代码使用批量行向量，所以写成 `(x @ A.T) @ B.T`。
 - **缩放因子**：`scaling = lora_alpha / r`，通常 `lora_alpha = 16`，`r = 8`，则 `scaling = 2`。
-- **缩放的意义**：在改变秩 $r$ 时，不需要重新调整学习率。较小的 $r$ 会自动获得较大的缩放，保持更新幅度的稳定性。
+- **dropout 位置**：dropout 只作用在 LoRA 分支输入上，帮助小数据微调时减少过拟合；推理和 merge 前要切到 `eval()`。
 - **计算顺序**：先 `x @ A^T` 降维到 `[..., r]`，再 `@ B^T` 升维到 `[..., out_features]`，最后乘以 `scaling`。
 
 **3. TODO 4: 合并权重（零延迟推理）**
 
 - **实现方式**：`self.linear.weight.data += (self.lora_B @ self.lora_A) * self.scaling`
-- **核心原理**：由于 $h = Wx + BAx = (W + BA)x$，可以直接将 $BA$ 加到 $W$ 中。
+- **核心原理**：由于 $h = W x + B A x = (W + B A)x$，可以直接将 $BA$ 加到 $W$ 中。
 - **零延迟推理**：合并后，模型结构与标准 Linear 层完全相同，没有额外的矩阵乘法，推理速度与原始模型一致。
-- **部署优势**：合并后可以直接丢弃 A 和 B 矩阵，节省显存和计算。这是 LoRA 相比 Adapter 等方法的重要优势。
-- **可逆性**：如果需要，可以通过 `W - BA` 恢复原始权重，实现"即插即拔"的效果。
+- **部署提醒**：merge 前应切到 `eval()`，避免 dropout 造成 merge 前后输出不一致；merge 后通常不再继续训练这个 LoRA 分支。
 
 **工程要点**
 
-- **显存节省**：7B 模型全参微调需要约 112GB 显存（参数 + 梯度 + 优化器状态），LoRA (r=8) 只需约 14GB。
-- **多任务切换**：可以为不同任务训练不同的 A/B 矩阵，推理时动态加载，实现"一个基座模型 + 多个 LoRA 适配器"。
-- **秩的选择**：`r=8` 通常足够，`r=16` 可能带来边际提升，`r=32` 以上收益递减。
+- **target modules**：入门常选 `q_proj / v_proj`，更完整的注意力适配会覆盖 `q_proj / k_proj / v_proj / o_proj`，需要更强容量时再扩展到 `gate_proj / up_proj / down_proj`。
+- **rank 选择**：`r=8` 通常足够做入门和小任务，`r=16` 可能带来边际提升，`r=32` 以上收益递减且更容易过拟合。
+- **alpha 选择**：常见设置是 `alpha = r` 或 `alpha = 2r`。过大可能让 LoRA 更新过强，过小则适配能力不足。
+- **dropout 选择**：小数据或格式容易过拟合时可以加 `0.05-0.1`；数据足够多或追求稳定对齐时可以设为 `0.0`。
+- **参数统计**：项目报告里至少记录 base 参数量、trainable 参数量和 trainable ratio，证明当前实验真的只训练 LoRA adapter。
+- **多任务切换**：可以为不同任务训练不同的 A/B 矩阵，推理时动态加载，实现“一个基座模型 + 多个 LoRA 适配器”。
