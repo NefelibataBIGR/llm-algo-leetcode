@@ -59,7 +59,7 @@ PagedAttention 的思路是把 KV Cache 像分页内存一样管理：物理显�
 ### Step 2: 代码实现框架
 系统需要维护一个 `BlockTable`，它本质上就是“逻辑块编号 → 物理块 ID”的映射表。prefill 阶段先按序列长度向上取整，申请足够的物理 Block；decode 阶段只在跨过 block 边界时额外申请 1 个 Block；真正做 attention 时，再按 block_table 把离散的物理块重新拼回逻辑序列。下面的代码会把这条链路拆成 5 个小动作：初始化缓存池、计算所需 block 数、分配 prefill block、判断 decode 是否跨块、按块表恢复缓存。
 
-###  Step 3: PagedAttention 模拟机制
+### Step 3: PagedAttention 模拟机制
 
 为了让你在不写几千行 C++ 的情况下弄懂 PagedAttention，我们将用纯 Python 模拟它的核心数据结构：
 
@@ -67,7 +67,7 @@ PagedAttention 的思路是把 KV Cache 像分页内存一样管理：物理显�
 2. **Block Table (块表)**：每个 Request 都有一个专属的块表，它是一个整数列表（`List[int]`），记录了这个 Request 的第 $i$ 个逻辑块存在物理池的哪个索引里。
 3. **KV Cache Manager**：负责在 Token 生成时，“按需”分配新的物理块索引。
 
-###  Step 4: 动手实战
+### Step 4: 动手实战
 
 **要求**：请补全下方 `KVCacheManager`，实现一个极简版的 vLLM 内存管理器。
 
@@ -151,6 +151,15 @@ class KVCacheManager:
 
 ```
 
+### 提示
+
+- `block_table` 是逻辑块到物理块的映射，不要把它和真实张量位置混淆。
+- `allocate_for_prefill` 先按需分配整段 prompt。
+- `allocate_for_decode` 只有在跨块边界时才追加新 block。
+- `get_physical_cache` 的作用是把离散物理块恢复成逻辑连续序列。
+### 测试
+
+运行下面的测试单元，确认 prefill / decode / cache 拼装三段链路都正确。
 
 ```python
 # 运行此单元格以测试你的实现
