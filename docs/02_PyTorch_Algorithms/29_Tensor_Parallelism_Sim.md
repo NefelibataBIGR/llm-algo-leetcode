@@ -38,7 +38,7 @@ Tensor Parallelism 的核心就是按张量维度切分 Linear：Column Parallel
 - [P1: 17. CUDA Stream and Asynchrony | CUDA Stream 与异步执行](../01_Hardware_Math_and_Systems/17_CUDA_Stream_and_Asynchrony.md)
 - [P1: 27. Communication Scheduling Optimization | 通信调度优化](../01_Hardware_Math_and_Systems/27_Communication_Scheduling_Optimization.md)
 - [P1: 08. Programming Models and CUDA/Triton | 编程模型演进](../01_Hardware_Math_and_Systems/08_Programming_Models_CUDA_Triton.md)
-- [35. Multi-GPU Strategy Selection Project | 多卡策略选择项目](../02_PyTorch_Algorithms/35_Multi_GPU_Strategy_Selection_Project.md)
+- [79. Distributed Parallel Benchmark | 分布式并行基准](../02_PyTorch_Algorithms/79_Distributed_Parallel_Benchmark.md)
 
 ---
 ### Step 1: TP的两种切法

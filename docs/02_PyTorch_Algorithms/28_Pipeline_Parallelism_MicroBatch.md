@@ -34,7 +34,7 @@ Pipeline Parallelism 的关键是把 batch 再拆成多个 micro-batch，让不�
 - [27. ZeRO Optimizer Sim | ZeRO 优化器模拟](../02_PyTorch_Algorithms/27_ZeRO_Optimizer_Sim.md)
 - [P1: 17. CUDA Stream and Asynchrony | CUDA Stream 与异步执行](../01_Hardware_Math_and_Systems/17_CUDA_Stream_and_Asynchrony.md)
 - [29. Tensor Parallelism Sim | Tensor 并行模拟](../02_PyTorch_Algorithms/29_Tensor_Parallelism_Sim.md)
-- [30. LoRA Fine-Tuning Project | LoRA 微调项目](../02_PyTorch_Algorithms/30_LoRA_Fine_Tuning_Project.md)
+- [60. LoRA Fine-Tuning Project | LoRA 微调项目](../02_PyTorch_Algorithms/60_LoRA_Fine_Tuning_Project.md)
 
 ---
 ### Step 1: 为什么会有 Bubble

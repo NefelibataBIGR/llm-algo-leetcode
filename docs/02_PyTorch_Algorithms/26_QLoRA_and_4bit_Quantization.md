@@ -35,8 +35,8 @@
 ## 相关阅读
 
 **导语：** 学完 QLoRA 后，可以继续沿项目线看 LoRA 微调如何交付，也可以沿部署线看量化后如何真正用于推理。
-- [30. LoRA Fine-Tuning Project | LoRA 微调项目](./30_LoRA_Fine_Tuning_Project.md)
-- [35. Quantized Inference and Deployment | 量化推理与部署](./35_Quantized_Inference_and_Deployment.md)
+- [60. LoRA Fine-Tuning Project | LoRA 微调项目](./60_LoRA_Fine_Tuning_Project.md)
+- [67. Quantized Inference and Deployment | 量化推理与部署](./67_Quantized_Inference_and_Deployment.md)
 - [P1: 13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
 - [P1: 24. SRAM Optimization Techniques | SRAM 优化技术](../01_Hardware_Math_and_Systems/24_SRAM_Optimization_Techniques.md)
 
