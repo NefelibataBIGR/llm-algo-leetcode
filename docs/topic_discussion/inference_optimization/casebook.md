@@ -1,192 +1,120 @@
 # 推理优化正文
 
 ## 页面目标
-这页不是再重复目录，而是把推理优化专题里最常见的三类问题展开成可操作的判断路径：
-- 长 prompt 为什么慢
-- 生成阶段为什么吞吐不高
-- cache 为什么一边跑一边涨
 
-## 适用人群
+这页把推理优化专题沉淀成可操作的判断框架。它不重复每个 notebook 的机制细节，而是回答：
 
-- 想理解推理框架、推理引擎和优化点关系的人。
-- 正在看长上下文、生成速度、KV cache 或吞吐问题的人。
-- 想把推理优化和 benchmark 结果对齐的人。
+- 看到 TTFT、TPOT、throughput、peak memory 后怎么判断瓶颈？
+- 长 prompt、decode 慢、cache 涨、量化收益不稳定分别应该看哪条线？
+- 最后怎么把判断收束到 `66` 的推理性能对比项目？
 
-## 不适用人群
+## 指标口径
 
-- 只关心训练，不关心推理链路的人。
-- 只想抄一个优化名词，但不想看请求和缓存代价的人。
-- 还没有 decode、cache、batch 基本概念的人。
-
-## 你应该如何开始读
-
-- 先读 `2.6 -> 20 -> 21 -> 22`，把推理优化的基础主线串起来。
-- 如果你关心长上下文和 cache，再看 `22 -> 36 -> 41`。
-- 如果你关心生成阶段吞吐，再看 `21 -> 37 -> 38`。
-- 最后用 `31 / 2.9` 验证优化是不是在真实场景里成立。
-
-## 故事线
-
-一个典型的推理优化故事，通常从用户抱怨“长 prompt 一进来就很慢”开始。第一次排查时，大家常会盯着 decode，觉得是采样或生成策略出了问题；但一上 profiling，真正的瓶颈往往分成三层：attention 太重、KV cache 在涨、调度没有把 prefill 和 decode 排顺。
-
-第一步先看 `2.6 -> 20 -> 21 -> 22`，确认基础推理链路到底是哪里慢。
-第二步再看 `22 -> 36 -> 41`，确认 cache 能不能复用、分页和驱逐是否合理。
-第三步再看 `21 -> 37 -> 38`，确认生成路径和调度是否在浪费吞吐。
-最后把这些策略回到 `31 / 2.9`，看看优化是不是在真实请求分布里成立。
-
-这个故事的关键不是“有多少推理技巧”，而是把技巧放回一个真实请求链路里看：谁在训练，谁在组织请求，谁在真正吃掉算力和缓存。
-
-## 具体案例
-
-### 案例 1：长 prompt 进来后首 token 延迟高
-
-现象是：prompt 长度一上去，首 token 延迟明显升高，但 decode 阶段的单 token 速度看起来还行。  
-判断链路是：先看 `20 -> 22`，确认 attention 和 KV cache 是否已经在长上下文下被放大；再看 `36 -> 41`，确认前缀复用和 cache 驱逐有没有跟上。
-
-结果通常有两种：
-
-- 如果 `prefill` 占比特别高，问题多半在 attention 计算和前缀组织。
-- 如果 cache 增长快但复用低，问题多半在请求组织和驱逐策略。
-
-这个案例的重点是：首 token 慢不等于 decode 慢，必须先把 prefill 和 cache 分开看。
-
-### 案例 2：生成阶段吞吐不高
-
-现象是：单个请求看起来没问题，但并发一高，整体吞吐就上不去。  
-判断链路是：先看 `21 -> 37 -> 38`，确认采样、草稿验证和调度有没有把 token 产出节奏排顺。
-
-常见结论是：
-
-- 如果草稿模型质量不够， speculative decoding 反而会吃掉收益。
-- 如果调度没把 prefill / decode 分开排， token 产出会被请求顺序拖住。
-
-这个案例的重点是：吞吐问题往往不是“模型不够快”，而是“请求组织不够顺”。
-
-### 案例 3：优化看起来有效，但线上不稳定
-
-现象是：benchmark 上看起来提速了，但线上请求一换，收益就掉下去。  
-判断链路是：先回到 `31 / 2.9`，确认 benchmark 口径和线上请求分布是不是一致；再看 `22 -> 36 -> 41`，确认 cache 命中条件是否被请求形态放大或削弱。
-
-这个案例的重点是：推理优化不是只看单条曲线，而是看请求分布、缓存命中和调度策略能不能一起成立。
-
-## 栈位关系
-
-推理优化不是单独的一层，它通常嵌在训练框架、推理框架和推理引擎之间。
-
-| 栈位 | 主要职责 | 和本专题的关系 |
+| 指标 | 含义 | 主要关联 |
 |:---|:---|:---|
-| 训练框架 | 训练、微调、导出模型权重 | 提供上游模型和结构约束 |
-| 推理框架 | 加载模型、组织请求、处理解码流程 | 负责把模型接入推理场景 |
-| 推理引擎 | 调度、KV cache、kernel 路径和执行效率 | 是优化最直接的落点 |
+| `TTFT` | Time To First Token，首 token 延迟，通常近似 prefill latency | 长 prompt、attention kernel、chunked prefill |
+| `TPOT` | Time Per Output Token，decode 阶段平均每 token 延迟 | decode loop、KV cache 读写、调度 |
+| `throughput` | 单位时间生成 token 数，通常看 generated tokens/s | batching、调度、推测解码、多 token 解码 |
+| `peak memory` | 推理峰值显存 | 权重、KV cache、batch size、量化 |
+| `prefill_share` | prefill 占总耗时比例 | attention 访存、prompt length |
+| `decode_share` | decode 占总耗时比例 | KV cache、sampling、decode scheduling |
 
-## 专题主线
+`66` 已经把这些指标放进项目模板：先固定 workload，再拆 prefill/decode，再比较 baseline 和 candidate。
 
-这页不是按单页罗列，而是按“问题 -> 机制 -> 调度 -> 验证”的链路来读。
+## 瓶颈诊断
 
-| 主线 | 关注的问题 | 适合先看 |
+| 瓶颈 | 典型信号 | 优先阅读 | 常见动作 |
+|:---|:---|:---|:---|
+| `prefill-bound` | `TTFT` 高、`prefill_share` 高、长 prompt 变慢明显 | Task2 + Task4 | FlashAttention、chunked prefill、prefix caching |
+| `decode-bound` | `TPOT` 高、`decode_share` 高、并发下 token 产出慢 | Task3 + Task4 | speculative decoding、multi-token decoding、decode scheduling |
+| `memory-bound` | peak memory 接近预算，batch 或上下文上不去 | Task4 + Task5 | PagedAttention、KV cache scheduling、KV cache quantization |
+| `balanced` | 没有明显单点瓶颈 | Task6 + Profiling 专题 | 保持 baseline 或继续做更细粒度 profiling |
+
+显存接近预算时，优先按 `memory-bound` 处理。显存是硬约束；即使 decode 占比高，如果 KV cache 已经顶到预算，继续扩大 batch 或上下文都不可靠。
+
+## Task 对照
+
+| Task | 关键词 | 适合解决的问题 |
 |:---|:---|:---|
-| 计算主线 | attention 怎么算得更省、更稳 | `20 -> 22 -> 31` |
-| 解码主线 | 生成时怎么选 token、怎么减少重复计算 | `21 -> 37` |
-| 缓存主线 | KV cache 怎么复用、怎么分页、怎么调度 | `22 -> 36 -> 41` |
-| 吞吐主线 | 怎么把 prefill / decode / batch 排布得更高效 | `36 -> 38 -> 31` |
-| 高级生成主线 | speculative / multi-token / scheduling 怎么串起来 | `2.7A -> 37 -> 38` |
-
-## 一页速记
-
-| 层级 | 你主要关心什么 | 在本专题里怎么看 |
-|:---|:---|:---|
-| 训练框架 | 模型是怎么训练出来、怎么导出权重的 | 只看它作为上游来源，不在这里展开训练细节 |
-| 推理框架 | 模型怎么被加载、请求怎么被组织、解码怎么走 | 先看 `2.6 / 2.7A`，再看请求和解码策略 |
-| 推理引擎 | 调度、KV cache、kernel 路径和执行效率 | 重点看 `22 / 36 / 38 / 41` 这条线 |
-
-## 建议阅读顺序
-
-1. 先看 `2.6 -> 20 -> 21 -> 22`，把 attention、decode 和 cache 的基础行为对上。
-2. 再看 `2.7A -> 36 -> 37 -> 38 -> 41`，把前缀复用、高级生成和调度串起来。
-3. 最后回到 `31 / 2.9`，确认方法层判断能不能在 benchmark 里兑现。
+| Task1 | Attention、GQA、Block | 我知道推理在跑模型，但不知道主要结构成本在哪里 |
+| Task2 | HBM、SRAM、tiling、online softmax | 长 prompt / attention 太慢，想理解 FlashAttention 为什么有效 |
+| Task3 | sampling、speculative、multi-token | 生成阶段 token 产出慢，想减少 decode 循环成本 |
+| Task4 | KV cache、prefix、paging、scheduling | 服务侧吞吐上不去，cache 复用和请求排布有问题 |
+| Task5 | W8A16、GPTQ、AWQ、FP8、KV cache quant | 显存或带宽受限，想用量化换部署收益 |
+| Task6 | TTFT、TPOT、throughput、decision | 需要用 benchmark 判断方案该 keep、tune 还是 switch |
 
 ## 典型案例
 
-### 长 prompt
-长 prompt 的核心不是“token 多”，而是 attention 成本和 KV cache 一起上来。优先检查 `20 -> 22`，看 attention 是否已经做了分块/在线 softmax 级别的优化，再看 `36 -> 41`，判断前缀复用和 cache 驱逐有没有跟上请求结构。
+### 案例 1：长 prompt 进来后首 token 延迟高
 
-### 生成慢
-如果是生成慢，通常要看 `21 -> 37 -> 38`。采样策略决定生成路径，草稿-验证决定 token 产出节奏，调度决定 prefill 和 decode 是否能排顺。很多场景不是模型本身慢，而是请求组织没有把吞吐挤出来。
+现象：prompt 长度一上去，首 token 延迟明显升高，但 decode 阶段单 token 速度还可以。
 
-### 显存持续涨
-如果 cache 持续涨，重点看 `22 -> 36 -> 41`。要先分清是 KV cache 的自然增长，还是前缀复用不足、驱逐策略太保守、batch 组织不合理造成的额外占用。
+判断：
+- 先看 Task2，确认 attention 是否卡在中间 score 矩阵和 HBM 读写。
+- 再看 Task4，确认是否存在重复前缀、chunked prefill 是否有意义。
+- 最后用 Task6 的 `TTFT / prefill_share` 验证优化收益。
 
-## 框架与引擎
+常见结论：首 token 慢不等于 decode 慢，要先分清 prefill 和 decode。
 
-推理优化不是孤立发生的，它通常发生在一条链路里：
+### 案例 2：并发一高，整体吞吐上不去
 
-1. 训练框架先把模型训练出来，或者把微调后的权重导出。
-2. 推理框架负责把模型加载进来，并把请求、解码和基础 serving 逻辑组织起来。
-3. 推理引擎再往下接管调度、KV cache、kernel 路径和执行效率。
+现象：单请求还可以，但多请求同时进来后 generated tokens/s 不高，TPOT 变差。
 
-所以，当你在看 `FlashAttention / PagedAttention / Prefix Caching / Decode Scheduling` 时，不要只问“算法怎么写”，还要问“它落在推理框架层还是引擎层”。  
-前者更偏接口、请求和流程组织，后者更偏执行、缓存和吞吐。
+判断：
+- 先看 Task3，确认解码策略是否增加了无效计算。
+- 再看 Task4，确认 prefill 和 decode 是否互相阻塞，decode batch 是否排顺。
+- 最后用 Task6 比较 baseline 和 candidate 的 `throughput_gain / TTFT delta / TPOT delta`。
 
-## 典型阅读链
+常见结论：吞吐问题常常不是模型本身慢，而是请求组织没有把 decode 阶段排好。
 
-- 如果你想先理解推理慢在哪里，先读 `20 -> 22 -> 31`，把 attention、cache 和收益验证先串起来。
-- 如果你想先理解生成阶段怎么做决策，先读 `21 -> 37`，把采样策略和多 token 生成连起来。
-- 如果你想重点看 cache 生命周期和调度，先读 `22 -> 36 -> 41`，把分页、前缀复用和驱逐策略连起来。
-- 如果你想看吞吐和延迟怎么一起优化，先读 `36 -> 38 -> 31`，把 prefill、decode 和 benchmark 连起来。
-- 如果你想看更强的生成加速，先读 `2.7A -> 37 -> 38`，再回到 `31` 看收益是否成立。
+### 案例 3：cache 一边跑一边涨，batch 上不去
 
-## 对照表
+现象：长上下文或多轮对话下显存持续增长，batch size 被迫降低。
 
-| 场景 | 先看什么 | 重点差异 |
-|:---|:---|:---|
-| 长 prompt | `20 -> 22 -> 31` | 看 attention 成本和 cache 增长 |
-| 生成慢 | `21 -> 37 -> 38` | 看采样、草稿验证和调度 |
-| cache 变大 | `22 -> 36 -> 41` | 看复用、分页和驱逐 |
-| 想提吞吐 | `36 -> 38 -> 31` | 看 prefill / decode 排布 |
-| 想接更强生成 | `2.7A -> 37 -> 38` | 看策略复杂度和接受率 |
+判断：
+- 先看 Part01 `11`，理解 KV cache 随层数、头数、长度和 batch 的增长。
+- 再看 `22 / 36 / 41`，确认分页、前缀复用、驱逐策略是否匹配请求分布。
+- 如果仍接近显存预算，再看 Task5 的 KV cache 量化。
 
-## 进一步展开
+常见结论：cache 变大有一部分是自然增长，优化重点是减少碎片、提高复用、控制驱逐和压缩存储。
 
-### 1. 先看请求阶段
+### 案例 4：量化后显存省了，但体验变差
 
-- `prefill` 占比高时，先关注 attention 和前缀复用。
-- `decode` 占比高时，先关注采样、草稿验证和调度。
+现象：peak memory 降了，batch 能上去，但 TTFT 或 TPOT 变差。
 
-### 2. 再看 cache 生命周期
+判断：
+- 先分清权重量化、KV cache 量化和 FP8 改的是哪类数据。
+- 再回到 `66` 看吞吐收益是否抵消延迟退化。
+- 如果在线交互场景 TTFT 退化明显，即使 throughput 更高，也不一定应该切换。
 
-- cache 的增长是否和 prompt 长度同步。
-- 前缀是否真的被命中复用。
-- 驱逐是否会误伤高复用请求。
+常见结论：量化不是免费收益，最终要回到 workload 和服务目标。
 
-### 3. 最后看工程化收益
+## 决策清单
 
-- 是否真的提升了吞吐。
-- 是否把延迟控制在可接受范围。
-- 是否引入了过高的实现复杂度。
+做推理优化报告前，至少确认这些项：
 
-## 简单规则
+- workload 是否固定：模型、backend、batch、prompt tokens、generated tokens、dtype、cache policy。
+- 是否拆分 prefill 和 decode，而不是只报 total latency。
+- 是否同时报告 TTFT、TPOT、throughput 和 peak memory。
+- candidate 是否只改一个变量。
+- 瓶颈诊断是否能解释下一步动作。
+- 决策是否回到 `keep / tune / switch`，而不是只说“更快”。
 
-- 先区分目标是降延迟还是提吞吐。
-- 再区分瓶颈是在 attention、decode 还是 cache。
-- 再看优化是否改变了请求组织方式。
-- 最后用 `31` 和 `2.9` 证明收益。
+## 常见误区
 
-## 常见错误
+- 只看 throughput，不看 TTFT，导致在线交互体验退化。
+- 只优化 attention kernel，不看 KV cache 和请求调度。
+- 只看单条 prompt benchmark，不看请求分布。
+- 把训练显存优化手段直接搬到推理场景，忽略 KV cache 是推理侧主要变量。
+- 看到量化省显存就直接切换，不检查 TPOT、质量和部署复杂度。
 
-- 只优化单个 kernel，不管请求调度。
-- 只看理论提速，不看线上请求分布。
-- 只谈 cache 省了多少，不谈调度复杂度增加了多少。
+## 相关跳转
 
-## 深入阅读
-
-- 想看完整请求链路故事，去 [推理优化深入阅读](./walkthrough.md)。
-- 想快速回顾摘要、对照和 FAQ，继续留在本页即可。
-
-## 相关专题
-
-- [Profiling 专题](../profiling/intro.md)：当你先要证明慢点在哪里时看这里。
-- [显存优化与性能调优专题](../memory_performance_tuning/intro.md)：当推理优化和 KV cache、显存账本绑在一起时看这里。
-- [编译与图优化专题](../compiler_graph_optimization/intro.md)：当优化更像 backend、fusion 或调度问题时看这里。
+- 完整路线见 [推理优化专题入口](./intro.md)。
+- 连续链路见 [推理优化深入阅读](./walkthrough.md)。
+- 需要证明慢点在哪里时，先看 [Profiling 专题](../profiling/intro.md)。
+- 需要处理显存预算时，先看 [显存优化与性能调优专题](../memory_performance_tuning/intro.md)。
 
 ## 小结
-推理优化的核心不是“有多少技巧”，而是“哪类请求适合哪条链路”。这页的作用是把技巧放回问题里看，而不是单独看概念。
+
+推理优化不是堆技巧，而是把 workload、指标、瓶颈和候选方案放在同一张报告里判断。非项目节负责讲清机制，横向专题负责串路线，`66` 负责证明收益。

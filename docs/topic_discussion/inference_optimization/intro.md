@@ -1,91 +1,95 @@
 # 推理优化专题
 
 ## 专题概览
-本专题用于沉淀 FlashAttention、解码、PagedAttention、prefix caching 和 speculative decoding 等推理加速方法，回答“怎么让推理更快、更稳、更省 cache”。
+
+本专题用于沉淀大模型推理优化路线，回答三个问题：
+
+- 一个请求从进来到输出 token，主要慢在哪里？
+- FlashAttention、解码策略、KV cache、调度和量化分别改的是哪一段？
+- 如何把优化结果落到 `66_Inference_Performance_Comparison.ipynb` 的 benchmark report 里？
+
+当前策略是：**横向专题负责完整链路，非项目 notebook 负责单点机制，`66` 负责项目收口**。这样可以减少对已经成形的非项目节的重复修改，也方便在专题页里加入更多路线链接。
 
 ## 职责边界
 
-这个专题只负责推理链路里的性能优化与缓存管理，不负责训练流程本身，也不负责分布式并行主线。
+这个专题只负责推理链路里的性能优化、缓存管理、调度和部署侧选型，不负责训练流程本身，也不替代 profiling 专题。
 
-- `FlashAttention` 关注 attention 计算与显存模型。
-- `Decoding` 关注采样、搜索和生成阶段的策略选择。
-- `PagedAttention` 关注 KV cache 的分页管理与连续 batching。
-- `Prefix Caching / Chunked Prefill` 关注前缀复用与预填充调度。
-- `Speculative Decoding / Multi-Token Decoding / Decode Scheduling` 关注更高吞吐的生成路径。
+- `FlashAttention` 关注 attention 计算里的 HBM/SRAM 访存瓶颈。
+- `Decoding` 关注采样、搜索、推测解码和多 token 生成。
+- `KV Cache` 关注缓存增长、分页、复用、驱逐和调度。
+- `Serving Scheduling` 关注 prefill / decode / batch / priority 如何排布。
+- `Quantized Deployment` 关注权重、FP8 和 KV cache 量化在部署侧的收益与代价。
+- `66` 负责把这些策略放进同一 workload，输出 `keep / tune / switch` 选型结论。
 
-## 对应来源
+和 `显存优化与性能调优专题` 的区别是：
 
-| 来源 | 适合纳入的内容 |
-|:---|:---|
-| `Part 1` | attention / memory / profiling 背景，推理优化的硬件约束 |
-| `Part 2.6` | FlashAttention、Decoding Strategies、PagedAttention |
-| `Part 2.7A` | Speculative Decoding、RadixAttention、Prefix Caching、Chunked Prefill、Multi-Token Decoding、Decode Scheduling |
-| `Part 2.9` | 推理性能对比实验、推理路径回改和工程验证 |
+- 本专题先看请求链路是否更快、更顺，重点是 `TTFT / TPOT / throughput`。
+- 显存专题先看资源是否被压进预算，重点是 `peak memory / VRAM ledger / trade-off`。
+- 两边都会碰到 `KV cache` 和量化，但本专题把它们当成推理链路上的调度与吞吐问题来看。
+
+## 推理链路总图
+
+```text
+request
+  │
+  ▼
+tokenize / batch assemble
+  │
+  ▼
+prefill ── attention kernel / FlashAttention / chunked prefill
+  │
+  ▼
+KV cache ── allocation / paging / prefix reuse / eviction
+  │
+  ▼
+decode loop ── sampling / speculative decoding / multi-token decoding / scheduling
+  │
+  ▼
+detokenize / stream response
+  │
+  ▼
+benchmark report ── TTFT / TPOT / throughput / peak memory / decision
+```
+
+## Task1-6 主线
+
+| Task | 主题 | 推荐小节 | 学完应能回答 |
+|:---|:---|:---|:---|
+| Task1 | 推理结构地基 | [04 Attention MHA/GQA](../../02_PyTorch_Algorithms/04_Attention_MHA_GQA.md)、[05 LLaMA3 Block](../../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.md) | 推理时 attention、GQA 和 block 数据流主要消耗在哪里？ |
+| Task2 | Attention 访存瓶颈与 FlashAttention | Part01 [03 GPU Memory](../../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.md)、[14 FlashAttention Memory Model](../../01_Hardware_Math_and_Systems/14_FlashAttention_Memory_Model.md)、[24 SRAM Optimization](../../01_Hardware_Math_and_Systems/24_SRAM_Optimization_Techniques.md) + Part02 [20 FlashAttention Sim](../../02_PyTorch_Algorithms/20_FlashAttention_Sim.md) | 为什么 attention 优化不是只看 FLOPs，而是看 HBM/SRAM、tiling 和中间矩阵读写？ |
+| Task3 | 解码算法与生成策略 | [21 Decoding Strategies](../../02_PyTorch_Algorithms/21_Decoding_Strategies.md)、[23 Speculative Decoding](../../02_PyTorch_Algorithms/23_Speculative_Decoding.md)、[35 Multi-Token Decoding](../../02_PyTorch_Algorithms/35_Multi_Token_Decoding.md) | token 怎么生成，如何减少 decode 循环成本？ |
+| Task4 | KV Cache、Prefix 复用与 Decode 调度 | Part01 [11 KV Cache Memory Growth](../../01_Hardware_Math_and_Systems/11_KV_Cache_and_Memory_Growth.md) + Part02 [22 vLLM PagedAttention](../../02_PyTorch_Algorithms/22_vLLM_PagedAttention.md)、[24 SGLang RadixAttention](../../02_PyTorch_Algorithms/24_SGLang_RadixAttention.md)、[34 Prefix Caching and Chunked Prefill](../../02_PyTorch_Algorithms/34_Prefix_Caching_and_Chunked_Prefill.md)、[36 Decode Scheduling](../../02_PyTorch_Algorithms/36_Decode_Scheduling.md)、[37 KV Cache Scheduling](../../02_PyTorch_Algorithms/37_KV_Cache_Scheduling.md) | KV cache 怎么增长、复用、分页、驱逐，decode 请求怎么排？ |
+| Task5 | 量化推理与部署 | Part01 [21 Quantization Theory](../../01_Hardware_Math_and_Systems/21_Quantization_Theory_and_INT4_INT8.md) + Part02 [25 Quantization W8A16](../../02_PyTorch_Algorithms/25_Quantization_W8A16.md)、[67 Quantized Inference and Deployment](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.md)、[40 GPTQ and AWQ](../../02_PyTorch_Algorithms/40_GPTQ_and_AWQ_Weight_Quantization.md)、[41 FP8 and KV Cache Quantization](../../02_PyTorch_Algorithms/41_FP8_and_KV_Cache_Quantization.md) | 权重、激活和 KV cache 量化分别改变什么成本？ |
+| Task6 | 推理性能对比项目 | [66 Inference Performance Comparison](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.md) | 如何用同一 workload 比较 TTFT、TPOT、吞吐、显存并输出选型？ |
 
 ## 章节跳转
 
 | 章节 | 你会看到什么 | 跳转 |
 |:---|:---|:---|
-| `2.6` | 推理优化的三条主线：FlashAttention、解码策略、PagedAttention | [2.6 核心推理优化](../02_PyTorch_Algorithms/2_6.md) |
-| `20` | FlashAttention 的分块与 online softmax 思路 | [20 FlashAttention Sim](../02_PyTorch_Algorithms/20_FlashAttention_Sim.md) |
-| `21` | temperature / top-k / top-p 的解码策略 | [21 Decoding Strategies](../02_PyTorch_Algorithms/21_Decoding_Strategies.md) |
-| `22` | KV cache 的分页管理与 block table | [22 vLLM PagedAttention](../02_PyTorch_Algorithms/22_vLLM_PagedAttention.md) |
-| `2.7A` | 更快生成的高级策略入口 | [2.7A 高级推理策略](../02_PyTorch_Algorithms/2_7A.md) |
-| `36` | Prefix Caching 和 Chunked Prefill 的复用路径 | [36 Prefix Caching and Chunked Prefill](../02_PyTorch_Algorithms/36_Prefix_Caching_and_Chunked_Prefill.md) |
-| `37` | Multi-Token Decoding 的草稿-验证链路 | [37 Multi-Token Decoding](../02_PyTorch_Algorithms/37_Multi_Token_Decoding.md) |
-| `38` | Decode Scheduling 的排布、优先级和吞吐收益 | [38 Decode Scheduling](../02_PyTorch_Algorithms/38_Decode_Scheduling.md) |
-| `41` | KV Cache 调度边界与复用/驱逐策略 | [41 KV Cache Scheduling](../02_PyTorch_Algorithms/41_KV_Cache_Scheduling.md) |
-| `31` | 推理性能对比实验与收益验证 | [31 Inference Performance Comparison](../02_PyTorch_Algorithms/31_Inference_Performance_Comparison.md) |
+| `2.6` | FlashAttention、Decoding、PagedAttention 的基础入口 | [2.6 核心推理优化](../../02_PyTorch_Algorithms/2_6.md) |
+| `2.7A` | Prefix caching、multi-token decoding、decode scheduling 的高级入口 | [2.7A 高级推理策略](../../02_PyTorch_Algorithms/2_7A.md) |
+| `2.9` | 项目收口组入口 | [2.9 综合项目与性能对比](../../02_PyTorch_Algorithms/2_9.md) |
+| `66` | 推理性能对比项目，输出 `keep / tune / switch` | [66 Inference Performance Comparison](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.md) |
 
 ## 推荐入口
 
-- 先看 `Part 2.6`，把 FlashAttention、解码和 PagedAttention 串起来。
-- 再看 `Part 2.7A`，把高级推理策略和调度链路补齐。
-- 最后看 `Part 2.9`，把这些能力放到项目里验证收益。
-
-## 入口摘要
-
-- 第一入口：`Part 1` + `2.6 -> 20 -> 21 -> 22`，先把 attention、解码和 cache 的基础主线立住。
-- 第二入口：`2.7A -> 36 -> 37 -> 38 -> 41`，把前缀复用、高级生成和调度串起来。
-- 验证入口：`31` + `2.9`，把推理优化的收益放到 benchmark 和项目里验证。
+- 如果你从零学推理优化，按 Task1-6 顺序读。
+- 如果你只关心 attention kernel，从 Task2 开始，再回到 `66` 看收益如何验证。
+- 如果你只关心服务吞吐，从 Task4 开始，再接 Task6。
+- 如果你只关心部署压缩，从 Task5 开始，再接 Task6。
 
 ## 正文页
 
-- [推理优化正文](./casebook.md)：按“场景识别 / 栈位关系 / 典型链路 / 误区 / FAQ”展开正文，适合做更细的案例和对照。
-- [推理优化深入阅读](./walkthrough.md)：按完整请求链路展开，适合想看连续推演的人。
+- [推理优化正文](./casebook.md)：指标口径、瓶颈诊断、路线对照和常见误区。
+- [推理优化深入阅读](./walkthrough.md)：从一个请求进入系统开始，连续走到 `66` 的 benchmark report。
 
 ## 相关专题
 
-- [Profiling 专题](../profiling/intro.md)：当你需要先判断慢在哪里、用什么指标证明时先看这里。
-- [显存优化与性能调优专题](../memory_performance_tuning/intro.md)：当推理优化和 KV cache、显存账本绑在一起时先看这里。
-- [编译与图优化专题](../compiler_graph_optimization/intro.md)：当问题更像 backend 选择、fusion 或调度差异时先看这里。
-
-## Part 1 / Part 2 入口顺序
-
-### Part 1 入口
-
-- 先从 `Part 1` 的 attention / memory / profiling 背景进入，建立推理优化的硬件约束感。
-- 再回到 `20 -> 22`，把 FlashAttention 和 KV cache 的基本行为先看清楚。
-
-### Part 2 入口
-
-- 先看 `2.6 -> 20 -> 21 -> 22`，把基础推理优化三条主线连起来。
-- 再看 `2.7A -> 36 -> 37 -> 38 -> 41`，把前缀复用、高级生成和调度串起来。
-- 最后看 `31`，把前面的机制放到 benchmark 里验证收益。
-
-## 读法建议
-
-- 如果你关心“为什么推理慢”，先看 `20 -> 22`。
-- 如果你关心“生成时怎么选 token”，先看 `21`。
-- 如果你关心“怎么把吞吐做上去”，再看 `36 -> 38 -> 41 -> 31`。
-- 如果你关心“缓存怎么被复用和驱逐”，先看 `22 -> 36 -> 41`。
-- 如果你关心“高级生成策略怎么组合”，先看 `2.7A -> 37 -> 38`。
-
-## 建设方式
-
-- 先把入口、路径和验证点讲清楚。
-- 正文页再展开具体栈位、链路和典型案例。
-- 后续新增内容优先沿着 `2.6 / 2.7A / 2.9` 三条线回收。
+- [Profiling 专题](../profiling/intro.md)：当你需要先证明慢在哪里、用什么指标支撑结论时看这里。
+- [显存优化与性能调优专题](../memory_performance_tuning/intro.md)：当问题集中在 KV cache、显存预算和吞吐取舍时看这里。
+- [量化与压缩专题](../quantization/intro.md)：当问题集中在 W8A16、GPTQ/AWQ、FP8 或 KV cache quant 时看这里。
+- [编译与图优化专题](../compiler_graph_optimization/intro.md)：当优化更像 backend、fusion 或 kernel schedule 差异时看这里。
 
 ## 专题状态
-当前为专题入口页，后续将逐步补充跨 Part 索引、推理优化案例和工程化拆解。
+
+本专题已更新为新版推理优化主线入口。后续优先维护 `casebook.md / walkthrough.md`，尽量减少对非项目 notebook 的重复扩写。
