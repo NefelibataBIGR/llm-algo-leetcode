@@ -2,11 +2,16 @@
 
 ## 专题概览
 
-本专题把 `Part 02` 的 `01-08` 串成一条结构理解路线，回答“LLaMA 类模型的核心组件是什么，它们在 block 里怎么连接，张量形状怎么流动”。
+本专题不再只把 `Part 02` 的 `01-08` 串成一条结构理解路线，而是把“大模型结构和原理”升级成一门**结构演进史 + 代表模型剖析**专题。
 
-`01-08` 已经分别讲了 RMSNorm、SwiGLU、RoPE、Attention、LLaMA Block、MoE 和架构技巧；本专题负责把这些单页重新放回同一张结构地图里，降低初学者读单个组件时的抽象感。
+它要回答的不是“LLaMA 类模型的核心组件是什么”这么单一的问题，而是下面这一组问题：
 
-这也是一个样板横向专题，用来验证专题页不只是文件索引，而是可以同时承载叙事、文献和图。
+- 为什么 BPE、Embedding、Norm、Attention、RoPE 会不断演化
+- 每一代方案分别解决了什么矛盾
+- 这些变化如何影响 block 组装、训练、推理和显存
+- LLaMA、DeepSeek、Qwen、Mistral、Gemma 这类代表模型到底选了什么结构
+
+`01-08` 仍然是专题的基础骨架，但它们只是起点，不是全部。后续专题正文会按“模块演进 + 代表模型”两条线展开，把单页重新放回同一张知识地图里。
 
 ## 建设标准
 
@@ -18,6 +23,87 @@
 
 如果一个专题暂时还做不到三层齐备，至少要先把 `文字串联` 做起来，再逐步补文献和图。
 
+## 专题分块
+
+这个专题后续会按下面几个小节扩展，不再只是入口页：
+
+1. `Tokenization / BPE / Embedding 演进`
+2. `归一化发展历程`
+3. `Attention 发展历程`
+4. `RoPE 与位置编码发展历程`
+5. `Block 组装与残差路径`
+6. `代表模型专题`
+7. `跨模块对照表`
+8. `可视化资产`
+
+每一块都应该可以单独成节，便于继续补充：
+
+- 经典论文：回答“这个方向最早解决了什么问题”
+- 代表实现：回答“现在常见模型怎么落地”
+- 前沿论文：回答“这个方向现在往哪里演化”
+
+### 建议文件设计
+
+为了让每个主题都能独立成页，建议后续按下面的文件拆分：
+
+- `tokenization_embedding.md`
+- `norm_evolution.md`
+- `attention_evolution.md`
+- `rope_position_encoding.md`
+- `block_residual_path.md`
+- `representative_models.md`
+- `cross_module_comparison.md`
+- `visual_assets.md`
+
+其中：
+
+- `tokenization_embedding.md` 讲 BPE、词表、Embedding 与表示层的关系
+- `norm_evolution.md` 讲 LayerNorm、Pre-Norm、RMSNorm 及其演化
+- `attention_evolution.md` 讲 MHA、MQA、GQA、稀疏 attention 及其取舍
+- `rope_position_encoding.md` 讲 RoPE 与长上下文扩展
+- `block_residual_path.md` 讲 block 组装、残差路径和信息流
+- `representative_models.md` 讲 LLaMA、DeepSeek、Qwen、Mistral、Gemma 等模型的结构选择
+- `cross_module_comparison.md` 负责把各模块的演进关系横向拉通
+- `visual_assets.md` 负责沉淀 block 图、演进时间线和对照图
+
+### 每页固定模板
+
+每个独立主题页建议统一使用下面的结构，便于后续扩展论文和案例：
+
+1. `问题起点`
+2. `演化过程`
+3. `代表模型`
+4. `经典论文`
+5. `前沿论文`
+6. `与 Part 02 01-08 的对应关系`
+7. `可视化提示`
+
+这样每页都能独立阅读，也能放回整套专题体系里串起来读。
+
+### 已落地主题页
+
+当前已经先落地了下面 10 页：
+
+- [tokenization_embedding.md](./tokenization_embedding.md)
+- [norm_evolution.md](./norm_evolution.md)
+- [attention_evolution.md](./attention_evolution.md)
+- [rope_position_encoding.md](./rope_position_encoding.md)
+- [transformer_decoder.md](./transformer_decoder.md)
+- [mlp_ffn_evolution.md](./mlp_ffn_evolution.md)
+- [block_residual_path.md](./block_residual_path.md)
+- [representative_models.md](./representative_models.md)
+- [cross_module_comparison.md](./cross_module_comparison.md)
+- [visual_assets.md](./visual_assets.md)
+
+## 叙事骨架
+
+这个专题不是按文件顺序读，而是按问题顺序读。
+
+- 问题导入：为什么结构要单独成专题，因为 tokenization、norm、attention、位置编码和 block 组装决定了后续训练、推理、显存和微调的共同边界。
+- 核心脉络：每一代大模型结构的变化，本质上都是在表达能力、稳定性、上下文建模和计算代价之间重新做平衡。
+- 技术演进：先讲模块怎么演化，再讲这些模块如何被组装成 block，最后看代表模型为什么会选某一条路线。
+- 关键取舍：BPE 怎么影响词表和 embedding，norm 为什么从 LayerNorm 走到 RMSNorm，attention 为什么从 MHA 走到 MQA/GQA，RoPE 为什么会成为默认位置编码，DeepSeek 这类模型为什么会继续改 attention 结构。
+
 ## 内容映射
 
 ### 来源与前置
@@ -28,6 +114,7 @@
 | `Part 2.1` | RMSNorm、SwiGLU、RoPE、Attention |
 | `Part 2.2` | LLaMA Block、MoE Router、Load Balancing、Architecture Tricks |
 | `Part 2.3` | 训练微调前需要知道哪些层会被 LoRA 或优化器触达 |
+| `后续扩展页` | BPE、Embedding、Norm 演进、Attention 演进、RoPE 演进、代表模型专题 |
 
 ### 章节跳转
 
@@ -41,6 +128,16 @@
 | `06` | token 如何被 Router 分配给 Top-K experts | [06 MoE Router](../../02_PyTorch_Algorithms/06_MoE_Router.ipynb) |
 | `07` | 为什么 MoE 需要负载均衡损失 | [07 MoE Load Balancing Loss](../../02_PyTorch_Algorithms/07_MoE_Load_Balancing_Loss.ipynb) |
 | `08` | Weight tying、Gemma RMSNorm 等结构技巧放在哪里 | [08 Architecture Tricks](../../02_PyTorch_Algorithms/08_Architecture_Tricks.ipynb) |
+
+### 未来小节
+
+后续正文会继续补下面这些专题页：
+
+- `BPE / Embedding`：解释 tokenization 和词表如何影响表示层
+- `Norm`：讲 LayerNorm、Pre-Norm、RMSNorm 的演化
+- `Attention`：讲 MHA、MQA、GQA、稀疏 attention 的演化
+- `RoPE`：讲旋转位置编码及其长上下文扩展
+- `Representative Models`：讲 LLaMA、DeepSeek、Qwen、Mistral、Gemma 等模型的结构选择
 
 ### 叙事主线
 
@@ -72,15 +169,15 @@
 
 ## 阅读方式
 
-- 如果你觉得 `01-04` 抽象，先跳到 `05` 看完整 block 图，再回头补组件。
-- 如果你正在学 LoRA，至少要看懂 `04` 里的 attention projection 和 `02` 里的 MLP projection。
-- 如果你只想先完成训练微调主线，`06 / 07` 可以作为 MoE 扩展选读。
-- 如果你要复制这个专题模板，优先保留 `文字串联 / 文献锚点 / 可视化资产` 三段。
+- 如果你想先建立总图，先看“专题分块”和“叙事骨架”。
+- 如果你想沿着现有实现理解，先看 `01-08`，再回到未来小节。
+- 如果你想深挖某个模块，优先看对应的演进史，再看代表模型怎么落地。
+- 如果你要复制这个专题模板，优先保留 `文字串联 / 文献锚点 / 可视化资产` 三段，再补模块演进和代表模型。
 
 ## 正文页
 
-- [casebook.md](./casebook.md)：按“组件职责 / 输入输出形状 / 常见误区 / 检查清单”展开。
-- [walkthrough.md](./walkthrough.md)：按一条 token hidden state 连续走完整 block 的方式展开。
+- [casebook.md](./casebook.md)：当前作为“结构地图 + 模块演进 + 代表模型对照”的正文骨架。
+- [walkthrough.md](./walkthrough.md)：当前作为“连续故事线 + 结构演化 + 真实实现对照”的正文骨架。
 
 ## 相关专题
 
@@ -90,4 +187,4 @@
 
 ## 状态
 
-当前为专题入口页，且作为横向专题样板优先建设。`01-08` 的源 notebook 已完成第一轮轻量可视化，后续可继续补正文案例、连续 walkthrough 和更完整的结构图。
+当前为专题入口页，且作为横向专题样板优先建设。`01-08` 的源 notebook 已完成第一轮轻量可视化，后续要补的是模块演进史、代表模型专题和更完整的可视化资产。
