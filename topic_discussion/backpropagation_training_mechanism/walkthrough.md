@@ -2,95 +2,57 @@
 
 ## 主故事线
 
-一条完整的 backward 故事，可以按下面的顺序读：
+这条专题的阅读顺序可以理解为：
 
-`input -> forward -> save tensors -> loss -> backward -> gradient accumulation -> checkpointing / offload -> profiling`
+`graph -> autograd -> attention backward -> loss / memory ledger -> checkpointing / offload -> accumulation -> profiling`
 
-这条线的重点不是背公式，而是把梯度怎么回去、为什么要保留某些状态、为什么 backward 会变慢讲清楚。
+核心不是把公式背完，而是把“梯度怎么回去、哪些状态要留、为什么 backward 会变慢、怎么把这些问题放回训练闭环”讲清楚。
 
-## 1. 从最小 autograd 开始
+## 01 反向传播总览与计算图
 
-先看 `00`，建立最小直觉：
+先把问题框住：
 
-- forward 之后为什么会有 `grad_fn`
-- 为什么 `loss.backward()` 会沿链路回传
-- 自定义 `autograd.Function` 在做什么
+- backward 为什么会影响训练能不能跑起来
+- 计算图如何决定梯度路径
+- 为什么有些状态必须留，有些可以重算
 
-## 2. 看 attention 的反向
+## 02 Autograd 与 Attention Backward
 
-进入 `17` 后，重点不是再记一次 attention 公式，而是：
+先把实现层的关键接口和 attention 链路看懂：
 
-- `Q / K / V / P` 的梯度从哪来
-- 哪些中间量会被保存
-- `gradcheck` 为什么有用
+- `grad_fn` 和 `saved_tensors` 是什么
+- `autograd.Function` 为什么是最小的 backward 入口
+- attention 的 `dV -> dP -> dS -> dQ / dK` 怎么走
 
-## 3. 看激活和损失的反向
+## 03 Loss Backward、标签对齐与显存账本
 
-进入 `18` 后，重点确认：
+再把监督口径和显存代价放在一起看：
 
-- activation backward 怎么影响梯度流
-- loss backward 如何对应 supervision 区间
-- `labels` / `ignore_index` / `reduction` 为什么会影响训练结论
+- `mask / shift / ignore_index` 如何工作
+- prompt / response 为什么不能一视同仁
+- activation、参数、梯度和 optimizer state 各占什么位置
 
-## 4. 把 backward 放进训练循环
+## 04 Checkpointing 与 Offload
 
-进入 `12` 后，要统一三件事：
+再看两类最重要的显存优化：
 
-- micro-batch 怎么累积成 effective batch
-- backward 做几次，step 做几次
-- loss / scheduler / optimizer 的计数口径是否一致
+- checkpointing 是重算
+- offload 是搬运
+- 两者分别在优化什么、代价是什么
 
-## 5. 看 backward 的显存代价
+## 05 梯度累积、训练闭环与 Profiling
 
-进入 `19` 后，重点是 checkpointing：
+最后把 backward 放回训练节奏里：
 
-- 保存哪些张量
-- 哪些张量可以重算
-- 为什么 checkpointing 是“重算换显存”
-
-再进入 `42`，理解 offload：
-
-- 哪些状态搬到 CPU / 其他层
-- 为什么它不是重算
-- 为什么它会引入带宽代价
-
-## 6. 用 profiling 收口
-
-进入 `74` 后，不要只看总耗时，至少要确认：
-
-- backward 热点在哪
-- checkpointing / offload 是否真的值得
-- 梯度累积是否改变了训练节奏
-- 优化前后是否有可复现收益
-
-## 典型分支
-
-### 分支 1：梯度不对
-
-先回到 `00 -> 17 -> 18`，不要先改训练调度。
-
-### 分支 2：batch 受限
-
-先看 `12`，确认是不是需要梯度累积，而不是直接改模型。
-
-### 分支 3：显存不够
-
-先看 `19 -> 42`，区分是重算问题还是搬运问题。
-
-### 分支 4：性能退化
-
-先看 `74`，确认退化出现在 forward、backward 还是通信。
+- micro-batch 如何合成 effective batch
+- backward / step / profiling 怎么配合
+- 怎么判断某个优化是真的有效
 
 ## 阅读建议
 
-1. 先从 `00` 看最小 backward。
-2. 再看 `17 / 18`，把反向链路打实。
-3. 再看 `12`，把 backward 放进训练节奏。
-4. 再看 `19 / 42`，把 backward 和显存策略连起来。
-5. 最后看 `74`，把这些机制放回 profiling 闭环。
-
-## 和其他专题的连接
-
-- 接到 [训练微调闭环专题](../fine_tuning_training/intro.md) 时，重点是 backward 如何影响 loss、scheduler 和项目闭环。
-- 接到 [显存优化与性能调优专题](../memory_performance_tuning/intro.md) 时，重点是 checkpointing / offload / accumulation 的资源代价。
-- 接到 [Profiling 专题](../profiling/intro.md) 时，重点是 backward 热点和收益验证。
+1. 先从 `01` 开始，建立 backward 的基本框架。
+2. 再看 `02`，把实现接口和 attention 反向链路对上。
+3. 再看 `03`，把监督口径和显存代价对齐。
+4. 再看 `04`，理解 backward 的两类核心省显存方法。
+5. 最后看 `05`，把这些机制放回优化决策和 profiling 闭环。
+6. 最后看 `06`，用图册把整条链路复盘一遍。

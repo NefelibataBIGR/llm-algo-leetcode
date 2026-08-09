@@ -2,19 +2,39 @@
 
 ## 专题概览
 
-本专题用于把 `Part 02` 中分散的反向传播、梯度流、训练调度和显存代价串成一条基础横向线，回答“梯度是怎么回去的、训练里 backward 怎么调度、为什么 backward 会牵动显存和性能”。
+本专题把 `Part 02` 里分散的反向传播、梯度流、训练调度和显存代价串成一条基础横向线，回答四个问题：
 
-这条线覆盖 `00 / 17 / 18 / 12 / 19 / 42 / 74`：先从最小 autograd 热身开始，再看 attention / activation / loss 的反向，接着处理梯度累积与 backward 调度，随后理解 checkpointing / offload 这类显存策略，最后用 profiling 把 backward 的收益和代价验证清楚。
+- 梯度是怎么回去的
+- backward 里哪些张量必须保留
+- 梯度累积如何改变训练节奏
+- checkpointing / offload 为什么会改变显存和性能
+
+它不是公式合集，而是训练机制的认知路线图。阅读时的目标是先建立 backward 的统一心智模型，再把它放回训练闭环里验证。
+
+## 章节安排
+
+推荐按下面的 `01-05` 顺序阅读。原先的十个拆分视角，已经合并成更厚的五个机制页：
+
+1. `反向传播总览与计算图`
+   - backward 专题的目标、范围、链式法则和调图视角
+2. `Autograd 与 Attention Backward`
+   - `grad_fn`、`saved_tensors`、自定义 backward，以及 attention 的反向链路
+3. `Loss Backward、标签对齐与显存账本`
+   - `mask / shift / ignore_index`、监督口径、激活保存和显存账本
+4. `Checkpointing 与 Offload`
+   - `重算换显存` 与 `搬运换显存` 的边界、代价和适用场景
+5. `梯度累积、训练闭环与 Profiling`
+   - `micro-batch / effective batch`、训练调度、瓶颈判断和收益验证
 
 ## 职责边界
 
 这个专题只负责反向传播和训练机制的基础认知，不负责训练项目收口、不负责推理优化主线，也不负责完整的显存总论。
 
-- `Autograd / Backward` 关注 `grad_fn`、`saved_tensors`、梯度流和最小自定义 backward。
-- `Attention / Activation / Loss` 关注反向链路、保留张量和监督区间。
-- `Gradient Accumulation` 关注 micro-batch、effective batch 和 backward 调度。
-- `Checkpointing / Offload` 关注 backward 的显存代价和时间换空间策略。
-- `Profiling` 关注 backward 热点、收益验证和前后对比。
+- `反向传播总览与计算图` 负责建立梯度回传的共同心智模型。
+- `Autograd 与 Attention Backward` 负责把图上的梯度路径落到 PyTorch 和 attention 算子上。
+- `Loss Backward、标签对齐与显存账本` 负责把监督口径和显存代价对齐。
+- `Checkpointing 与 Offload` 负责解释两类最重要的显存优化。
+- `梯度累积、训练闭环与 Profiling` 负责把 backward 放回真实训练和验证流程里。
 
 ## 对应来源
 
@@ -27,52 +47,43 @@
 | `Part 2.5 / 2.7B` | checkpointing / offload 的显存代价 |
 | `Part 2.9` | backward 热点、训练性能分析和收益验证 |
 
-## Part 1 相关前置
+## 文献锚点
 
-- [1B](../../01_Hardware_Math_and_Systems/1B.md)：先看 GPU 架构、访存和显存路径，知道 backward 为什么会留下很多中间量。
-- [1D](../../01_Hardware_Math_and_Systems/1D.md)：先看执行模型和调度边界，理解 backward kernel 为什么会和 stream / execution model 挂钩。
+这一专题的论文锚点不是为了堆引用，而是为了给每个机制页一个“从哪里来、为什么会变成这样”的起点。
 
-## Task1-6 路线
-
-| Task | 内容 | 章节 |
+| 锚点 | 覆盖页面 | 为什么值得先看 |
 |:---|:---|:---|
-| Task1 | 反向传播基础入口 | [00 PyTorch Warmup](../../02_PyTorch_Algorithms/00_PyTorch_Warmup.ipynb) |
-| Task2 | Attention / Activation / Loss 的反向机制 | [17 Autograd Basics](../../02_PyTorch_Algorithms/17_Autograd_Basics.ipynb)、[18 Activation and Loss Backward](../../02_PyTorch_Algorithms/18_Activation_and_Loss_Backward.ipynb) |
-| Task3 | 训练中的 backward 调度 | [12 Gradient Accumulation](../../02_PyTorch_Algorithms/12_Gradient_Accumulation.ipynb) |
-| Task4 | backward 的显存代价 | [19 Activation Checkpointing](../../02_PyTorch_Algorithms/19_Activation_Checkpointing_and_Activation_Offload.ipynb)、[42 Activation Offload](../../02_PyTorch_Algorithms/42_Activation_Offload.ipynb) |
-| Task5 | backward 的性能观察 | [74 Profiling-Driven End-to-End Optimization](../../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.ipynb) |
-| Task6 | 机制收口与复盘 | [casebook.md](./casebook.md)、[walkthrough.md](./walkthrough.md) |
-
-## 章节跳转
-
-| 章节 | 你会看到什么 | 跳转 |
-|:---|:---|:---|
-| `00` | 最小 autograd 热身、手写 backward、梯度流直觉 | [00 PyTorch Warmup](../../02_PyTorch_Algorithms/00_PyTorch_Warmup.ipynb) |
-| `17` | Attention backward、`saved_tensors`、`gradcheck` | [17 Autograd Basics](../../02_PyTorch_Algorithms/17_Autograd_Basics.ipynb) |
-| `18` | activation backward、loss backward、监督区间 | [18 Activation and Loss Backward](../../02_PyTorch_Algorithms/18_Activation_and_Loss_Backward.ipynb) |
-| `12` | micro-batch、effective batch、梯度累积 | [12 Gradient Accumulation](../../02_PyTorch_Algorithms/12_Gradient_Accumulation.ipynb) |
-| `19` | checkpointing 的重算代价 | [19 Activation Checkpointing](../../02_PyTorch_Algorithms/19_Activation_Checkpointing_and_Activation_Offload.ipynb) |
-| `42` | activation offload 的搬运代价 | [42 Activation Offload](../../02_PyTorch_Algorithms/42_Activation_Offload.ipynb) |
-| `74` | backward 热点、训练性能分析和优化闭环 | [74 Profiling-Driven End-to-End Optimization](../../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.ipynb) |
+| [Learning representations by back-propagating errors](https://www.nature.com/articles/323533a0) | `01 / 03` | 反向传播的起点，先理解梯度信号如何穿过多层网络。 |
+| [Automatic differentiation in machine learning: a survey](https://arxiv.org/abs/1502.05767) | `01 / 02` | 看 automatic differentiation 如何把链式法则变成可执行的图。 |
+| [Automatic Differentiation in ML: Where we are and where we should be going](https://arxiv.org/abs/1810.11530) | `02` | 补充 AD 的工程化视角，适合理解 graph-based autograd。 |
+| [Attention Is All You Need](https://arxiv.org/abs/1706.03762) | `02 / 03` | attention 和 causal loss 的共同起点。 |
+| [Training Deep Nets with Sublinear Memory Cost](https://arxiv.org/abs/1604.06174) | `03 / 04` | checkpointing 的经典起点，直接对应“重算换显存”。 |
+| [ZeRO: Memory Optimizations Toward Training Trillion Parameter Models](https://arxiv.org/abs/1910.02054) | `04 / 05` | 先建立 offload / 分片 / memory hierarchy 的系统视角。 |
+| [ZeRO-Offload: Democratizing Billion-Scale Model Training](https://arxiv.org/abs/2101.06840) | `04` | 进一步理解 offload 的 CPU/GPU 搬运代价。 |
+| [ZeRO-Infinity: Breaking the GPU Memory Wall for Extreme Scale Deep Learning](https://arxiv.org/abs/2104.07857) | `04 / 05` | 代表 heterogeneous memory 的更激进路线。 |
+| [On Large-Batch Training for Deep Learning: Generalization Gap and Sharp Minima](https://arxiv.org/abs/1609.04836) | `05` | 解释为什么 batch / step / generalization 会纠缠在一起。 |
+| [Enabling Large Batch Size Training for DNN Models Beyond the Memory Limit While Maintaining Performance](https://arxiv.org/abs/2110.12484) | `05` | 梯度累积 / micro-batch 的直接工程背景。 |
 
 ## 推荐入口
 
-- 如果你还没看过反向传播的基础，先从 `00 -> 17 -> 18` 开始。
-- 如果你想把训练中的 backward 调度看明白，再接 `12`。
-- 如果你关心显存和 backward 的关系，接着看 `19 -> 42`。
-- 如果你关心 backward 的性能热点和优化验证，最后看 `74`。
-
-## 入口摘要
-
-- 最短反向传播路线：`00 -> 17 -> 18 -> 12 -> 19 -> 42 -> 74`。
-- 训练微调辅助路线：`00 -> 17 -> 18 -> 12`。
-- 显存优化辅助路线：`17 -> 18 -> 19 -> 42`。
-- 性能验证辅助路线：`74`。
+- 如果你还没看过反向传播的基础，先从 `01` 开始。
+- 如果你想把 attention 的反向链路看明白，接着看 `02`。
+- 如果你关心监督信号怎么进 loss 和显存，接着看 `03`。
+- 如果你关心 backward 为什么吃显存，接着看 `04`。
+- 如果你关心训练节奏和闭环验证，最后看 `05`。
 
 ## 正文页
 
-- [casebook.md](./casebook.md)：按“常见错误 / 排障清单 / backward 代价 / 调度口径”展开。
+- [casebook.md](./casebook.md)：按五个机制块展开“问题-误区-验证”。
 - [walkthrough.md](./walkthrough.md)：按一条训练样本的 backward 故事线展开，直到 profiling 复盘。
+
+## 章节页
+
+- [01. 反向传播总览与计算图](./01_backpropagation_and_graph.md)
+- [02. Autograd 与 Attention Backward](./02_autograd_and_attention_backward.md)
+- [03. Loss Backward、标签对齐与显存账本](./03_loss_alignment_memory_ledger.md)
+- [04. Checkpointing 与 Offload](./04_checkpointing_and_offload.md)
+- [05. 梯度累积、训练闭环与 Profiling](./05_accumulation_decision_profiling.md)
 
 ## 相关专题
 
@@ -80,14 +91,6 @@
 - [显存优化与性能调优专题](../memory_performance_tuning/intro.md)：当 backward 牵涉 checkpointing / offload / 显存账本时先看这里。
 - [Profiling 专题](../profiling/intro.md)：当你需要证明 backward 的瓶颈和收益时先看这里。
 
-## 读法建议
-
-- `00` 先把最小 autograd 和 backward 热身跑通。
-- `17 / 18` 一起看，先理解反向链路，再看损失和激活的回传口径。
-- `12` 用来理解 backward 在训练循环中的调度。
-- `19 / 42` 用来理解 backward 和显存策略的关系。
-- `74` 用来把这些机制放回 profiling 闭环里验证。
-
 ## 专题状态
 
-当前为专题入口页，后续将逐步补充更完整的排障清单、反向传播口径对照和连续故事线。
+当前为专题入口页，后续会逐步补成和 `model_architecture` 一样的三层结构，但它的主轴是机制链路，而不是组件演化。
