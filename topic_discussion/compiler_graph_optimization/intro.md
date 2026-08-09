@@ -1,94 +1,94 @@
 # 编译与图优化专题
 
 ## 专题概览
-本专题用于沉淀图优化、融合、lowering、调度和代码生成视角，回答“怎么把高层结构系统化变成更高效的执行”。
+
+本专题用于把 `Part 01-02` 里分散的图优化、融合、lowering、调度和 backend 约束重组为一条**从高层图到高效执行**的故事线，回答三个核心问题：
+
+- 为什么“图看起来没问题”并不等于“跑起来就高效”？
+- 图优化、fusion、lowering、schedule、codegen 分别解决哪一段问题？
+- 为什么同一张图在不同 backend 上会得到不同结果，最后又该如何回到 benchmark 和项目结论？
+
+这条线承接 `Part 1D / 1E` 和 `Part 2` 的已有学习路线，但不复述目录。横向专题负责把这些素材重组成“图级判断 -> lowering -> 执行模型 -> backend 约束 -> benchmark 收口”的知识骨架。
 
 ## 职责边界
 
-这个专题只负责图级、编译级和后端执行链路里的优化视角，不负责推理策略本身，也不负责多卡通信主线。
+这个专题只负责**编译与图优化视角**，不负责推理策略本身，也不替代 profiling 或多卡并行专题。
 
-- `Graph Optimization` 关注图结构、依赖关系和成本向量。
-- `Fusion` 关注算子合并、中间张量消除和布局约束。
-- `Lowering / Scheduling` 关注从高层表示到可执行形式的逐层收敛。
-- `Codegen / Backend` 关注不同后端上的约束差异和落地方式。
-- `Compiler Vision` 关注“为什么同一张图在不同 backend 上会得到不同最优解”。
+- `01` 解释为什么图优化值得单独成章，以及图级和执行级为什么不能混为一谈。
+- `02` 解释图结构、依赖、cost vector 与 fusion 判断。
+- `03` 解释 lowering、legalization 和 schedule 为什么不是“翻译”。
+- `04` 解释执行模型、layout、kernel 组织和 backend 约束怎样反过来塑造图优化结果。
+- `05` 解释 backend 差异和成本模型为什么会让同一张图得到不同最优解。
+- `06` 负责把编译判断收束到 benchmark 和项目决策。
+- `07` 负责图册收口。
 
 ## 对应来源
 
 | 来源 | 适合纳入的内容 |
 |:---|:---|
-| `Part 1E` | AI 编译器、图优化、芯片选型和成本决策 |
-| `Part 1D` | 执行模型、CUDA/Triton 编程模型、fusion 与调度衔接 |
-| `Part 2.2` | 模型结构里的实现视角，理解结构如何影响执行 |
-| `Part 2.6 / 2.7A` | 推理链路里和图优化、调度、cache 相关的后端视角 |
+| `Part 1E` | 图优化、编译器、TVM / MLIR、成本模型 |
+| `Part 1D` | CUDA / Triton 编程模型、执行模型、stream 调度 |
+| `Part 2.2` | 模型结构与实现形式如何影响执行路径 |
+| `Part 2.6 / 2.7A` | 推理侧 backend、cache、调度与图优化相遇的地方 |
+| `Part 2.9` | benchmark / 项目结果如何验证 backend 结论 |
 
-## Part 1 相关前置
+## Task1-6 路线
 
-- [1E](../../01_Hardware_Math_and_Systems/1E.md)：先看 AI 编译器、图优化、芯片选型和成本决策，知道为什么需要这条专题。
-- [1D](../../01_Hardware_Math_and_Systems/1D.md)：先看执行模型、CUDA / Triton 编程模型和 stream 调度，知道编译结果最终是怎么落到执行层的。
+`Task1-6` 继续保留为学习内容路径；`01-06` 是知识组织层。二者并存，不要求一一对应。
 
-## 章节跳转
-
-| 章节 | 你会看到什么 | 跳转 |
+| Task | 学习内容 | 章节 |
 |:---|:---|:---|
-| `1E-09` | AI 编译器、图优化和 backend 约束的主入口 | [09 AI Compilers and Graph Optimization](../../01_Hardware_Math_and_Systems/09_AI_Compilers_and_Graph_Optimization.ipynb) |
-| `1E-19` | 算子融合为什么能减少中间结果开销 | [19 Operator Fusion Introduction](../../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.ipynb) |
-| `1E-32` | TVM / MLIR 的 lowering、schedule 和 codegen 链路 | [32 TVM MLIR Deep Practice](../../01_Hardware_Math_and_Systems/32_TVM_MLIR_Deep_Practice.ipynb) |
-| `1E-33` | TCO 和成本模型，理解“为什么要优化” | [33 TCO and Cost Model](../../01_Hardware_Math_and_Systems/33_TCO_and_Cost_Model.ipynb) |
-| `1D-08` | CUDA / Triton 编程模型，理解 kernel 组织方式 | [08 Programming Models CUDA Triton](../../01_Hardware_Math_and_Systems/08_Programming_Models_CUDA_Triton.ipynb) |
-| `1D-15` | CUDA 执行模型，理解 block / warp / device 的执行层级 | [15 CUDA Execution Model](../../01_Hardware_Math_and_Systems/15_CUDA_Execution_Model.ipynb) |
-| `1D-18` | Triton block model，理解程序块到执行块的映射 | [18 Triton Block Model](../../01_Hardware_Math_and_Systems/18_Triton_Block_Model.ipynb) |
-| `1D-29` | Stream 高级调度，理解调度和执行之间的关系 | [29 CUDA Stream Advanced Scheduling](../../01_Hardware_Math_and_Systems/29_CUDA_Stream_Advanced_Scheduling.ipynb) |
+| Task1 | 图优化与 AI 编译器入口 | [09 AI Compilers and Graph Optimization](../../01_Hardware_Math_and_Systems/09_AI_Compilers_and_Graph_Optimization.ipynb) |
+| Task2 | 融合与中间张量成本 | [19 Operator Fusion Introduction](../../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.ipynb) |
+| Task3 | TVM / MLIR lowering 与 codegen | [32 TVM MLIR Deep Practice](../../01_Hardware_Math_and_Systems/32_TVM_MLIR_Deep_Practice.ipynb) |
+| Task4 | 成本模型与芯片 / backend 选择 | [33 TCO and Cost Model](../../01_Hardware_Math_and_Systems/33_TCO_and_Cost_Model.ipynb) |
+| Task5 | CUDA / Triton 执行模型与调度 | [08 Programming Models CUDA Triton](../../01_Hardware_Math_and_Systems/08_Programming_Models_CUDA_Triton.ipynb)、[15 CUDA Execution Model](../../01_Hardware_Math_and_Systems/15_CUDA_Execution_Model.ipynb)、[18 Triton Block Model](../../01_Hardware_Math_and_Systems/18_Triton_Block_Model.ipynb)、[29 CUDA Stream Advanced Scheduling](../../01_Hardware_Math_and_Systems/29_CUDA_Stream_Advanced_Scheduling.ipynb) |
+| Task6 | 推理 / 项目中的 backend 验证 | [2.6](../../02_PyTorch_Algorithms/2_6.md)、[2.7A](../../02_PyTorch_Algorithms/2_7A.md)、[2.9](../../02_PyTorch_Algorithms/2_9.md) |
+
+## 01-06 骨架
+
+这 6 个编号页是专题正文，不是文件索引。它们围绕“高层图为什么无法自动变成高效执行”来组织。
+
+| 章节 | 你会得到什么 | 适合先从哪里进入 |
+|:---|:---|:---|
+| `01` | 图优化为什么值得单独看 | 先想弄清楚编译专题在解决什么 |
+| `02` | 图结构、融合和依赖成本 | 先看哪些节点真的值得 fuse 或改写 |
+| `03` | lowering、legalization、schedule | 先看为什么 codegen 不是最终答案 |
+| `04` | 执行模型与 backend 约束 | 先看为什么同一个 graph 在不同执行层表现不同 |
+| `05` | backend 差异与成本模型 | 先看为什么不同平台会有不同最优解 |
+| `06` | benchmark 与项目收口 | 已经有 backend 假设，想知道怎样验证它 |
+
+## 文献锚点
+
+- AI compiler / graph optimization 综述与系统论文。
+- TVM / MLIR / lowering 相关资料。
+- operator fusion / layout / schedule 相关论文或官方文档。
+- backend cost model / TCO 相关资料。
 
 ## 推荐入口
 
-- 先看 `1E-09`，把图优化、fusion 和 backend 约束先立住。
-- 再看 `1E-19 -> 1E-32 -> 1E-33`，把融合、lowering 和成本模型补齐。
-- 最后看 `1D-08 -> 1D-15 -> 1D-18 -> 1D-29`，把编程模型、执行模型和调度衔接起来。
-
-## 入口摘要
-
-- 第一入口：`Part 1E` + `1E-09 -> 1E-19`，先把图优化、融合和成本向量立住。
-- 第二入口：`1E-32 -> 1E-33 -> 1D-08 -> 1D-18`，把 lowering、codegen 和执行模型串起来。
-- 验证入口：`2.2 -> 2.6 -> 2.7A -> 2.9`，把后端视角放回模型结构、推理链路和项目结果里验证。
+- 如果你第一次接触这条线，先看 `01 -> 02`。
+- 如果你已经知道图优化概念，但搞不清 lowering / schedule，先看 `03 -> 04`。
+- 如果你最关心“为什么不同 backend 结果不一样”，直接看 `05 -> 06`。
 
 ## 正文页
 
-- [编译与图优化正文](./casebook.md)：按“图优化 / 融合 / lowering / 调度 / codegen”展开正文，适合做更细的后端视角案例。
-- [编译与图优化深入阅读](./walkthrough.md)：按完整后端链路展开，适合想看连续推演的人。
+- [01 Why Compiler and Graph Optimization Matters](./01_why_compiler_and_graph_optimization_matters.md)
+- [02 Graph Structure and Fusion Decisions](./02_graph_structure_and_fusion_decisions.md)
+- [03 Lowering Legalization and Scheduling](./03_lowering_legalization_and_scheduling.md)
+- [04 Execution Model and Backend Constraints](./04_execution_model_and_backend_constraints.md)
+- [05 Backend Cost Models and Divergent Optima](./05_backend_cost_models_and_divergent_optima.md)
+- [06 Benchmark and Project Validation](./06_benchmark_and_project_validation.md)
+- [07 Visual Assets](./07_visual_assets.md)
+- [编译与图优化正文](./casebook.md)
+- [编译与图优化深入阅读](./walkthrough.md)
 
 ## 相关专题
 
-- [Profiling 专题](../profiling/intro.md)：当你需要先看哪里贵、哪里慢、哪里不稳定时先看这里。
-- [推理优化专题](../inference_optimization/intro.md)：当 backend 差异直接影响推理路径和 cache 行为时先看这里。
-- [通信与并行专题](../communication_parallel/intro.md)：当执行模型和通信调度、并行切分一起分析时先看这里。
-
-## Part 1 / Part 2 入口顺序
-
-### Part 1 入口
-
-- 先看 `Part 1E`，把 AI 编译器、图优化、芯片选型和成本决策先立住。
-- 再看 `1E-09 -> 1E-19 -> 1E-32 -> 1E-33`，把图优化、融合、lowering 和成本模型串起来。
-- 然后看 `1D-08 -> 1D-15 -> 1D-18 -> 1D-29`，把编程模型、执行模型和调度接起来。
-
-### Part 2 入口
-
-- 先看 `2.2`，从模型结构层理解执行路径为什么会变。
-- 再看 `2.6 -> 2.7A`，把推理链路里和图优化、调度、cache 相关的后端视角补齐。
-- 如果想把后端视角回到项目验证里，再看 `2.9` 的性能结果和工程闭环。
-
-## 读法建议
-
-- 如果你关心“图优化先改什么”，先看 `09 -> 19`。
-- 如果你关心“lowering 为什么不是翻译”，先看 `32`。
-- 如果你关心“同一张图为什么在不同 backend 上结果不同”，再看 `09 -> 32 -> 33`。
-- 如果你想把编译视角和 kernel 视角接起来，先看 `08 -> 15 -> 18 -> 29`。
-
-## 建设方式
-
-- 入口页只负责告诉读者从哪进、怎么选路径、怎么回到 Part。
-- 具体的图级判断、执行级推演和 backend 差异都放到正文页展开。
-- 后续新增内容优先沿着 `09 / 19 / 32 / 33 / 08 / 15 / 18 / 29` 回收。
+- [Profiling 专题](../profiling/intro.md)：当你需要先证明图级或 backend 级问题是否真的存在时看这里。
+- [推理优化专题](../inference_optimization/intro.md)：当 backend 选择直接影响 prefill、decode 和 cache 路径时看这里。
+- [通信并行专题](../communication_parallel/intro.md)：当执行模型和并行切分一起决定结果时看这里。
 
 ## 专题状态
-当前为专题占位页，后续将逐步补充跨 Part 索引、图优化案例和编译视角拆解。
+
+当前专题已开始按 `01-06 + 07_visual_assets` 重构。下一步优先补编号正文页，再补第一批 SVG 图。
