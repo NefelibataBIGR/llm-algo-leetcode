@@ -8,7 +8,16 @@
 
 每个优化方法都应该落在这条链路里的某一段。FlashAttention 主要处理 prefill 和 attention 的访存问题；PagedAttention、RadixAttention、prefix caching 和 KV cache scheduling 主要处理缓存管理；speculative decoding、multi-token decoding 和 decode scheduling 主要处理生成阶段吞吐；量化推理主要处理权重、带宽和 KV cache 存储成本；`66` 则负责把所有候选方案放回同一个 workload 做对比。
 
-## 1. 请求进入系统
+如果你已经知道自己的问题落在哪一段，可以直接跳到对应编号页：
+
+- [01 Request Path and Metrics](./01_request_path_and_metrics.md)
+- [02 Prefill and Attention Kernel](./02_prefill_and_attention_kernel.md)
+- [03 Decoding Strategies](./03_decoding_strategies.md)
+- [04 KV Cache and Scheduling](./04_kv_cache_and_scheduling.md)
+- [05 Quantized Inference and Deployment](./05_quantized_inference_and_deployment.md)
+- [06 Benchmark and Decision](./06_benchmark_and_decision.md)
+
+## 01 请求进入系统
 
 一个真实请求进来时，第一步不是优化，而是固定 workload：
 
@@ -20,7 +29,7 @@
 
 这对应 `66` 里的 `build_inference_config`。如果 workload 没有固定，后面的 TTFT、TPOT、throughput 和 peak memory 都不能比较。
 
-## 2. Prefill 先把 prompt 写进上下文
+## 02 Prefill 先把 prompt 写进上下文
 
 prefill 阶段会处理已有 prompt。长 prompt 让 attention 计算和中间 score 矩阵压力上升，这时先看：
 
@@ -29,11 +38,22 @@ prefill 阶段会处理已有 prompt。长 prompt 让 attention 计算和中间 
 - Part01 [24 SRAM Optimization Techniques](../../01_Hardware_Math_and_Systems/24_SRAM_Optimization_Techniques.md)
 - Part02 [20 FlashAttention Sim](../../02_PyTorch_Algorithms/20_FlashAttention_Sim.md)
 
-Task2 看起来小节数量少，但它不是薄弱环节，而是“窄而深”：核心就是把 attention 的 HBM/SRAM 访存、tiling、online softmax 和中间矩阵读写讲清楚。
-
 如果 `66` 里 `TTFT` 高、`prefill_share` 高，优先从这里找原因。
 
-## 3. KV Cache 决定长上下文和并发边界
+## 03 Decode Loop 决定持续生成速度
+
+decode 阶段是一轮一轮生成 token。这里的关键不是只看“怎么采样”，还要看每轮是否有足够高的利用率，以及请求是否被排顺。
+
+这一段建议按这个顺序看：
+
+- Part02 [21 Decoding Strategies](../../02_PyTorch_Algorithms/21_Decoding_Strategies.md)
+- Part02 [23 Speculative Decoding](../../02_PyTorch_Algorithms/23_Speculative_Decoding.md)
+- Part02 [35 Multi-Token Decoding](../../02_PyTorch_Algorithms/35_Multi_Token_Decoding.md)
+- Part02 [36 Decode Scheduling](../../02_PyTorch_Algorithms/36_Decode_Scheduling.md)
+
+如果 `66` 里 `TPOT` 高、`decode_share` 高，就说明问题主要在 decode 阶段。
+
+## 04 KV Cache 决定长上下文和并发边界
 
 prefill 结束后，模型会留下 KV cache。后续 decode 每生成一个 token，都会继续读写这些缓存。cache 的成本和层数、batch、序列长度、KV head 数、dtype 都有关。
 
@@ -45,22 +65,9 @@ prefill 结束后，模型会留下 KV cache。后续 decode 每生成一个 tok
 - Part02 [34 Prefix Caching and Chunked Prefill](../../02_PyTorch_Algorithms/34_Prefix_Caching_and_Chunked_Prefill.md)
 - Part02 [37 KV Cache Scheduling](../../02_PyTorch_Algorithms/37_KV_Cache_Scheduling.md)
 
-如果 peak memory 接近预算，`66` 应优先把瓶颈判成 `memory-bound`。这时继续调 decode 策略可能不如先处理 KV cache 分页、复用、驱逐或量化。
+如果 peak memory 接近预算，`66` 应优先把瓶颈判成 `memory-bound`。
 
-## 4. Decode Loop 决定持续生成速度
-
-decode 阶段是一轮一轮生成 token。这里的关键不是只看“怎么采样”，还要看每轮是否有足够高的利用率，以及请求是否被排顺。
-
-这一段建议按这个顺序看：
-
-- Part02 [21 Decoding Strategies](../../02_PyTorch_Algorithms/21_Decoding_Strategies.md)
-- Part02 [23 Speculative Decoding](../../02_PyTorch_Algorithms/23_Speculative_Decoding.md)
-- Part02 [35 Multi-Token Decoding](../../02_PyTorch_Algorithms/35_Multi_Token_Decoding.md)
-- Part02 [36 Decode Scheduling](../../02_PyTorch_Algorithms/36_Decode_Scheduling.md)
-
-如果 `66` 里 `TPOT` 高、`decode_share` 高，就说明问题主要在 decode 阶段。此时可以考虑 speculative decoding、multi-token decoding、decode scheduling 或更合适的 batch 组织。
-
-## 5. 量化推理处理部署成本
+## 05 量化推理处理部署成本
 
 当显存、带宽或部署成本成为主要约束时，再进入量化推理线：
 
@@ -70,9 +77,9 @@ decode 阶段是一轮一轮生成 token。这里的关键不是只看“怎么�
 - Part02 [40 GPTQ and AWQ Weight Quantization](../../02_PyTorch_Algorithms/40_GPTQ_and_AWQ_Weight_Quantization.md)
 - Part02 [41 FP8 and KV Cache Quantization](../../02_PyTorch_Algorithms/41_FP8_and_KV_Cache_Quantization.md)
 
-量化的判断要回到服务目标：在线交互更敏感 TTFT / TPOT，离线批处理更敏感 throughput / cost。不能只因为 peak memory 下降就认为方案一定更好。
+量化的判断要回到服务目标：在线交互更敏感 TTFT / TPOT，离线批处理更敏感 throughput / cost。
 
-## 6. 回到 66 做项目收口
+## 06 回到 66 做项目收口
 
 最后把候选方案放进 [66 Inference Performance Comparison](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.md)。
 
@@ -106,19 +113,19 @@ keep / tune / switch
 
 ### 长 prompt 首 token 慢
 
-`Task2 -> Task4 -> Task6`
+`02 -> 04 -> 06`
 
 先看 FlashAttention 和 SRAM/HBM 访存，再看 prefix caching 和 chunked prefill，最后用 `66` 的 TTFT 和 prefill_share 验证。
 
 ### 并发高时吞吐低
 
-`Task3 -> Task4 -> Task6`
+`03 -> 04 -> 06`
 
 先看 decoding 和 multi-token 生成，再看 decode scheduling 和 KV cache scheduling，最后用 throughput_gain、TPOT delta 和 TTFT delta 判断是否切换。
 
 ### 显存卡住 batch 和上下文
 
-`Task4 -> Task5 -> Task6`
+`04 -> 05 -> 06`
 
 先看 KV cache 增长、分页、复用和驱逐，再看 KV cache quantization，最后用 peak_mem_delta 和 TPOT/TTFT 退化判断取舍。
 
@@ -126,4 +133,4 @@ keep / tune / switch
 
 - 想按完整路线学习，先回到 [推理优化专题入口](./intro.md)。
 - 想查指标和误区，回到 [推理优化正文](./casebook.md)。
-- 想做项目收口，直接进入 [66 Inference Performance Comparison](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.md)。
+- 想做项目收口，直接进入 [66 Inference Performance Comparison](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.ipynb)。
