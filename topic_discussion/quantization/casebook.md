@@ -2,11 +2,28 @@
 
 ## 页面目标
 
-这页把量化从“名词列表”变成“决策框架”，回答：
+这页的目标不是给量化做术语索引，而是把 `Part00-02` 里分散的量化内容压成一张“怎么判断”的地图。它主要回答：
 
 - 什么时候做 PTQ，什么时候考虑 QAT？
 - GPTQ / AWQ / FP8 / KV cache quant 分别解决什么问题？
 - 量化收益怎么和精度损失、硬件支持和部署复杂度一起判断？
+
+## 编号页入口
+
+下面 6 页是这条专题真正的正文主体，当前这页只负责把它们放到同一张量化判断框架里。
+
+## 故事骨架
+
+这条专题真正的主问题不是“哪种量化方法更流行”，而是“为什么系统会走向低比特表示，以及不同低比特路线分别服务哪一种约束”。
+
+把故事压缩一下，通常是这条线：
+
+1. 先发现模型太大、带宽太高，或者 cache 预算撑不住。
+2. 再分清问题出在权重、激活还是 KV cache。
+3. 再判断量化应当发生在训练后还是训练中。
+4. 如果后训练压缩不够，就继续往 GPTQ / AWQ 或训练适配路线走。
+5. 如果问题更偏执行栈和硬件支持，就进入 FP8。
+6. 最后必须回到部署和 benchmark，判断这条量化路线是否真的值。
 
 ## 量化口径
 
@@ -20,6 +37,14 @@
 | KV cache quant | 推理缓存压缩 | 长上下文和高并发服务 |
 
 量化的核心不是“比特数更小”，而是“在可接受误差内压低存储、带宽或部署成本”。
+
+## Part00-02 在这条故事里的角色
+
+- `Part00`：提供误差、数值和调试直觉，负责解释“为什么压缩会引入问题”。
+- `Part01`：提供硬件、TensorCore、访存和精度背景，负责解释“为什么低比特能换来显存和带宽收益”。
+- `Part02`：提供 W8A16、QLoRA、GPTQ / AWQ、FP8 / KV cache quant 和部署项目，负责解释“怎么落地、怎么验证”。
+
+也就是说，专题不是替代原有路线，而是把原有路线重新组织成一条判断链。
 
 ## 决策框架
 
@@ -71,6 +96,13 @@
 
 这类问题通常要和 `41` 一起看，因为 cache 压缩和 cache 调度通常要一起做。
 
+## 关键取舍
+
+- 先做 PTQ 的收益是便宜、快，但代价是误差可能无法吸收。
+- 继续做 QAT / QLoRA 的收益是更稳，但代价是训练成本回来了。
+- GPTQ / AWQ 更像“后训练阶段里尽量保精度”的两种策略，而不是两个孤立名词。
+- FP8 和 KV cache quant 更像执行路径 / 服务预算问题，不应该简单并入传统 weight-only 讨论。
+
 ## 常见误区
 
 - 量化只是把 dtype 改小。
@@ -89,6 +121,16 @@
 | Task4 | FP8 和 KV cache quant 的服务侧影响 |
 | Task5 | 部署和调度联动 |
 | Task6 | 用 `66` 的 benchmark 口径判断是否值得切换 |
+
+## 编号页对照
+
+- [01 Quantization Object and Error](./01_quantization_object_and_error.md)
+- [02 PTQ and QAT Timing](./02_ptq_and_qat_timing.md)
+- [03 Low-Bit Training Adaptation](./03_low_bit_training_adaptation.md)
+- [04 Weight-Only Compression](./04_weight_only_compression.md)
+- [05 FP8 and KV Cache Quantization](./05_fp8_and_kv_cache_quantization.md)
+- [06 Deployment and Benchmark Decision](./06_deployment_and_benchmark_decision.md)
+- [07 Visual Assets](./07_visual_assets.md)
 
 ## 相关跳转
 

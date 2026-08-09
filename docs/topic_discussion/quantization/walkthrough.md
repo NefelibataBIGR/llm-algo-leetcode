@@ -6,9 +6,32 @@
 
 `model -> quantization goal -> PTQ/QAT choice -> GPTQ/AWQ/FP8/KV cache quant -> deployment benchmark -> final decision`
 
-它和推理优化不同，核心不是把 token 生成得更快，而是先决定“该不该量化、量化哪一部分、量化到什么程度”。
+它和推理优化不同，核心不是把 token 生成得更快，而是先决定“该不该量化、量化哪一部分、量化到什么程度”。这条故事本身就是从 `Part00-02` 长出来的：
 
-## 1. 先定义目标
+- `Part00` 负责解释误差为什么会扩散；
+- `Part01` 负责解释低比特为什么会影响显存、带宽和执行栈；
+- `Part02` 负责解释这些方法如何在实现和部署里真正落地。
+
+如果你已经知道自己的问题落在哪一层，可以直接跳到对应编号页：
+
+- [01 Quantization Object and Error](./01_quantization_object_and_error.md)
+- [02 PTQ and QAT Timing](./02_ptq_and_qat_timing.md)
+- [03 Low-Bit Training Adaptation](./03_low_bit_training_adaptation.md)
+- [04 Weight-Only Compression](./04_weight_only_compression.md)
+- [05 FP8 and KV Cache Quantization](./05_fp8_and_kv_cache_quantization.md)
+- [06 Deployment and Benchmark Decision](./06_deployment_and_benchmark_decision.md)
+
+## 1. 先从已有主线里长出问题
+
+量化不是凭空出现的需求。通常是在已有主线上先遇到具体约束：
+
+- `Part01` 里看到权重、带宽、TensorCore 和数据类型；
+- `Part02` 里遇到模型太大、cache 太大、部署太慢；
+- 然后才会回过头来问：是不是需要低比特表示。
+
+所以这里的故事起点，不是“来学一种新方法”，而是“已有路线里的系统约束把你推向量化”。
+
+## 2. 先定义目标
 
 先问清楚目标是什么：
 
@@ -19,7 +42,7 @@
 
 这个目标决定你要走 PTQ、QAT、GPTQ、AWQ、FP8 还是 KV cache quant。
 
-## 2. 先判断介入时机
+## 3. 再判断量化什么时候介入
 
 如果要最快落地，优先考虑 PTQ。
 
@@ -31,7 +54,7 @@
 
 如果问题主要在长上下文和服务 cache，就看 KV cache quant。
 
-## 3. 决策要和主线联动
+## 4. 决策必须回到原有主线
 
 量化很少是单独成立的。它通常会和下面这些主线一起出现：
 
@@ -42,7 +65,7 @@
 
 所以，量化不是先有结论再找场景，而是先看场景再选方法。
 
-## 4. 回到项目验证
+## 5. 最后回到项目验证
 
 最终都要回到 benchmark report：
 
