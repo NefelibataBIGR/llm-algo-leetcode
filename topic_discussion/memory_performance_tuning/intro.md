@@ -30,6 +30,23 @@
 - 推理专题先看请求怎么更快出 token，重点是 `TTFT / TPOT / throughput`。
 - 两边都会碰到 `KV cache`、量化和 benchmark，但本专题把它们当成资源约束和调优成本来看。
 
+## 与推理优化专题的交叉路由
+
+这两个专题会共享一些 notebook，但不共享同一个问题目标。最容易重合的是 `KV cache`、量化、benchmark 和调度。
+
+| 重合内容 | 本专题先回答什么 | 推理专题先回答什么 |
+|:---|:---|:---|
+| `KV cache` | 为什么把 `peak memory` 顶高、预算怎么估、分页/压缩后能省多少 | 为什么拖慢 `TTFT / TPOT / throughput`，如何通过 reuse、paging、scheduling 让请求更快 |
+| `量化` | 权重、KV cache 和激活压缩后能省多少 VRAM，代价是什么 | 是否让部署链路更快，是否值得换精度或后端 |
+| `benchmark / profiling` | 哪个资源对象最占显存，时间换空间是否划算 | 哪段请求链路最慢，优化是否真让延迟和吞吐改善 |
+| `调度` | 资源排布是否把 cache、buffer、activation 顶到预算外 | batch、prefill、decode 如何排队才更快 |
+
+实用判断可以保持简单：
+
+- 如果你在问“为什么装不下”，先看本专题。
+- 如果你在问“为什么慢”，先看推理专题。
+- 如果你在问“既慢又占显存”，优先检查 `KV cache`、量化和调度这三条交叉线。
+
 ## 对应来源
 
 | 来源 | 适合纳入的内容 |
@@ -103,6 +120,13 @@
 
 ## 正文页
 
+- [01 VRAM Ledger and Metrics](./01_vram_ledger_and_metrics.md)
+- [02 Training Memory Pressure](./02_training_memory_pressure.md)
+- [03 Checkpointing and Offload](./03_checkpointing_and_offload.md)
+- [04 Inference Cache and Memory Budget](./04_inference_cache_and_memory_budget.md)
+- [05 Quantization as a Memory Tool](./05_quantization_as_a_memory_tool.md)
+- [06 Benchmark and Trade-off Decision](./06_benchmark_and_tradeoff_decision.md)
+- [07 Visual Assets](./07_visual_assets.md)
 - [显存优化与性能调优正文](./casebook.md)：按“训练侧 / 推理侧 / 验证侧”展开正文，适合做更细的显存案例和调优记录。
 - [显存优化与性能调优深入阅读](./walkthrough.md)：按完整调优故事展开，适合想看连续推演的人。
 
@@ -142,4 +166,4 @@
 - 导读页只负责告诉读者“从哪进”，不再重复正文里的判断框架。
 
 ## 专题状态
-当前为专题入口页，后续将逐步补充跨 Part 索引、显存优化案例和性能调优记录。
+本专题已更新为 `01-06 + 07_visual_assets` 的解释层结构。它的作用是把训练显存、推理缓存、量化预算和 benchmark 收束成一套显存判断框架，而不是复述 Part02 目录。

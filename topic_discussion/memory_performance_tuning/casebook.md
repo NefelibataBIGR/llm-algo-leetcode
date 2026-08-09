@@ -3,6 +3,10 @@
 ## 页面目标
 这页把训练侧、推理侧和验证侧的显存问题统一起来看，重点不是“省显存”本身，而是“省显存的代价和收益是否划算”。
 
+## 编号页入口
+
+下面 6 页是这条专题真正的正文主体，当前这页只负责把它们放到同一张显存判断框架里。
+
 ## 适用人群
 
 - 正在处理训练显存爆炸、推理 cache 过大的问题的人。
@@ -32,6 +36,16 @@
 最后用 `74 -> 67` 证明优化是否真的在时间和收益上划算。
 
 这个故事的重点不是“省得越多越好”，而是找到一个在显存、吞吐和调度之间都划算的点。
+
+## 编号页对照
+
+- [01 VRAM Ledger and Metrics](./01_vram_ledger_and_metrics.md)
+- [02 Training Memory Pressure](./02_training_memory_pressure.md)
+- [03 Checkpointing and Offload](./03_checkpointing_and_offload.md)
+- [04 Inference Cache and Memory Budget](./04_inference_cache_and_memory_budget.md)
+- [05 Quantization as a Memory Tool](./05_quantization_as_a_memory_tool.md)
+- [06 Benchmark and Trade-off Decision](./06_benchmark_and_tradeoff_decision.md)
+- [07 Visual Assets](./07_visual_assets.md)
 
 ## 具体案例
 

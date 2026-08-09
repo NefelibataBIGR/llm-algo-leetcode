@@ -103,6 +103,13 @@
 
 ## 正文页
 
+- [01 VRAM Ledger and Metrics](./01_vram_ledger_and_metrics.md)
+- [02 Training Memory Pressure](./02_training_memory_pressure.md)
+- [03 Checkpointing and Offload](./03_checkpointing_and_offload.md)
+- [04 Inference Cache and Memory Budget](./04_inference_cache_and_memory_budget.md)
+- [05 Quantization as a Memory Tool](./05_quantization_as_a_memory_tool.md)
+- [06 Benchmark and Trade-off Decision](./06_benchmark_and_tradeoff_decision.md)
+- [07 Visual Assets](./07_visual_assets.md)
 - [显存优化与性能调优正文](./casebook.md)：按“训练侧 / 推理侧 / 验证侧”展开正文，适合做更细的显存案例和调优记录。
 - [显存优化与性能调优深入阅读](./walkthrough.md)：按完整调优故事展开，适合想看连续推演的人。
 
@@ -142,4 +149,4 @@
 - 导读页只负责告诉读者“从哪进”，不再重复正文里的判断框架。
 
 ## 专题状态
-当前为专题入口页，后续将逐步补充跨 Part 索引、显存优化案例和性能调优记录。
+本专题已更新为 `01-06 + 07_visual_assets` 的解释层结构。它的作用是把训练显存、推理缓存、量化预算和 benchmark 收束成一套显存判断框架，而不是复述 Part02 目录。
