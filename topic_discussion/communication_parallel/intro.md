@@ -1,7 +1,7 @@
 # 通信与并行专题
 
 ## 专题概览
-本专题用于沉淀 NCCL、AllReduce、ZeRO、Pipeline Parallelism 和 Tensor Parallelism 等多卡扩展方法，回答“怎么把模型扩到多卡并看懂通信代价”。
+本专题不是重新发明并行课程，而是**承接 `Part01-02` 已经存在的多卡扩展路线**，把分散在通信原语、状态切分、层切分、算子切分和 benchmark 里的内容，重组为一条“系统为什么会走向并行，以及通信代价怎么决定并行是否值得”的故事线。
 
 ## 职责边界
 
@@ -13,13 +13,17 @@
 - `Tensor Parallelism` 关注张量切分后的通信与计算平衡。
 - `Communication Profiling` 关注通信热点、等待时间和 overlap。
 
-## 对应来源
+这个专题不是单纯的并行方法索引，而是一个“切分层级与代价来源”的知识组织轴。
 
-| 来源 | 适合纳入的内容 |
-|:---|:---|
-| `Part 1C` | 通信拓扑、显存共享、NCCL / AllReduce、并行策略判断 |
-| `Part 2.8` | ZeRO、Pipeline Parallelism、Tensor Parallelism 的主线实现 |
-| `Part 2.9` | 分布式并行基准项目和工程选型验证 |
+## 承接已有学习路线
+
+这个专题的正文应当建立在已有主线上，而不是脱离主线重新列方法。
+
+### Part01：硬件、拓扑与通信前置
+
+### Part02：并行实现与项目验证
+
+- `27 / 28 / 29 / 46 / 79` 负责把 ZeRO、Pipeline、Tensor Parallel、通信 profiling 和分布式 benchmark 落到实现与验证。
 
 ## Part 1 相关前置
 
@@ -48,14 +52,40 @@
 - 再看 `2.8`，把 ZeRO、Pipeline 和 Tensor Parallelism 的策略边界串起来。
 - 如果想看通信代价如何被量化，再回到 `46` 和 `79`。
 
+## 为什么这个专题不能退化成索引
+
+如果这里只是把 `05 / 06 / 20 / 27 / 28 / 29 / 46 / 79` 列出来，它就仍然只是“去哪里看”的答案。横向专题真正应该补的是三层厚度：
+
+- 文字串联：为什么系统会从单卡约束走向多卡切分，通信为什么会成为新的主矛盾。
+- 文献锚点：这些切分方法分别是谁提出的、主要在解决哪一类瓶颈。
+- 可视化：让读者看到图就知道当前是在切状态、切层、切算子，还是在对付路由热点。
+
+所以，后面的编号页不是文件目录，而是承接主线后的故事重组。
+
 ## 入口摘要
 
 - 第一入口：`Part 1C` + `05 -> 20 -> 06 -> 13`，先把通信原语、显存分摊和观测基础立住。
 - 第二入口：`2.8 -> 27 -> 28 -> 29`，把 ZeRO、Pipeline 和 Tensor Parallelism 的主线补齐。
 - 验证入口：`46 -> 79 -> 66`，把通信热点、分布式基准和最终收益连起来。
 
+## 01-06 骨架
+
+这 6 个小节是知识组织层，不要求和已有 notebook 一一对应。它们围绕一条主故事线展开：
+
+- 先解释系统为什么会走向并行；
+- 再解释同步和数据并行的第一层代价；
+- 再解释状态切分、层切分、算子切分和 expert parallel；
+- 最后回到 benchmark 和并行选型。
+
 ## 正文页
 
+- [01 Why Parallel and Communication](./01_why_parallel_and_communication.md)
+- [02 Data Parallel and Synchronization](./02_data_parallel_and_synchronization.md)
+- [03 State Sharding and ZeRO](./03_state_sharding_and_zero.md)
+- [04 Pipeline and Tensor Parallel](./04_pipeline_and_tensor_parallel.md)
+- [05 Expert Parallel and Communication Hotspots](./05_expert_parallel_and_communication_hotspots.md)
+- [06 Benchmark and Parallel Decision](./06_benchmark_and_parallel_decision.md)
+- [07 Visual Assets](./07_visual_assets.md)
 - [通信与并行正文](./casebook.md)：按“通信原语 / 并行切分 / 调度代价 / 基准验证”展开专题正文，适合做更细的选型和对照。
 - [通信与并行深入阅读](./walkthrough.md)：按完整并行选型过程展开，适合想看连续推演的人。
 
@@ -102,4 +132,4 @@
 - 后续新增内容时，优先沿着 `通信原语 -> 并行切分 -> profiling -> benchmark` 这条线放到正文页。
 
 ## 专题状态
-当前为专题入口页，后续将逐步补充跨 Part 索引、并行策略案例和通信分析。
+本专题已更新为 `01-06 + 07_visual_assets` 的解释层结构。当前已完成正文层，下一步优先补图册与更细的论文锚点。

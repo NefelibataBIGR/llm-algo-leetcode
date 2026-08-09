@@ -1,7 +1,7 @@
 # 通信与并行正文
 
 ## 页面目标
-这页把“多卡为什么慢”“并行策略怎么选”“通信热点怎么查”这三件事展开成正文。
+这页的目标不是给并行方法做目录，而是把 `Part01-02` 里分散的并行内容压成一张“为什么会慢、应该怎么切、值不值得切”的判断地图。
 
 ## 适用人群
 
@@ -22,6 +22,10 @@
 - 如果你关心实际扩展效果，再看 `46 -> 79 -> 66`。
 - 最后回到 `2.8`，把策略选择和训练目标对齐。
 
+## 编号页入口
+
+下面 6 页是这条专题真正的正文主体，当前这页只负责把它们放到同一张并行判断框架里。
+
 ## 故事线
 
 一个最常见的并行故事，是“GPU 明明加了，训练还是没快”。最开始大家通常会怀疑模型太大，或者单卡算子太慢；但真正把链路拆开以后，问题往往是同步等待、micro-batch 气泡和通信 overlap 没做好。
@@ -32,6 +36,16 @@
 最后回到 `2.8`，把策略判断和训练目标重新对齐。
 
 这个故事的重点不是“多卡就快”，而是不同切分层级解决的是不同问题，必须先分清代价从哪来。
+
+## 故事骨架
+
+把这条故事压缩一下，通常是这条线：
+
+1. 单卡先遇到显存或吞吐边界。
+2. 系统被迫开始复制 batch、切状态、切层或切算子。
+3. 一旦跨卡，通信和等待就会回来索取代价。
+4. 如果走到 MoE / expert parallel，通信和负载不均会再复杂一层。
+5. 最后必须回到 profiling 和 benchmark，判断并行到底值不值。
 
 ## 具体案例
 
@@ -78,6 +92,12 @@
 | 流水线主线 | Pipeline Parallelism 的 micro-batch 和气泡怎么理解 | `28 -> 79` |
 | 张量切分主线 | Tensor Parallelism 的切分和同步代价怎么判断 | `29 -> 46` |
 | 选型验证主线 | 怎么把并行策略的收益和通信代价算清楚 | `46 -> 79 -> 66` |
+
+## Part01-02 在这条故事里的角色
+
+- `Part01`：负责解释拓扑、NCCL / AllReduce、显存共享和通信原语。
+- `Part02`：负责解释 ZeRO、Pipeline、Tensor Parallel、MoE expert parallel 和 benchmark 验证。
+- 横向专题：负责把这些内容重新收成“切分层级 -> 通信代价 -> profiling -> benchmark”的逻辑链。
 
 ## 一页速记
 
@@ -142,6 +162,16 @@
 - 只看显存不够，要看时间。
 - 只看单卡不够，要看多卡。
 - 只看一次实验不够，要看 benchmark。
+
+## 编号页对照
+
+- [01 Why Parallel and Communication](./01_why_parallel_and_communication.md)
+- [02 Data Parallel and Synchronization](./02_data_parallel_and_synchronization.md)
+- [03 State Sharding and ZeRO](./03_state_sharding_and_zero.md)
+- [04 Pipeline and Tensor Parallel](./04_pipeline_and_tensor_parallel.md)
+- [05 Expert Parallel and Communication Hotspots](./05_expert_parallel_and_communication_hotspots.md)
+- [06 Benchmark and Parallel Decision](./06_benchmark_and_parallel_decision.md)
+- [07 Visual Assets](./07_visual_assets.md)
 
 ## FAQ
 
