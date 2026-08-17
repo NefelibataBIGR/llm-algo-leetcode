@@ -1,5 +1,5 @@
 # 37. KV Cache Scheduling | KV Cache 调度
-**难度：** Hard | **环境：** GPU required | **标签：** `KV Cache`, `Scheduling`, `推理优化` | **目标人群：** 推理系统与缓存工程
+**难度：** Hard | **环境：** CPU-first | **标签：** `推理优化`, `KV Cache`, `调度` | **目标人群：** 推理优化学习者
 
 > 🚀 **云端运行环境**
 >
@@ -23,22 +23,18 @@
 
 ## 前置阅读
 
-**导语：** 先看前缀缓存、解码调度和 KV Cache 量化，再看缓存调度会更容易。
-
-- [34. Prefix Caching and Chunked Prefill | 前缀缓存与分块预填充](../02_PyTorch_Algorithms/34_Prefix_Caching_and_Chunked_Prefill.md)
-- [36. Decode Scheduling | 解码调度](../02_PyTorch_Algorithms/36_Decode_Scheduling.md)
-- [41. FP8 and KV Cache Quantization | FP8 与 KV Cache 量化](../02_PyTorch_Algorithms/41_FP8_and_KV_Cache_Quantization.md)
-- [22. vLLM PagedAttention | vLLM PagedAttention](../02_PyTorch_Algorithms/22_vLLM_PagedAttention.md)
+- [22. vLLM PagedAttention | vLLM 分页注意力](./22_vLLM_PagedAttention.md)
+- [34. Prefix Caching and Chunked Prefill | 前缀缓存与分块预填充](./34_Prefix_Caching_and_Chunked_Prefill.md)
+- [36. Decode Scheduling | 解码调度](./36_Decode_Scheduling.md)
 
 ## 相关阅读
 
-**导语：** KV Cache 调度之后，可以继续看并行策略和通信 profiling。
-
-- [27. ZeRO Optimizer Sim | ZeRO 优化器模拟](../02_PyTorch_Algorithms/27_ZeRO_Optimizer_Sim.md)
-- [46. Communication Profiling with NCCL | NCCL 通信性能剖析](../02_PyTorch_Algorithms/46_Communication_Profiling_with_NCCL.md)
-- [P1: 11. KV Cache and Memory Growth | KV Cache 与显存增长](../01_Hardware_Math_and_Systems/11_KV_Cache_and_Memory_Growth.md)
+- [38. Prefill-Decode Disaggregation | PD 分离](./38_Prefill_Decode_Disaggregation.md)
+- [39. Inference Fallback and Tiers | 推理分层与回退策略](./39_Inference_Fallback_and_Tiers.md)
+- [70. Serving Scheduler Benchmark | 服务调度基准项目](./70_Serving_Scheduler_Benchmark.md)
 
 ---
+
 ### Step 1: 原理与痛点
 
 前缀缓存解决的是“相同前缀能不能复用”，PagedAttention 解决的是“KV Cache 怎么按 block 管理”。但在真实推理服务里，只知道“能复用”和“能分块”还不够：并发请求不断进来，缓存容量是有限的，系统必须决定哪些 cache 留在显存里，哪些 cache 可以被驱逐。
@@ -89,15 +85,6 @@ score = reuse\_bonus + 0.5 	imes recency - 0.25 	imes size\_penalty
 
 完成后观察测试中的日志：`add` 表示新增缓存，`reuse` 表示命中复用，`evict` 表示容量不足时触发驱逐。只要这三类事件能串起来，就说明你已经跑通了“复用 -> 评分 -> 驱逐 -> 快照”的缓存调度闭环。
 
-### Step 2: 评分与数据结构
-
-本节的关键不是把缓存做得更复杂，而是把“谁该留、谁该走”的判断做成一个可解释的评分器。你会看到 `CacheEntry`、堆队列和 `entries` 三者如何一起构成一个最小调度器。
-### Step 3: 容量驱逐与懒删除
-
-真实调度里，优先级会不断变化，所以堆中的旧记录不能直接信任。这个步骤的重点是把 `stale check`、容量驱逐和快照导出串成一条链。
-### Step 4: 动手实战
-
-请补全 `_score`、`_refresh_queue`、`_evict_until_fit`、`touch` 和 `snapshot`，跑通“访问 -> 评分 -> 驱逐 -> 快照”的闭环。
 ### 提示
 
 - 复用次数高、最近访问近的缓存更应该保留。

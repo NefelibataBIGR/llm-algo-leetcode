@@ -1,5 +1,5 @@
 # 36. Decode Scheduling | 解码调度
-**难度：** Hard | **环境：** GPU required | **标签：** `解码`, `Scheduling`, `推理优化` | **目标人群：** 推理系统与服务调度
+**难度：** Hard | **环境：** CPU-first | **标签：** `推理优化`, `解码`, `Scheduling` | **目标人群：** 推理优化学习者
 
 > 🚀 **云端运行环境**
 >
@@ -23,22 +23,18 @@
 
 ## 前置阅读
 
-**导语：** 先把解码策略、投机解码和前缀缓存理顺，再看调度规则会更容易。
-
-- [21. Decoding Strategies | 解码策略](../02_PyTorch_Algorithms/21_Decoding_Strategies.md)
-- [23. Speculative Decoding | 投机解码](../02_PyTorch_Algorithms/23_Speculative_Decoding.md)
-- [34. Prefix Caching and Chunked Prefill | 前缀缓存与分块预填充](../02_PyTorch_Algorithms/34_Prefix_Caching_and_Chunked_Prefill.md)
-- [35. Multi-Token Decoding | 多 Token 解码](../02_PyTorch_Algorithms/35_Multi_Token_Decoding.md)
+- [21. Decoding Strategies | 解码策略](./21_Decoding_Strategies.md)
+- [23. Speculative Decoding | 投机解码](./23_Speculative_Decoding.md)
+- [35. Multi-Token Decoding | 多 Token 解码](./35_Multi_Token_Decoding.md)
 
 ## 相关阅读
 
-**导语：** 解码调度之后，可以继续看 PagedAttention 和 RadixAttention。
-
-- [22. vLLM PagedAttention | vLLM PagedAttention](../02_PyTorch_Algorithms/22_vLLM_PagedAttention.md)
-- [24. SGLang RadixAttention | SGLang 基数注意力](../02_PyTorch_Algorithms/24_SGLang_RadixAttention.md)
-- [P1: 17. CUDA Stream and Asynchrony | CUDA Stream 与异步执行](../01_Hardware_Math_and_Systems/17_CUDA_Stream_and_Asynchrony.md)
+- [37. KV Cache Scheduling | KV Cache 调度](./37_KV_Cache_Scheduling.md)
+- [38. Prefill-Decode Disaggregation | PD 分离](./38_Prefill_Decode_Disaggregation.md)
+- [70. Serving Scheduler Benchmark | 服务调度基准项目](./70_Serving_Scheduler_Benchmark.md)
 
 ---
+
 ### Step 1: 原理与痛点
 
 > **为什么推理服务不能只靠单个请求的解码优化？**

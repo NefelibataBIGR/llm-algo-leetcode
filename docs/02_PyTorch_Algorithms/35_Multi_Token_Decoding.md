@@ -1,5 +1,5 @@
 # 35. Multi Token Decoding | 多 Token 解码
-**难度：** Hard | **环境：** GPU required | **标签：** `解码`, `Multi-Token Decoding`, `推理优化` | **目标人群：** 推理系统与系统工程
+**难度：** Hard | **环境：** CPU-first | **标签：** `推理优化`, `解码`, `Multi-Token Decoding` | **目标人群：** 推理优化学习者
 
 > 🚀 **云端运行环境**
 >
@@ -23,22 +23,18 @@
 
 ## 前置阅读
 
-**导语：** 先看投机解码、解码策略和 PagedAttention，再看多 token 解码会更清楚。
-
-- [23. Speculative Decoding | 投机解码](../02_PyTorch_Algorithms/23_Speculative_Decoding.md)
-- [21. Decoding Strategies | 解码策略](../02_PyTorch_Algorithms/21_Decoding_Strategies.md)
-- [22. vLLM PagedAttention | vLLM PagedAttention](../02_PyTorch_Algorithms/22_vLLM_PagedAttention.md)
-- [P1: 11. KV Cache and Memory Growth | KV Cache 与显存增长](../01_Hardware_Math_and_Systems/11_KV_Cache_and_Memory_Growth.md)
+- [21. Decoding Strategies | 解码策略](./21_Decoding_Strategies.md)
+- [23. Speculative Decoding | 投机解码](./23_Speculative_Decoding.md)
+- [22. vLLM PagedAttention | vLLM 分页注意力](./22_vLLM_PagedAttention.md)
 
 ## 相关阅读
 
-**导语：** 多 token 解码之后，可以继续看前缀缓存和 RadixAttention。
-
-- [34. Prefix Caching and Chunked Prefill | 前缀缓存与分块预填充](../02_PyTorch_Algorithms/34_Prefix_Caching_and_Chunked_Prefill.md)
-- [24. SGLang RadixAttention | SGLang 基数注意力](../02_PyTorch_Algorithms/24_SGLang_RadixAttention.md)
-- [P1: 17. CUDA Stream and Asynchrony | CUDA Stream 与异步执行](../01_Hardware_Math_and_Systems/17_CUDA_Stream_and_Asynchrony.md)
+- [36. Decode Scheduling | 解码调度](./36_Decode_Scheduling.md)
+- [38. Prefill-Decode Disaggregation | PD 分离](./38_Prefill_Decode_Disaggregation.md)
+- [68. Speculative Decoding Benchmark | 投机解码基准项目](./68_Speculative_Decoding_Benchmark.md)
 
 ---
+
 ## Step 1: 原理与痛点
 
 单 token 解码的瓶颈在于每次只能推进一个 token：模型需要反复进入 decoder，KV Cache 也要频繁追加和读取。对短输出来说这不是大问题，但对长文本生成、代码生成、多轮对话这类场景，逐 token 调度会放大延迟和系统开销。
