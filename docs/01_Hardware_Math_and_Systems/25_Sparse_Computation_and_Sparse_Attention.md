@@ -1,6 +1,6 @@
 # 25. Sparse Computation and Sparse Attention | 稀疏计算与稀疏注意力
 
-**难度：** Hard | **环境：** GPU optional | **标签：** `Sparse`, `Attention`, `Optimization` | **目标人群：** 稀疏优化入门者
+**难度：** Hard | **环境：** GPU optional | **标签：** `模型结构`, `Sparse`, `Sparse Attention` | **目标人群：** 系统性能入门者
 
 > 🚀 **云端运行环境**
 >
@@ -10,17 +10,24 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-这一页讲的是稀疏化为什么不只是“删掉一部分元素”，而是要看结构、实现和硬件是否真的能受益。
+---
+
+## 本节导读
+
+稀疏化真正难的地方，不是把一部分元素变成零，而是确认这种稀疏模式能不能被实现层和硬件层真正利用起来。结构不规则、调度代价太高，或者索引开销太重时，理论上的计算减少并不会自动变成吞吐收益。
+
+这一页在整个教程的纵向主线里属于 `Part 01` 的结构与实现权衡页，优先服务 `推理优化路线` 和后续 `大模型架构专题`、`编译与图优化专题` 的交叉判断。学完这里，后面再看 `47` 以及和长上下文、MoE、kernel 优化相关的页时，你会更容易把稀疏方法放回“结构 -> 实现 -> 硬件收益”这条判断链里；如果这里没学明白，后面很容易只看到论文里省下的理论计算量，却判断不清稀疏化到底是在省算力，还是在增加索引、调度和实现复杂度。按专题归类，这一页同时属于 `大模型架构专题` 和 `编译与图优化专题`，也给推理优化提供结构侧前置。
 
 **关键词：** `sparsity`, `structure`, `density`
+
+---
 ## 前置阅读
 
-**导语：** 这一页先把 shared memory、TensorCore 和量化后的执行路径接上，再看稀疏为什么不是单纯删掉几个参数。
+**导语：** 先把 Tensor Core、SRAM 复用和图优化的基础直觉接上，再看稀疏结构能不能真的带来收益，会更容易把理论与实现放到一起判断。
 
-- [24. SRAM Optimization Techniques | SRAM 优化技术](./24_SRAM_Optimization_Techniques.md)
+- [09. AI Compilers and Graph Optimization | AI 编译器与计算图优化](./09_AI_Compilers_and_Graph_Optimization.md)
 - [23. TensorCore Deep Dive | Tensor Core 深度剖析](./23_TensorCore_Deep_Dive.md)
-- [21. Quantization Theory and INT4/INT8 | 量化理论与 INT4/INT8](./21_Quantization_Theory_and_INT4_INT8.md)
-- [22. MoE Parameter and Compute | MoE 模型参数量计算](./22_MoE_Parameter_and_Compute.md)
+- [24. SRAM Optimization Techniques | SRAM 优化技术](./24_SRAM_Optimization_Techniques.md)
 
 ## 相关阅读
 
@@ -29,7 +36,7 @@
 - [09. AI Compilers and Graph Optimization | AI 编译器与计算图优化](./09_AI_Compilers_and_Graph_Optimization.md)
 - [18. Triton Block Model | Triton Block 模型](./18_Triton_Block_Model.md)
 - [19. Operator Fusion Introduction | 算子融合导论](./19_Operator_Fusion_Introduction.md)
-
+---
 ## Q1：为什么稀疏不一定只是“删参数”？
 
 <details><summary>点击展开查看解析</summary>

@@ -1,6 +1,6 @@
 # 28. Fault Tolerance and Checkpointing | 容错与检查点
 
-**难度：** Medium-Hard | **环境：** CPU-first | **标签：** `容错`, `Checkpoint`, `训练恢复` | **目标人群：** 长训练学习者
+**难度：** Medium-Hard | **环境：** CPU-first | **标签：** `系统工程`, `容错恢复`, `Checkpoint` | **目标人群：** 系统性能入门者
 
 > 🚀 **云端运行环境**
 >
@@ -10,13 +10,21 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
+---
+
+## 本节导读
+
 这一页关注的是“训练不能总假设一切顺利”。当任务很长、集群很大、资源很贵时，容错和 checkpoint 就不是可选项，而是训练系统的基础能力。
+
+这一页在整个教程的纵向主线里属于 `Part 01` 的训练交付与恢复基础页，优先服务 `监督微调路线` 的项目交付前置。学完这里，后面再看 `60` 和其他训练项目页时，你会更容易理解为什么 `checkpoint / resume / artifact completeness` 会直接影响项目复现和训练恢复；如果这里没学明白，后面很容易把训练交付停在“保存了权重”，而不是“真的能从同一训练点继续”。按专题归类，这一页主要属于 `监督微调路线` 的工程前置，也和 `通信与并行专题` 共享一部分训练系统可靠性视角。
 
 **关键词：** `checkpoint`, `recovery`, `fault tolerance`
 
+---
+
 ## 前置阅读
 
-**导语：** 先把显存压力、并行决策和通信调度这三件事弄清楚，再看这一页的容错和恢复，会更容易理解为什么 checkpoint 不是一个孤立动作。
+**导语：** 先把显存压力、并行决策和通信调度这三件事弄清楚，再看这一页的容错和恢复；如果你正在走 `监督微调路线`，这里会直接服务训练恢复和项目交付判断，因为后面 resume 能不能继续、artifact 算不算完整、项目能不能复现，本质上都要先靠这一页把状态边界讲清楚。
 
 - [06. VRAM Calculation and ZeRO | 显存计算与 ZeRO 优化](./06_VRAM_Calculation_and_ZeRO.md)
 - [26. Parallel Strategy Decision Framework | 并行策略决策框架](./26_Parallel_Strategy_Decision_Framework.md)
@@ -24,12 +32,12 @@
 
 ## 相关阅读
 
-**导语：** 如果还想把容错和工程实现连起来，可以接着看通信原语、异步调度和异构执行，把保存、恢复和调度放在一起理解。
+**导语：** 如果还想把容错和工程实现连起来，可以接着看训练恢复、项目交付和训练工程附录，把保存、恢复和 artifact 放在一起理解，也把“保存了什么”与“能不能从同一训练点恢复”分清楚。
 
-- [20. NCCL and AllReduce Basics | NCCL 与 AllReduce 基础](./20_NCCL_and_AllReduce_Basics.md)
-- [17. CUDA Stream and Asynchrony | CUDA Stream 与异步执行](./17_CUDA_Stream_and_Asynchrony.md)
 - [29. CUDA Stream Advanced Scheduling | CUDA Stream 高级调度](./29_CUDA_Stream_Advanced_Scheduling.md)
-
+- [project_delivery_appendix.md | 项目交付附录](../topic_discussion/fine_tuning_training/project_delivery_appendix.md)
+- [62. Instruction Fine Tuning Project | 指令微调项目](../02_PyTorch_Algorithms/62_Instruction_Fine_Tuning_Project.md)
+---
 ## Q1：Checkpoint 保存的到底是什么？
 
 <details>
