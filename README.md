@@ -68,7 +68,7 @@
 | ---- | ---- | ---- | ---- | ---- |
 | [`第零部分：前置知识与环境准备（5 组 / 20 节，已完成，持续优化）`](./00_Prerequisites/intro.md) | [`0A Python 基础与数据表示（4 节）`](./00_Prerequisites/0A.md) / [`0B PyTorch 张量与自动求导（4 节）`](./00_Prerequisites/0B.md) / [`0C PyTorch 模型构建（4 节）`](./00_Prerequisites/0C.md) / [`0D 训练与模型直觉（4 节）`](./00_Prerequisites/0D.md) / [`0E 调试与性能（4 节）`](./00_Prerequisites/0E.md) | 把 Python、NumPy、PyTorch、训练循环、调试工具和性能意识搭好。 | 第一次进入教程、需要补齐入门前置的人。 | ✅ 已完成，持续优化 |
 | [`第一部分：硬件、数学与系统（5 组 / 33 节，已完成，持续优化）`](./01_Hardware_Math_and_Systems/intro.md) | [`1A 数值基础与算力估算（4 节）`](./01_Hardware_Math_and_Systems/1A.md) / [`1B 单卡硬件与访存优化（5 节）`](./01_Hardware_Math_and_Systems/1B.md) / [`1C 多卡通信与显存共享（5 节）`](./01_Hardware_Math_and_Systems/1C.md) / [`1D 异构调度与算子编程（5 节）`](./01_Hardware_Math_and_Systems/1D.md) / [`1E 编译优化与硬件生态（4 节）`](./01_Hardware_Math_and_Systems/1E.md) | 理解硬件、算力、访存、通信和调度这些底层约束。 | 想先弄清“为什么要这样写”和“为什么要这样部署”的学习者。 | ✅ 已完成，持续优化 |
-| [`第二部分：PyTorch 算法实战（10 组，已完成，持续优化）`](./02_PyTorch_Algorithms/intro.md) | [`2.1 基础算子`](./02_PyTorch_Algorithms/intro.md) / [`2.2 模型架构`](./02_PyTorch_Algorithms/intro.md) / [`2.3 训练与微调闭环`](./02_PyTorch_Algorithms/intro.md) / [`2.4 偏好优化与对齐`](./02_PyTorch_Algorithms/intro.md) / [`2.5 反向传播与显存优化`](./02_PyTorch_Algorithms/intro.md) / [`2.6 核心推理优化`](./02_PyTorch_Algorithms/intro.md) / [`2.7 高级推理策略`](./02_PyTorch_Algorithms/intro.md) / [`2.8 模型压缩与量化`](./02_PyTorch_Algorithms/intro.md) / [`2.9 分布式并行策略`](./02_PyTorch_Algorithms/intro.md) / [`2.10 项目实战`](./02_PyTorch_Algorithms/intro.md) | 在 PyTorch 层把算法、模型、推理、压缩、并行与项目验证先跑通。 | 希望先用熟悉工具建立实现感的人。 | ✅ 已完成，持续优化 |
+| [`第二部分：PyTorch 算法实战（10 组，已完成，持续优化）`](./02_PyTorch_Algorithms/intro.md) | [`2.1 基础算子`](./02_PyTorch_Algorithms/intro.md) / [`2.2 模型架构`](./02_PyTorch_Algorithms/intro.md) / [`2.3 训练与微调闭环`](./02_PyTorch_Algorithms/2_3.md) / [`2.4 偏好优化与对齐`](./02_PyTorch_Algorithms/2_4.md) / [`2.5 反向传播与显存优化`](./02_PyTorch_Algorithms/2_5.md) / [`2.6 核心推理优化`](./02_PyTorch_Algorithms/2_6.md) / [`2.7 高级推理策略`](./02_PyTorch_Algorithms/2_7.md) / [`2.8 模型压缩与量化`](./02_PyTorch_Algorithms/2_8.md) / [`2.9 分布式并行策略`](./02_PyTorch_Algorithms/2_9.md) / [`2.10 项目实战`](./02_PyTorch_Algorithms/2_10.md) | 在 PyTorch 层把算法、模型、推理、压缩、并行与项目验证先跑通。 | 希望先用熟悉工具建立实现感的人。 | ✅ 已完成，持续优化 |
 | [`第三部分：Triton 算子开发（5 组 / 15 节，已完成，持续优化）`](./03_Triton_Kernels/intro.md) | [`3.1 基础篇（5 节）`](./03_Triton_Kernels/intro.md) / [`3.2 过渡篇（2 节）`](./03_Triton_Kernels/intro.md) / [`3.3 进阶A：Attention优化（3 节）`](./03_Triton_Kernels/intro.md) / [`3.4 进阶B：推理优化（2 节）`](./03_Triton_Kernels/intro.md) / [`3.5 项目篇（3 节）`](./03_Triton_Kernels/intro.md) | 把前面学到的算子和优化思路落到 GPU kernel。 | 希望从 PyTorch 走向 Triton 的学习者。 | ✅ 已完成，持续优化 |
 | [`第四部分：CUDA C++ 与系统优化（4 组 / 16 节，建设中）`](./04_CUDA_and_System_Optimization/intro.md) | [`4.1 CUDA 编程基础（4 节）`](./04_CUDA_and_System_Optimization/intro.md) / [`4.2 系统级性能优化（4 节）`](./04_CUDA_and_System_Optimization/intro.md) / [`4.3 分布式训练工程（4 节）`](./04_CUDA_and_System_Optimization/intro.md) / [`4.4 架构视野（4 节）`](./04_CUDA_and_System_Optimization/intro.md) | 进一步下探到 CUDA、系统调优和工程化架构。 | 准备做底层性能优化和工程落地的人。 | 🛠 建设中 |
 | [`第五部分：CUDA Rust（预留）`](./05_CUDA_Rust/intro.md) | 预留中 | 预留中 | 预留中 | 🚧 预留 |
@@ -96,6 +96,7 @@
 
 ## 🆕 更新时间线
 
+- **2026-08-17**：统一了 `Part 01` 导读与组页口径，收紧了 `topic_discussion` 的专题结构与学习路线表达，补充了 `Part 02` 项目页与图解资产审计，并明确了 `verify.py` 与维护文档中的统一验证入口。
 - **2026-07-10**：[最新更新点]收紧了中文版首页的教材总览与状态列，校正了 `Part 0` / `Part 1` 的组名、节数和 `0E` 标题，并同步了相关导航与最近更新说明。
 - **2026-06-26**：[最新更新点]收紧了中文版首页的教材总览、状态列和 mermaid 关系图，明确了 `Part 0-1` 的前置关系、`Part 2-5` 的主线关系，以及横向专题和组队学习的定位。
 - **2026-06-15**：推进第零部分 / 第一部分的分组与导读收口，统一部分级导航，并完成网页底部评论区接入 GitHub Discussions，同时持续扩展第一部分的正文、桥接页与 Notebook 结构。
@@ -164,6 +165,7 @@ CNB 的具体使用方式和适用范围见 [使用指南](./docs/guide.md)。
 - [使用指南](./docs/guide.md) - 环境与学习方式
 - [贡献指南](./docs/contributing.md) - 如何参与项目开发和测试
 - [维护与发布手册](./docs/maintenance.md) - 部分、链接、测试与发布的维护约定
+- [统一验证入口](./docs/maintenance.md#常用命令) - `verify.py part0_1`、`verify.py part2` 等标准验证命令
 - [自动化测试脚本索引](./docs/maintenance.md#测试脚本索引) - 各类验证脚本入口
 
 ## 👨‍💻 贡献者名单
