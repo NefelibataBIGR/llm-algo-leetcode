@@ -1,5 +1,5 @@
 # 23. Speculative Decoding | 投机解码
-**难度：** Hard | **环境：** GPU required | **标签：** `解码`, `Speculative Decoding`, `推理优化` | **目标人群：** 推理加速与系统工程
+**难度：** Hard | **环境：** CPU-first | **标签：** `推理优化`, `解码`, `Speculative Decoding` | **目标人群：** 推理优化学习者
 
 > 🚀 **云端运行环境**
 >
@@ -22,19 +22,15 @@
 ---
 ## 前置阅读
 
-**导语：** 先理解自回归生成、KV Cache 和推理显存模型，再看投机解码会更容易抓住主线：它不是让小模型替代大模型，而是让小模型帮大模型减少重复的逐 token 调用。
-
-- [22. vLLM PagedAttention | vLLM PagedAttention](../02_PyTorch_Algorithms/22_vLLM_PagedAttention.md)
+- [21. Decoding Strategies | 解码策略](./21_Decoding_Strategies.md)
+- [22. vLLM PagedAttention | vLLM 分页注意力](./22_vLLM_PagedAttention.md)
 - [P1: 11. KV Cache and Memory Growth | KV Cache 与显存增长](../01_Hardware_Math_and_Systems/11_KV_Cache_and_Memory_Growth.md)
-- [P1: 14. FlashAttention Memory Model | FlashAttention 显存模型](../01_Hardware_Math_and_Systems/14_FlashAttention_Memory_Model.md)
-
 
 ## 相关阅读
 
-**导语：** 投机解码解决的是“少调用大模型几次”，后面可以继续看前缀缓存、异步执行和 profiling，判断真实系统里瓶颈是否真的被转移。
-
-- [P1: 13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
-- [P1: 17. CUDA Stream and Asynchrony | CUDA Stream 与异步执行](../01_Hardware_Math_and_Systems/17_CUDA_Stream_and_Asynchrony.md)
+- [35. Multi-Token Decoding | 多 Token 解码](./35_Multi_Token_Decoding.md)
+- [36. Decode Scheduling | 解码调度](./36_Decode_Scheduling.md)
+- [68. Speculative Decoding Benchmark | 投机解码基准项目](./68_Speculative_Decoding_Benchmark.md)
 
 ---
 
@@ -56,6 +52,8 @@
 ### Step 2: 代码实现框架
 
 下面的代码只需要实现一个验证循环：逐个比较 `draft_probs` 和 `target_probs` 中对应 token 的概率，先按 $\alpha(x)$ 决定是否接受，再在拒绝时停止后续验证。这个过程本质上是“带终止条件的接受-拒绝采样”：前面 token 的接受与否，会直接决定后续草稿还能不能继续被验证。
+
+![Speculative Decoding 流程图](/02_PyTorch_Algorithms/23_speculative_decoding_flow.svg)
 
 
 ```python

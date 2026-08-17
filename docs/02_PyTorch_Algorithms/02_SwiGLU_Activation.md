@@ -1,6 +1,6 @@
 # 02. SwiGLU Activation | SwiGLU 激活
 
-**难度：** Easy | **环境：** CPU-first | **标签：** `模型架构`, `激活函数`, `PyTorch` | **目标人群：** 模型微调与工程部署
+**难度：** Easy | **环境：** CPU-first | **标签：** `基础实现`, `激活函数`, `SwiGLU` | **目标人群：** 基础实现学习者
 
 > 🚀 **云端运行环境**
 >
@@ -93,6 +93,8 @@ x [B, T, D]
 │                                             ├─ elementwise multiply ─► down_proj ─► [B, T, D]
 └─ up_proj   ─► up   [B, T, I] ──────────────┘
 ```
+
+![SwiGLU 的 gate / up / down 三条线](/02_PyTorch_Algorithms/02_swiglu_gate.svg)
 
 和普通 FFN 对比：
 

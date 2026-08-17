@@ -1,6 +1,6 @@
 # 09. SFT Training Loop | 监督微调训练循环
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `训练框架`, `SFT`, `PyTorch` | **目标人群：** 模型微调与工程部署
+**难度：** Medium | **环境：** CPU-first | **标签：** `训练微调`, `SFT`, `训练循环` | **目标人群：** 训练机制学习者
 
 > 🚀 **云端运行环境**
 >
@@ -84,6 +84,8 @@ SFT 和预训练的关键差异在于 loss 只应该作用在 response 上，而
 - prompt 位置可以被模型看见，但不参与 loss。
 - response 和 EOS 参与 loss，模型才会学习回答和结束。
 - padding 既不应该被 attention 当成有效上下文，也不应该参与 loss。
+
+![SFT 对齐图](/02_PyTorch_Algorithms/09_sft_alignment.svg)
 
 #### 数据审计与样本边界
 

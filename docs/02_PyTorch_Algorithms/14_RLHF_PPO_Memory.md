@@ -1,6 +1,6 @@
 # 14. RLHF PPO Memory | RLHF 与 PPO 显存占用与流转
 
-**难度：** Hard | **环境：** CPU-first | **标签：** `RLHF`, `PPO`, `对齐` | **目标人群：** 模型微调与对齐算法工程师
+**难度：** Hard | **环境：** CPU-first | **标签：** `后训练对齐`, `RLHF`, `PPO` | **目标人群：** 训练机制学习者
 
 > 🚀 **云端运行环境**
 >
@@ -84,6 +84,8 @@ prompt -> rollout / sampling -> reward model -> advantage -> PPO update
 - `DPO` 试图把偏好对齐收敛成更轻的 logprob 差值，不再维护完整 PPO 流程。
 - `GRPO` 继续保留组内比较，但进一步弱化对显式 Critic 的依赖。
 - 所以这节的角色不是“再造一个 RLHF 系统”，而是先把 PPO 为什么重讲清楚，后面的轻量方法才有对照意义。
+
+![RLHF PPO 显存流转图](/02_PyTorch_Algorithms/14_rlhf_memory_flow.svg)
 
 ### Step 3: 动手实战
 

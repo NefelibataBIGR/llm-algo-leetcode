@@ -1,6 +1,6 @@
 # 05. LLaMA3 Block Tutorial | LLaMA3 Block 教程
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `模型架构`, `Transformer`, `PyTorch` | **目标人群：** 模型微调与工程部署
+**难度：** Medium | **环境：** CPU-first | **标签：** `模型结构`, `Transformer`, `LLaMA Block` | **目标人群：** 模型结构学习者
 
 > 🚀 **云端运行环境**
 >
@@ -84,6 +84,8 @@ x [B, T, D]
                                                                                 ▼
                                                                         output [B, T, D]
 ```
+
+![LLaMA Block 结构图](/02_PyTorch_Algorithms/05_llama_block.svg)
 
 组件和前面章节的对应关系：
 

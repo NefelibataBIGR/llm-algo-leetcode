@@ -1,6 +1,6 @@
 # 13. End to End Fine Tuning Experiment | 端到端微调实验
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `训练闭环`, `SFT`, `PyTorch` | **目标人群：** 模型微调与工程部署
+**难度：** Medium | **环境：** CPU-first | **标签：** `训练微调`, `SFT`, `训练闭环` | **目标人群：** 训练机制学习者
 
 > 🚀 **云端运行环境**
 >
@@ -23,20 +23,22 @@
 ---
 ## 前置阅读
 
-**导语：** 先把模型封装、LoRA 适配、优化器、梯度累积和最小训练接口看过，再做端到端微调实验最顺。
+**导语：** 先把 SFT 数据与 loss 对齐、LoRA 适配、优化器、梯度累积、学习率调度和最小训练接口看过，再做端到端微调实验最顺。
+- [09. SFT Training Loop | 监督微调训练循环](../02_PyTorch_Algorithms/09_SFT_Training_Loop.md)
 - [P0: 09. PyTorch nn.Module Basics | PyTorch nn.Module 基础](../00_Prerequisites/09_PyTorch_nn_Module_Basics.md)
 - [10. LoRA Tutorial | LoRA 教程](../02_PyTorch_Algorithms/10_LoRA_Tutorial.md)
 - [P0: 11. PyTorch Optimizers and Loss | PyTorch 优化器与损失](../00_Prerequisites/11_PyTorch_Optimizers_and_Loss.md)
+- [12. Gradient Accumulation | 梯度累积](../02_PyTorch_Algorithms/12_Gradient_Accumulation.md)
+- [11. LR Schedulers WSD Cosine | WSD 余弦学习率调度器](../02_PyTorch_Algorithms/11_LR_Schedulers_WSD_Cosine.md)
 - [P0: 12. PyTorch Minimal Training Interface | PyTorch 最小训练接口](../00_Prerequisites/12_PyTorch_Minimal_Training_Interface.md)
 
 ## 相关阅读
 
-**导语：** 完成最小 SFT 闭环后，可以继续看对齐训练的显存压力、LoRA 项目化落地和训练性能分析。
-- [14. RLHF PPO Memory | RLHF 与 PPO 显存占用与流转](../02_PyTorch_Algorithms/14_RLHF_PPO_Memory.md)
+**导语：** 完成最小 SFT 闭环后，下一步最自然的是把它推进到 LoRA 项目、指令微调项目和训练性能分析里。
 - [60. LoRA Fine-Tuning Project | LoRA 微调项目](../02_PyTorch_Algorithms/60_LoRA_Fine_Tuning_Project.md)
-- [P1: 06. VRAM Calculation and ZeRO | 显存计算与 ZeRO](../01_Hardware_Math_and_Systems/06_VRAM_Calculation_and_ZeRO.md)
-- [P1: 13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
-- [P1: 20. NCCL and AllReduce Basics | NCCL 与 AllReduce 基础](../01_Hardware_Math_and_Systems/20_NCCL_and_AllReduce_Basics.md)
+- [62. Instruction Fine-Tuning Project | 指令微调项目](../02_PyTorch_Algorithms/62_Instruction_Fine_Tuning_Project.md)
+- [73. Training Performance Analysis | 训练性能分析](../02_PyTorch_Algorithms/73_Training_Performance_Analysis.md)
+- [74. Profiling-Driven End-to-End Optimization | Profiling 驱动的端到端优化](../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.md)
 
 ---
 ### Step 1: 端到端训练闭环长什么样
@@ -127,6 +129,8 @@ optimizer.step()
 - 初始 train / val loss 是多少。
 - 训练后 train / val loss 是否下降。
 - 重复样本 sanity check 是否能快速 overfit。
+
+![端到端训练闭环](/02_PyTorch_Algorithms/13_training_loop.svg)
 
 #### 最小报告模板与判据
 

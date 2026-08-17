@@ -1,6 +1,6 @@
 # 12. Gradient Accumulation | 梯度累积
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `训练技巧`, `显存优化`, `PyTorch` | **目标人群：** 模型微调与工程部署
+**难度：** Medium | **环境：** CPU-first | **标签：** `训练微调`, `梯度累积`, `显存优化` | **目标人群：** 训练机制学习者
 
 > 🚀 **云端运行环境**
 >
@@ -16,7 +16,7 @@
 
 训练时我们常常希望 batch 更大，因为梯度会更稳定、更新方向更平滑。但大模型微调里，batch size 往往最先把显存吃满；如果为了省显存把 batch 降得太小，训练又可能变得抖动、不稳定。
 
-梯度累积的做法是把一个大 batch 拆成多个 micro-batch，分多次 backward，最后只执行一次 optimizer step。本节会实现完整 batch 更新和累积更新的对照，验证只要 loss 缩放和 step 时机正确，两种方式的参数更新可以近似一致。完成后，你应该能把它放进后面的端到端微调实验里，用更小峰值显存模拟更大的有效 batch。
+梯度累积的做法是把一个大 batch 拆成多个 micro-batch，分多次 backward，最后只执行一次 optimizer step。这一节在训练微调路线里和 `11` 一起组成 `13` 的直接前置：`11` 控制学习率节奏，`12` 控制有效 batch 怎样落地。学完这里，后面再看 `13`、`26` 和 `60` 时，你会更容易把 micro-batch、effective batch、step 时机和显存峰值放进同一张训练账本里；如果这里没学明白，后面很容易只会机械打开 accumulation，却判断不清 loss 缩放、optimizer step 时机和训练稳定性为什么会一起变化。
 
 **关键词：** `gradient accumulation`, `micro-batch`, `effective batch`
 
@@ -30,11 +30,11 @@
 
 ## 相关阅读
 
-**导语：** 理解梯度累积后，可以继续把它放进端到端微调闭环，并结合显存账本和 profiling 分析收益。
+**导语：** 理解梯度累积后，下一步最自然的是把它放进端到端微调闭环、LoRA 项目和训练性能分析里，看它怎样在显存与吞吐之间做权衡。
 - [13. End-to-End Fine-Tuning Experiment | 端到端微调实验](../02_PyTorch_Algorithms/13_End_to_End_Fine_Tuning_Experiment.md)
-- [P1: 06. VRAM Calculation and ZeRO | 显存估算与 ZeRO](../01_Hardware_Math_and_Systems/06_VRAM_Calculation_and_ZeRO.md)
-- [P1: 13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
-- [P1: 20. NCCL and AllReduce Basics | NCCL 与 AllReduce 基础](../01_Hardware_Math_and_Systems/20_NCCL_and_AllReduce_Basics.md)
+- [60. LoRA Fine-Tuning Project | LoRA 微调项目](../02_PyTorch_Algorithms/60_LoRA_Fine_Tuning_Project.md)
+- [73. Training Performance Analysis | 训练性能分析](../02_PyTorch_Algorithms/73_Training_Performance_Analysis.md)
+- [76. Activation Checkpoint Offload Benchmark | Checkpoint 与 Offload 对比项目](../02_PyTorch_Algorithms/76_Activation_Checkpoint_Offload_Benchmark.md)
 
 ---
 ### Step 1: 为什么需要梯度累积
@@ -104,6 +104,8 @@ mb = {
 ```
 
 `effective_batch_size = micro_batch_size * accum_steps`。它降低的是单次 activation 峰值，不会减少参数和优化器状态占用。
+
+![梯度累积图](/02_PyTorch_Algorithms/12_gradient_accumulation.svg)
 
 
 ```python

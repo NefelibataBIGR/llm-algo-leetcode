@@ -1,5 +1,5 @@
 # 24. SGLang RadixAttention | SGLang 基数注意力
-**难度：** Hard | **环境：** GPU required | **标签：** `KV Cache`, `RadixAttention`, `推理优化` | **目标人群：** 推理系统与缓存工程
+**难度：** Hard | **环境：** CPU-first | **标签：** `推理优化`, `KV Cache`, `RadixAttention` | **目标人群：** 推理优化学习者
 
 > 🚀 **云端运行环境**
 >
@@ -22,18 +22,16 @@ RadixAttention 要解决的就是前缀复用问题：把已经算过的 prompt 
 ---
 ## 前置阅读
 
-**导语：** 先把 KV Cache、PagedAttention 和投机解码看清楚，再进入 RadixAttention：这一节关注的不是单次 attention 公式，而是多请求之间如何复用已经算过的前缀。
-- [22. vLLM PagedAttention | vLLM PagedAttention](../02_PyTorch_Algorithms/22_vLLM_PagedAttention.md)
-- [23. Speculative Decoding | 投机解码](../02_PyTorch_Algorithms/23_Speculative_Decoding.md)
-- [P0: 20. Profiling and Memory Ledger | 性能剖析与显存账本](../00_Prerequisites/20_Profiling_and_Memory_Ledger.md)
+- [22. vLLM PagedAttention | vLLM 分页注意力](./22_vLLM_PagedAttention.md)
+- [21. Decoding Strategies | 解码策略](./21_Decoding_Strategies.md)
+- [P1: 11. KV Cache and Memory Growth | KV Cache 与显存增长](../01_Hardware_Math_and_Systems/11_KV_Cache_and_Memory_Growth.md)
 
 ## 相关阅读
 
-**导语：** 学完 RadixAttention 后，可以继续看显存分析、调度和 profiling，判断前缀缓存是否真的降低了重算和首 token 延迟。
-- [P1: 13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
-- [P1: 14. FlashAttention Memory Model | FlashAttention 显存模型](../01_Hardware_Math_and_Systems/14_FlashAttention_Memory_Model.md)
-- [P1: 19. Operator Fusion Introduction | 算子融合导论](../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.md)
-  
+- [34. Prefix Caching and Chunked Prefill | 前缀缓存与分块预填充](./34_Prefix_Caching_and_Chunked_Prefill.md)
+- [37. KV Cache Scheduling | KV Cache 调度](./37_KV_Cache_Scheduling.md)
+- [69. Prefix Caching Benchmark | 前缀缓存基准项目](./69_Prefix_Caching_Benchmark.md)
+
 ---
 
 ### Step 1: 核心机制对比
@@ -56,6 +54,8 @@ RadixAttention 要解决的就是前缀复用问题：把已经算过的 prompt 
 
 > **为什么它适合多轮对话？**
 > 因为多轮对话里，不同请求往往共享很长的 System Prompt 或历史上下文。Radix Tree 会把这些公共前缀只存一份，所有请求都能沿着同一条前缀路径复用 KV Cache，而不是像按请求隔离的页表那样重复保存。
+
+![RadixAttention 前缀树图](/02_PyTorch_Algorithms/24_radix_attention_tree.svg)
 
 ### Step 2: 动手实战 —— 模拟 Radix Tree 前缀匹配
 

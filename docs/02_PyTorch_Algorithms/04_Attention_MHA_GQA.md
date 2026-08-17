@@ -1,6 +1,6 @@
 # 04. Attention MHA GQA | 多头注意力
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `基础架构`, `注意力机制`, `推理优化` | **目标人群：** 模型微调与工程部署
+**难度：** Medium | **环境：** CPU-first | **标签：** `基础实现`, `Attention`, `MHA/GQA` | **目标人群：** 基础实现学习者
 
 > 🚀 **云端运行环境**
 >
@@ -113,6 +113,8 @@ Q1 ┤
 Q2 ┤─ K0,V0
 Q3 ┘
 ```
+
+![MHA / GQA / MQA / MLA 头关系](/02_PyTorch_Algorithms/04_attention_heads.svg)
 
 为什么这会影响推理显存：
 

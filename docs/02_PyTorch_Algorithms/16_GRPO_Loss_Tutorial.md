@@ -1,6 +1,6 @@
 # 16. GRPO Loss Tutorial | 群体相对策略优化损失教程
 
-**难度：** Medium-Hard | **环境：** CPU-first | **标签：** `对齐`, `RL`, `GRPO` | **目标人群：** 模型对齐与训练工程
+**难度：** Medium-Hard | **环境：** CPU-first | **标签：** `后训练对齐`, `GRPO`, `奖励优化` | **目标人群：** 训练机制学习者
 
 > 🚀 **云端运行环境**
 >
@@ -110,31 +110,8 @@ $$
 - 如果 `loss` 没有取 `min(surr1, surr2)`，就失去了 clipped objective 的稳定性。
 
 ```python
-def compute_grpo_loss(log_probs_new, log_probs_old, rewards, group_ids, clip_range=0.2, eps=1e-6):
-    """
-    简化版 GRPO Loss。
-    rewards/group_ids 允许把同一 prompt 下的多个候选答案分到一组。
-    """
-    if not (log_probs_new.shape == log_probs_old.shape == rewards.shape == group_ids.shape):
-        raise ValueError("log_probs_new / log_probs_old / rewards / group_ids 的形状必须一致")
+import torch
 
-    # 先做组内中心化 + 标准化，得到更稳的相对优势
-    advantages = torch.zeros_like(rewards)
-    for gid in group_ids.unique(sorted=True):
-        mask = group_ids == gid
-        group_rewards = rewards[mask]
-        centered = group_rewards - group_rewards.mean()
-        denom = group_rewards.std(unbiased=False).clamp_min(eps)
-        advantages[mask] = centered / denom
-
-    # 策略比率与 PPO 式裁剪目标
-    ratio = torch.exp(log_probs_new - log_probs_old)
-    surr1 = ratio * advantages
-    surr2 = torch.clamp(ratio, 1.0 - clip_range, 1.0 + clip_range) * advantages
-
-    # 组内相对优势越高，loss 越小；反之则增大
-    loss = -torch.min(surr1, surr2).mean()
-    return loss, advantages
 ```
 
 

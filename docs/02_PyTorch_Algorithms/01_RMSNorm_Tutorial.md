@@ -1,6 +1,6 @@
 # 01. RMSNorm Tutorial | RMSNorm 教程
 
-**难度：** Easy | **环境：** CPU-first | **标签：** `基础架构`, `PyTorch`, `归一化` | **目标人群：** 模型微调与工程部署
+**难度：** Easy | **环境：** CPU-first | **标签：** `基础实现`, `归一化`, `RMSNorm` | **目标人群：** 基础实现学习者
 
 > 🚀 **云端运行环境**
 >
@@ -75,6 +75,8 @@ x [B, T, D]
 
 output [B, T, D]
 ```
+
+![RMSNorm 在 Block 里的位置](/02_PyTorch_Algorithms/01_rmsnorm_diagram.svg)
 
 放回 LLaMA block 里看，RMSNorm 是 attention / MLP 前的稳定器：
 

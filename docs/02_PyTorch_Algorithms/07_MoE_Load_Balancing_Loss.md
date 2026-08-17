@@ -1,6 +1,6 @@
 # 07. MoE Load Balancing Loss | MoE 负载均衡损失
 
-**难度：** Hard | **环境：** CPU-first | **标签：** `MoE`, `损失函数`, `PyTorch` | **目标人群：** 核心 Infra 与算子开发
+**难度：** Hard | **环境：** CPU-first | **标签：** `模型结构`, `MoE`, `负载均衡` | **目标人群：** 模型结构学习者
 
 > 🚀 **云端运行环境**
 >
@@ -88,6 +88,8 @@ expert 1: █████                 25%
 expert 2: █████                 25%
 expert 3: █████                 25%
 ```
+
+![MoE 负载均衡示意图](/02_PyTorch_Algorithms/07_moe_balance.svg)
 
 负载均衡损失同时看两件事：
 

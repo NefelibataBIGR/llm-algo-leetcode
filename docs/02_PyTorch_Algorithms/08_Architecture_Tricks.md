@@ -1,6 +1,6 @@
 # 08. Architecture Tricks | 架构技巧
 
-**难度：** Easy | **环境：** CPU-first | **标签：** `模型架构`, `架构技巧`, `PyTorch` | **目标人群：** 模型微调与工程部署
+**难度：** Easy | **环境：** CPU-first | **标签：** `模型结构`, `架构技巧`, `Transformer` | **目标人群：** 模型结构学习者
 
 > 🚀 **云端运行环境**
 >
@@ -92,6 +92,8 @@ Transformer Blocks         │
    ▼                       │
 LM Head ───────────────────┘
 ```
+
+![结构技巧放在模型哪里](/02_PyTorch_Algorithms/08_architecture_tricks.svg)
 
 本节两个技巧的定位：
 

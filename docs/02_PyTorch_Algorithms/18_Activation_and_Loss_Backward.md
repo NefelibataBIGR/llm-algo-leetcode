@@ -1,6 +1,6 @@
 # 18. Activation and Loss Backward | 激活与损失反向
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `Backward`, `Activation`, `Loss` | **目标人群：** 反向传播与数值推导入门者
+**难度：** Medium | **环境：** CPU-first | **标签：** `显存优化`, `激活值`, `反向传播` | **目标人群：** 显存优化学习者
 
 > 🚀 **云端运行环境**
 >

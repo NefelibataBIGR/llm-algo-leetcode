@@ -1,6 +1,6 @@
 # 10. LoRA Tutorial | LoRA 教程
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `微调`, `PEFT`, `PyTorch` | **目标人群：** 模型微调与工程部署
+**难度：** Medium | **环境：** CPU-first | **标签：** `训练微调`, `LoRA`, `PEFT` | **目标人群：** 训练机制学习者
 
 > 🚀 **云端运行环境**
 >
@@ -16,7 +16,7 @@
 
 大模型微调最直接的做法是更新全部参数，但这会把显存压力迅速放大：除了模型权重，还要保存梯度和优化器状态。很多场景里，我们真正需要的不是重写整个模型，而是在已有能力上做小幅适配。
 
-LoRA 的思路就是冻结原始权重，只在旁边加一条低秩可训练旁路。本节会实现一个最小 `LoRALinear`，看清矩阵 A、B 如何构成 $\Delta W$，为什么它能用很少的可训练参数完成微调，以及 `target modules / r / alpha / dropout` 这些工程选择如何影响后续 SFT 实验和 LoRA 项目。
+LoRA 的思路就是冻结原始权重，只在旁边加一条低秩可训练旁路。这一节在训练微调路线里承担的是 `09` 的工业分支页：`09` 先把全量 SFT 训练循环和 loss 对齐讲清楚，`10` 再回答为什么实际工程里更常选择 adapter 路线。学完这里，后面再看 `13` 和 `60` 时，你会更容易把 `target modules / r / alpha / dropout` 这些选择放回完整实验和项目交付里；如果这里没学明白，后面很容易只知道 LoRA 更省显存，却说不清它到底替代了哪些全参更新路径、为什么它会成为工业默认选项。
 
 **关键词：** `LoRA`, `PEFT`, `adapter`, `target modules`
 
@@ -30,12 +30,11 @@ LoRA 的思路就是冻结原始权重，只在旁边加一条低秩可训练旁
 
 ## 相关阅读
 
-**导语：** 理解 LoRA 的低秩旁路后，可以继续看端到端微调、显存账本和 4-bit 微调如何把它项目化。
-- [P1: 03. GPU Architecture and Memory | GPU 架构与显存](../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.md)
-- [P1: 06. VRAM Calculation and ZeRO | 显存估算与 ZeRO](../01_Hardware_Math_and_Systems/06_VRAM_Calculation_and_ZeRO.md)
-- [P1: 13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
+**导语：** 理解 LoRA 的低秩旁路后，下一步最自然的是看它怎样进入端到端微调、4-bit 微调和项目化验证。
 - [13. End-to-End Fine-Tuning Experiment | 端到端微调实验](../02_PyTorch_Algorithms/13_End_to_End_Fine_Tuning_Experiment.md)
 - [26. QLoRA and 4bit Quantization | QLoRA 与 4-bit 量化](../02_PyTorch_Algorithms/26_QLoRA_and_4bit_Quantization.md)
+- [60. LoRA Fine-Tuning Project | LoRA 微调项目](../02_PyTorch_Algorithms/60_LoRA_Fine_Tuning_Project.md)
+- [63. LoRA Variants Benchmark | LoRA 变体基准对比](../02_PyTorch_Algorithms/63_LoRA_Variants_Benchmark.md)
   
 ---
 ### Step 1: 核心思想与痛点
@@ -110,6 +109,8 @@ x ─────────────── W0 ─────────�
 | MLP | `gate_proj`, `up_proj`, `down_proj` | 增加任务表达容量 | P1/P2 |
 
 先少挂、能收敛、能解释，再扩展 target modules。项目报告里要同时记录 target modules、rank、alpha、dropout 和 trainable ratio。
+
+![LoRA 旁路结构图](/02_PyTorch_Algorithms/10_lora_adapter.svg)
 
 ###  Step 4: 动手实战
 

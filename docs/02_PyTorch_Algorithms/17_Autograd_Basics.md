@@ -1,6 +1,6 @@
 # 17. Autograd Basics | 自动微分基础
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `Autograd`, `Backward`, `梯度` | **目标人群：** 底层算子开发与算法基础训练
+**难度：** Medium | **环境：** CPU-first | **标签：** `显存优化`, `Autograd`, `反向传播` | **目标人群：** 显存优化学习者
 
 > 🚀 **云端运行环境**
 >
@@ -72,6 +72,9 @@ $$ dS = P \odot (dP - \text{row\_sum}(P \odot dP)) $$
 此时我们已经拿到了 $dS$。因为 $S = Q K^T$（如果带缩放因子则是 $S = \frac{Q K^T}{\sqrt{d}}$）：
 $$ dQ = \frac{dS \cdot K}{\sqrt{d}} $$
 $$ dK = \frac{dS^T \cdot Q}{\sqrt{d}} $$
+
+![Attention backward 图](/02_PyTorch_Algorithms/17_autograd_attention_backward.svg)
+
 ### Step 3: 手撕 PyTorch Autograd Function
 
 现在，把你刚才看到的微积分公式，转化为能够实际运行的代码。我们将继承 `torch.autograd.Function`。

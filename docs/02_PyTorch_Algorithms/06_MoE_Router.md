@@ -1,6 +1,6 @@
 # 06. MoE Router | MoE 路由器
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `模型架构`, `MoE`, `PyTorch` | **目标人群：** 模型微调与工程部署
+**难度：** Medium | **环境：** CPU-first | **标签：** `模型结构`, `MoE`, `Router` | **目标人群：** 模型结构学习者
 
 > 🚀 **云端运行环境**
 >
@@ -75,6 +75,8 @@ top-k select experts
       ├─ expert id:      [e2, e5]
       └─ expert weights: [0.7, 0.3]
 ```
+
+![MoE Router 路由图](/02_PyTorch_Algorithms/06_moe_router.svg)
 
 一个 batch 内可以这样理解：
 

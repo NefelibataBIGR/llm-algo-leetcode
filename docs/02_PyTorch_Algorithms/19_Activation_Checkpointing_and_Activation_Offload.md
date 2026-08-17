@@ -1,6 +1,6 @@
 # 19. Activation Checkpointing and Activation Offload | 激活检查点
 
-**难度：** Hard | **环境：** GPU required
+**难度：** Hard | **环境：** GPU-optional
 
 > 🚀 **云端运行环境**
 >
@@ -9,7 +9,7 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/19_Activation_Checkpointing_and_Activation_Offload.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-**标签：** `激活显存优化`, `Checkpointing` | **目标人群：** 模型微调与工程部署
+**标签：** `显存优化`, `激活值`, `Checkpointing` | **目标人群：** 显存优化学习者
 
 ---
 
@@ -17,7 +17,7 @@
 
 训练大模型时，显存压力不只来自参数本身。前向传播为了后面的反向传播，需要保存大量中间激活；层数越深、序列越长、batch 越大，这部分显存就越容易先把训练卡住。问题变成：能不能少存一些激活，但仍然正确完成反向传播？
 
-本节专注 `activation checkpointing`：用重新计算换显存。我们不会追求完整训练框架，而是通过最小实验观察“省显存”和“多耗时”之间的取舍，为后面的训练性能分析和显存账本打基础。`Activation Offload` 作为搬运路线，后面单独看 `47`。
+本节专注 `activation checkpointing`：用重新计算换显存。我们不会追求完整训练框架，而是通过最小实验观察“省显存”和“多耗时”之间的取舍，为后面的训练性能分析和显存账本打基础。`Activation Offload` 作为搬运路线，后面单独看 `42`。
 
 **关键词：** `checkpointing`, `recompute`
 
@@ -32,12 +32,11 @@
 
 ## 相关阅读
 
-**导语：** 学完激活显存优化后，可以继续看训练性能分析，也可以转向 attention 侧的显存优化，理解训练和推理里的 memory bottleneck 如何分别出现。
+**导语：** 学完激活显存优化后，可以继续看训练性能分析、显存策略对比项目，也可以转向 attention 侧的显存优化，理解训练和推理里的 memory bottleneck 如何分别出现。
 
-- [20. FlashAttention Sim | FlashAttention 模拟](../02_PyTorch_Algorithms/20_FlashAttention_Sim.md)
-- [73. Training Performance Analysis | 训练性能分析](../02_PyTorch_Algorithms/73_Training_Performance_Analysis.md)
 - [42. Activation Offload | 激活卸载](../02_PyTorch_Algorithms/42_Activation_Offload.md)
-- [P1: 13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
+- [73. Training Performance Analysis | 训练性能分析](../02_PyTorch_Algorithms/73_Training_Performance_Analysis.md)
+- [76. Activation Checkpoint Offload Benchmark | Checkpoint 与 Offload 对比项目](../02_PyTorch_Algorithms/76_Activation_Checkpoint_Offload_Benchmark.md)
 
 ---
 
@@ -50,6 +49,8 @@
 > 我们不再保存所有层的激活值，而是每隔几层（比如每个 Transformer Block 的起点）存一个"检查点 (Checkpoint)"。在这两个检查点之间的中间变量，前向算完直接丢弃。
 > 等到反向传播算到这儿时，我们从上一个存活的检查点开始，**把这一小段前向传播再重新算一遍 (Recomputation)** 来恢复激活值，接着立刻算梯度。
 > **结果：多花了大约 20%-30% 的时间重新计算，但节省了成倍甚至数倍的显存。**
+>
+> ![Checkpoint vs Offload 图](/02_PyTorch_Algorithms/19_checkpoint_offload.svg)
 
 ### Step 2: 激活值重计算原理
 在训练极深的模型时，保存前向传播中所有的中间激活值（Activation）会消耗巨大的显存。Gradient Checkpointing 的思想是：只在特定的层（如每 4 层）保存中间结果。在反向传播时，如果需要某个丢弃的激活值，就从最近的 Checkpoint 重新前向计算一次。这用“时间换空间”的方式节省了高达数倍的显存。
@@ -124,64 +125,88 @@ def run_with_checkpointing(blocks: nn.ModuleList, x: torch.Tensor):
 
 ### 测试
 
-运行下面的测试单元，确认开启 checkpointing 后的输出和反向传播都正常，且峰值显存低于基线。
+运行下面的测试单元：无 GPU 时先验证开启 checkpointing 后的输出与反向传播 correctness；有 GPU 时再额外比较峰值显存是否低于基线。
 
 ```python
 # 运行此单元格以测试你的实现
-def test_gradient_checkpointing():
-    if not torch.cuda.is_available():
-        print("⏭️ 忽略测试：无 GPU。本节由于需要测量真实的 CUDA 显存峰值，只能在 GPU 环境运行。")
-        return
-        
-    try:
-        # 清空显存
-        torch.cuda.empty_cache()
-        
-        # 模拟一个深度为 20 层，维度很大的网络
-        dim = 2048
-        num_layers = 20
-        blocks = nn.ModuleList([SimpleTransformerBlock(dim) for _ in range(num_layers)]).cuda()
-        
-        # 模拟一个极长的序列 (Batch=2, Seq=2048)
-        x_input = torch.randn(2, 2048, dim, device='cuda', requires_grad=True)
-        
-        print("1. 测试不开启 Checkpointing 的显存占用...")
-        torch.cuda.reset_peak_memory_stats()
-        out_normal = run_without_checkpointing(blocks, x_input)
-        out_normal.sum().backward()
-        mem_normal = torch.cuda.max_memory_allocated() / (1024 ** 2)
-        print(f"   Peak VRAM (Normal): {mem_normal:.2f} MB")
-        
-        # 清空并重置
-        del out_normal
-        x_input.grad = None
-        torch.cuda.empty_cache()
-        torch.cuda.reset_peak_memory_stats()
-        
-        print("\n2. 测试开启 Checkpointing 的显存占用...")
-        out_ckpt = run_with_checkpointing(blocks, x_input)
-        out_ckpt.sum().backward()
-        mem_ckpt = torch.cuda.max_memory_allocated() / (1024 ** 2)
-        print(f"   Peak VRAM (Checkpointing): {mem_ckpt:.2f} MB")
-        
-        # 计算显存节省比例
-        savings = (1 - mem_ckpt/mem_normal) * 100
-        print(f"\n显存节省: {savings:.1f}%")
-        
-        # 验证显存有所减少（只要有任何节省就算通过）
-        if mem_ckpt <= mem_normal:
-            print(f"✅ 梯度检查点实现通过测试。显存节省 {savings:.1f}%")
-            if savings < 5:
-                print(" 注意：显存节省效果较小。这是因为：")
-                print("   - 模型层数较少（20层），激活值占总显存比例不高")
-                print("   - 在更深的模型（如50+层）和更长的序列（如8k+ tokens）中，节省效果更显著")
-                print("   - 实际大模型训练（如LLaMA、GPT）中，checkpoint可节省50-80%的激活值显存")
-            else:
-                print(" 实际显存节省效果取决于模型深度、序列长度和GPU架构。")
-                print("   在更深的模型（如50+层）和更长的序列（如8k+ tokens）中，节省效果更显著。")
+def _run_cpu_correctness_check():
+    dim = 128
+    num_layers = 4
+    blocks = nn.ModuleList([SimpleTransformerBlock(dim) for _ in range(num_layers)])
+    x_normal = torch.randn(2, 32, dim, requires_grad=True)
+    x_ckpt = x_normal.detach().clone().requires_grad_(True)
+
+    out_normal = run_without_checkpointing(blocks, x_normal)
+    loss_normal = out_normal.sum()
+    loss_normal.backward()
+    grad_normal = x_normal.grad.detach().clone()
+
+    out_ckpt = run_with_checkpointing(blocks, x_ckpt)
+    loss_ckpt = out_ckpt.sum()
+    loss_ckpt.backward()
+    grad_ckpt = x_ckpt.grad.detach().clone()
+
+    assert torch.allclose(out_normal, out_ckpt, atol=1e-5, rtol=1e-4), "checkpoint 前后输出不一致"
+    assert torch.allclose(grad_normal, grad_ckpt, atol=1e-5, rtol=1e-4), "checkpoint 前后输入梯度不一致"
+    print("✅ CPU correctness 测试通过：输出与梯度保持一致。")
+
+
+def _run_gpu_memory_check():
+    # 清空显存
+    torch.cuda.empty_cache()
+
+    # 模拟一个深度为 20 层，维度很大的网络
+    dim = 2048
+    num_layers = 20
+    blocks = nn.ModuleList([SimpleTransformerBlock(dim) for _ in range(num_layers)]).cuda()
+
+    # 模拟一个极长的序列 (Batch=2, Seq=2048)
+    x_input = torch.randn(2, 2048, dim, device='cuda', requires_grad=True)
+
+    print("1. 测试不开启 Checkpointing 的显存占用...")
+    torch.cuda.reset_peak_memory_stats()
+    out_normal = run_without_checkpointing(blocks, x_input)
+    out_normal.sum().backward()
+    mem_normal = torch.cuda.max_memory_allocated() / (1024 ** 2)
+    print(f"   Peak VRAM (Normal): {mem_normal:.2f} MB")
+
+    del out_normal
+    x_input.grad = None
+    torch.cuda.empty_cache()
+    torch.cuda.reset_peak_memory_stats()
+
+    print("\n2. 测试开启 Checkpointing 的显存占用...")
+    out_ckpt = run_with_checkpointing(blocks, x_input)
+    out_ckpt.sum().backward()
+    mem_ckpt = torch.cuda.max_memory_allocated() / (1024 ** 2)
+    print(f"   Peak VRAM (Checkpointing): {mem_ckpt:.2f} MB")
+
+    savings = (1 - mem_ckpt / mem_normal) * 100
+    print(f"\n显存节省: {savings:.1f}%")
+
+    if mem_ckpt <= mem_normal:
+        print(f"✅ GPU 显存测试通过。显存节省 {savings:.1f}%")
+        if savings < 5:
+            print(" 注意：显存节省效果较小。这是因为：")
+            print("   - 模型层数较少（20层），激活值占总显存比例不高")
+            print("   - 在更深的模型（如50+层）和更长的序列（如8k+ tokens）中，节省效果更显著")
+            print("   - 实际大模型训练（如LLaMA、GPT）中，checkpoint 可节省 50-80% 的激活值显存")
         else:
-            print(f"❌ 显存占用反而增加了。请检查实现是否正确。")
-        
+            print(" 实际显存节省效果取决于模型深度、序列长度和 GPU 架构。")
+            print("   在更深的模型（如50+层）和更长的序列（如8k+ tokens）中，节省效果更显著。")
+    else:
+        raise AssertionError("显存占用反而增加了，请检查实现是否正确。")
+
+
+def test_gradient_checkpointing():
+    try:
+        _run_cpu_correctness_check()
+
+        if torch.cuda.is_available():
+            _run_gpu_memory_check()
+        else:
+            print("⏭️ 当前无 GPU，已跳过显存峰值对比；如需验证显存收益，请在 CUDA 环境下重跑。")
+
     except NotImplementedError:
         print("请先完成 TODO 部分的代码！")
         raise
@@ -200,8 +225,9 @@ def test_gradient_checkpointing():
             print("代码可能未完成，导致了运行时错误")
         raise NotImplementedError("请先完成 TODO 部分的代码！") from e
     except Exception as e:
-        print(f"❌ 测试失败: {e}\n提示: 本用例必须在拥有 NVIDIA GPU 的环境下运行。")
+        print(f"❌ 测试失败: {e}")
         raise
+
 
 test_gradient_checkpointing()
 

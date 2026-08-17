@@ -1,6 +1,6 @@
 # 03. RoPE Tutorial | 旋转位置编码教程
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `基础架构`, `位置编码`, `PyTorch` | **目标人群：** 模型微调与工程部署
+**难度：** Medium | **环境：** CPU-first | **标签：** `基础实现`, `位置编码`, `RoPE` | **目标人群：** 基础实现学习者
 
 > 🚀 **云端运行环境**
 >
@@ -68,6 +68,8 @@ token hidden states
                                                               ▼
                                                         weighted sum V
 ```
+
+![RoPE 在 Attention 里的位置](/02_PyTorch_Algorithms/03_rope_rotation.svg)
 
 张量形状可以按这条线记：
 

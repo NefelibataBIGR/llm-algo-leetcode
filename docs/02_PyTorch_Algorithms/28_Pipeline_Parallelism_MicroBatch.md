@@ -1,6 +1,6 @@
 # 28. Pipeline Parallelism MicroBatch | Pipeline 并行微批次
 
-**难度：** Hard | **环境：** CPU-first | **标签：** `分布式训练`, `Pipeline Parallelism`, `调度` | **目标人群：** 分布式训练工程师
+**难度：** Hard | **环境：** CPU-first | **标签：** `并行通信`, `Pipeline Parallelism`, `MicroBatch` | **目标人群：** 并行通信学习者
 
 > 🚀 **云端运行环境**
 >
@@ -60,6 +60,8 @@ Pipeline Parallelism 的关键是把 batch 再拆成多个 micro-batch，让不�
 ### Step 3: 代码实现框架
 
 这一步不是再推一遍公式，而是把上面的调度直觉落成可执行的时间轴：先生成每个时间步里各个 stage 的活跃状态，再统计 active slots，最后得到 bubble ratio。测试会用 `p=8, m=32` 检查结果是否落在合理区间。
+
+![Pipeline bubble 图](/02_PyTorch_Algorithms/28_pipeline_bubble.svg)
 
 
 ```python
