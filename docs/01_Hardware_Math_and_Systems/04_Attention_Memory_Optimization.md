@@ -1,6 +1,6 @@
 # 04. Attention Memory Optimization | 注意力机制变体与显存优化
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `模型架构`, `Attention`, `KV Cache` | **目标人群：** 注意力优化入门者
+**难度：** Medium | **环境：** CPU-first | **标签：** `推理优化`, `Attention`, `KV Cache` | **目标人群：** 系统性能入门者
 
 > 🚀 **云端运行环境**
 >
@@ -10,9 +10,17 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-在自回归生成过程中，大型语言模型面临严重的访存瓶颈 (Memory Bound)，主要原因之一在于每次生成新 Token 时都需要频繁读取之前所有 Token 的 KV Cache。为了减少显存占用并提升推理吞吐量，业界从**模型架构改进**（如 MQA/GQA/MLA）和**底层系统内存管理**（如 PagedAttention）两个维度提出了多种解决方案。
+---
+
+## 本节导读
+
+自回归生成里的 attention 往往不是单纯算得慢，而是读得太多。每生成一个新 token，都要反复访问之前积累下来的 KV cache；上下文一长，瓶颈就会很快从矩阵乘法转到显存访问和缓存组织上。也正因为如此，注意力优化既有模型侧的结构改动，也有系统侧的内存管理改动。
+
+这是一节**机制前置节**：在整个教程的纵向主线里，它属于 `Part 01` 的推理与显存基础页，优先服务 `推理优化路线`，也给 `显存优化路线` 补一层 KV cache 视角。学完这里，后面再看 `14 / 22 / 34 / 66` 时，你会更容易分清某种优化到底是在改 attention 结构、压 KV cache 规模，还是在调整缓存组织；如果这里没学明白，后面很容易把 `MQA / GQA / MLA` 和 `PagedAttention` 混成一类优化手段。按专题归类，这一页同时属于 `推理优化专题`，并和 `显存优化专题` 共享一部分问题入口。
 
 **关键词：** `MHA`, `MQA`, `GQA`
+
+---
 ## 前置阅读
 **导语：** 这一页先把单卡硬件、通信和显存推导接上，再进入注意力变体和推理内存优化，方便把 KV Cache 的问题放回整体系统里看。
 
@@ -20,10 +28,12 @@
 - [Group 1C: Distributed Communication and Memory Sharing | 1C: 多卡通信与显存共享](./1C.md)
 - [06. VRAM Calculation and ZeRO | 显存计算与 ZeRO 优化](./06_VRAM_Calculation_and_ZeRO.md)
 ## 相关阅读
-**导语：** 如果要继续追到实战实现，可以把下面这些页面串起来看：
-- [04. Attention MHA GQA | 多头注意力](../02_PyTorch_Algorithms/04_Attention_MHA_GQA.md)：先把多头到分组注意力的演进补上。
-- [09. Triton PagedAttention | KV Cache 间接寻址](../03_Triton_Kernels/09_Triton_PagedAttention.md)：再看分页注意力如何减少 KV Cache 压力。
-- [08. Triton Flash Attention | 真正的 Flash Attention 前向算子](../03_Triton_Kernels/08_Triton_Flash_Attention.md)：最后把 IO / 计算融合的优化思路串起来。
+**导语：** 如果要继续把注意力优化接到具体实现和推理系统里，可以沿这条主线继续往下看。
+- [04. Attention MHA GQA | 多头注意力](../02_PyTorch_Algorithms/04_Attention_MHA_GQA.md)
+- [09. Triton PagedAttention | KV Cache 间接寻址](../03_Triton_Kernels/09_Triton_PagedAttention.md)
+- [08. Triton Flash Attention | 真正的 Flash Attention 前向算子](../03_Triton_Kernels/08_Triton_Flash_Attention.md)
+
+---
 ## Q1：自回归生成中，标准多头注意力 (MHA) 的 KV Cache 显存占用是如何计算的？为什么它是推理的主要瓶颈？
 
 <details>

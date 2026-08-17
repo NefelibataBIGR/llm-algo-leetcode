@@ -1,6 +1,6 @@
 # 03. GPU Architecture and Memory | GPU 物理架构与内存层级
 
-**难度：** Hard | **环境：** GPU optional | **标签：** `硬件架构`, `GPU`, `内存层级` | **目标人群：** 核心 Infra 与算子开发
+**难度：** Hard | **环境：** GPU optional | **标签：** `硬件系统`, `GPU`, `内存层级` | **目标人群：** 硬件约束学习者
 
 > 🚀 **云端运行环境**
 >
@@ -10,24 +10,31 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-先抓住 GPU 的物理层级、Tensor Core 和 HBM / SRAM 之间的数量级差异，再去看 Triton/CUDA 算子和 FlashAttention，硬件直觉会更稳。
+---
+
+## 本节导读
+
+理解大模型系统瓶颈，不能只停留在“GPU 很快”这种抽象印象上。真正决定 attention kernel、prefill 吞吐和算子优化边界的，往往是更底层的物理事实：Tensor Core 适合什么计算模式，HBM 和 SRAM 的带宽差距有多大，数据为什么一旦反复搬运就会让算子很快变成 memory bound。
+
+这是一节**硬件前置节**：在整个教程的纵向主线里，它属于 `Part 01` 的硬件与访存基础页，优先服务 `推理优化路线`。学完这里，后面再看 `20 / 34 / 66` 时，你会更容易建立“硬件层级 -> 访存瓶颈 -> attention kernel”这条判断链；如果这里没学明白，后面很容易把 FlashAttention、cache 和 kernel 优化都误看成单纯算力问题，而忽略带宽和存储层级才是很多瓶颈的起点。按专题归类，这一页主要属于 `推理优化专题`，也给 `编译与图优化专题` 提供硬件背景前置。
 
 **关键词：** `Tensor Core`, `SRAM`, `HBM`
 
-这一页会进一步拆开 GPU 的物理架构、内存结构 (SRAM vs HBM)，以及它们在现代大模型算法（如 FlashAttention）中的实际应用。
+---
 
 ## 前置阅读
-**导语：** 这一页主要承接单卡硬件、访存优化和性能分析，所以最好先把 1B、1D 和 profiling 的直觉接上，再看物理架构细节。
+**导语：** 这一页主要承接单卡硬件、访存优化和性能分析；如果你正沿 `推理优化路线` 学 `20 / 34 / 66`，这里就是最直接的硬件前置，因为后面 prefill attention 为什么会被 HBM 带宽卡住、为什么 tile 和 SRAM 复用会影响 TTFT，本质上都先靠这里建立直觉。
 
 - [Group 1B: Single-GPU Hardware and Memory Optimization | 1B: 单卡硬件与访存优化](./1B.md)
 - [Group 1D: Heterogeneous Scheduling and Operator Programming | 1D: 异构调度与算子编程](./1D.md)
 - [13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](./13_Profiling_and_Bottleneck_Analysis.md)
 
 ## 相关阅读
-**导语：** 如果想把“硬件层级 -> 访存瓶颈 -> 优化方法”这条线继续往前推，可以接着看：
-- [19. Operator Fusion Introduction | 算子融合导论](./19_Operator_Fusion_Introduction.md)：先看算子融合怎么减少搬运。
-- [24. SRAM Optimization Techniques | SRAM 优化技术](./24_SRAM_Optimization_Techniques.md)：再看片上缓存和 SRAM 如何影响性能。
-- [04. Attention Variants and Memory Optimization | 注意力机制变体与显存优化](./04_Attention_Memory_Optimization.md)：最后回到注意力变体和显存优化。
+**导语：** 如果想把硬件层级判断继续接到访存优化、attention kernel 和推理验证上，可以沿这条主线继续往下看。
+- [24. SRAM Optimization Techniques | SRAM 优化技术](./24_SRAM_Optimization_Techniques.md)
+- [04. Attention Variants and Memory Optimization | 注意力机制变体与显存优化](./04_Attention_Memory_Optimization.md)
+- [20. FlashAttention Sim | FlashAttention 模拟](../02_PyTorch_Algorithms/20_FlashAttention_Sim.md)
+---
 ## Q1：简述自 V100 以来 NVIDIA GPU 架构的演进，以及为了适应大模型计算做出了哪些核心改变？
 
 <details>

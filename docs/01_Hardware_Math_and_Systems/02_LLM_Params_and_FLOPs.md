@@ -1,6 +1,6 @@
 # 02. LLM Params and FLOPs | 大模型参数量与算力推导
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `数学推导`, `Transformer` | **目标人群：** 通用基础 (算法/Infra)
+**难度：** Medium | **环境：** CPU-first | **标签：** `数值基础`, `参数估算`, `FLOPs` | **目标人群：** 基础概念补齐者
 
 > 🚀 **云端运行环境**
 >
@@ -10,22 +10,31 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
+---
+
+## 本节导读
+
 先把参数量的构成拆开，再把前向推理与完整训练的 FLOPs 粗算清楚，这样后面的训练成本、吞吐评估和模型选型才会有统一的底座。
+
+这一页在整个教程的纵向主线里属于 `Part 01` 的规模估算基础页，优先服务 `监督微调路线` 的训练预算与项目估算前置。学完这里，后面再看 `10 / 13 / 60 / 63` 时，你会更容易分清全参模型参数量、训练 FLOPs 和 LoRA 可训练参数比例之间的关系；如果这里没学明白，后面很容易只比较模型名字和参数规模，却判断不清为什么某个 LoRA 方案在资源和收益上更值得采用。按专题归类，这一页主要属于 `监督微调路线` 的预算前置，也和 `Profiling 专题` 共享一部分吞吐估算视角。
 
 **关键词：** `parameters`, `FLOPs`, `MFU`
 
+---
+
 ## 前置阅读
-**导语：** 这一页要把“参数量 -> FLOPs -> 训练成本”这条线讲完整，所以最好先把数据格式和显存推导的直觉接上，再来看算力公式。
+**导语：** 这一页要把“参数量 -> FLOPs -> 训练成本”这条线讲完整；如果你正在走 `监督微调路线`，这里会直接服务后面的 `10 / 13 / 60 / 63`，因为 LoRA 的可训练参数比例、端到端实验的预算口径和项目里值不值得采用某个方案，本质上都先靠这里建立数量级直觉。
 
 - [Group 0B: PyTorch Tensors and Autograd | 0B: PyTorch 张量与自动求导](../00_Prerequisites/0B.md)
 - [01. Data Types and Precision | 大模型的数据格式与混合精度](./01_Data_Types_and_Precision.md)
 
 ## 相关阅读
-**导语：** 如果想继续把“参数量 -> 显存 -> 训练成本 -> 并行策略”这条线补完整，可以继续看：
-- [06. VRAM Calculation and ZeRO | 显存计算与 ZeRO 优化](./06_VRAM_Calculation_and_ZeRO.md)：把训练 / 推理阶段的显存拆分接上。
-- [22. MoE Parameter and Compute | MoE 模型参数量计算](./22_MoE_Parameter_and_Compute.md)：补充 MoE 的参数量和计算量变化。
-- [26. Parallel Strategy Decision Framework | 并行策略决策框架](./26_Parallel_Strategy_Decision_Framework.md)：最后看并行策略怎么影响整体成本。
+**导语：** 如果想继续把参数规模直觉接到显存预算、并行成本和微调方案判断上，可以沿这条主线继续往下看。
+- [06. VRAM Calculation and ZeRO | 显存计算与 ZeRO 优化](./06_VRAM_Calculation_and_ZeRO.md)
+- [22. MoE Parameter and Compute | MoE 模型参数量计算](./22_MoE_Parameter_and_Compute.md)
+- [10. LoRA Tutorial | LoRA 教程](../02_PyTorch_Algorithms/10_LoRA_Tutorial.md)
 
+---
 ## Q1：假设隐藏层维度为 $d$，词表大小为 $V$。请推导一个包含 $L$ 层的标准 Transformer Decoder 的总参数量。
 
 <details>
