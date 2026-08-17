@@ -1,5 +1,5 @@
 # 41. FP8 and KV Cache Quantization | FP8 与 KV Cache 量化
-**难度：** Hard | **环境：** GPU required | **标签：** `量化`, `FP8`, `KV Cache` | **目标人群：** 推理部署与系统工程
+**难度：** Hard | **环境：** CPU-first | **标签：** `量化压缩`, `FP8`, `KV Cache` | **目标人群：** 量化压缩学习者
 
 > 🚀 **云端运行环境**
 >
@@ -13,7 +13,7 @@
 
 ## 本节导读
 
-第 39 节关注的是权重量化：把模型参数压得更小，降低加载和访存成本。但推理阶段的压力不只来自权重。长上下文生成时，KV Cache 会随着序列长度和并发请求持续增长；同时，部分激活或中间张量也会带来带宽压力。只压权重，不能完全解决长上下文推理的显存和带宽瓶颈。
+第 40 节关注的是权重量化：把模型参数压得更小，降低加载和访存成本。但推理阶段的压力不只来自权重。长上下文生成时，KV Cache 会随着序列长度和并发请求持续增长；同时，部分激活或中间张量也会带来带宽压力。只压权重，不能完全解决长上下文推理的显存和带宽瓶颈。
 
 本节用一个极简 `FP8KVCacheSim` 模拟两类推理量化：用对称低精度量化近似 FP8 张量，用分组 scale 量化 KV Cache。学完后，你应该能看清“量化值、scale、反量化、误差检查”这条闭环，以及为什么 KV Cache 通常需要按最后一维分组处理。
 
@@ -23,20 +23,17 @@
 
 ## 前置阅读
 
-**导语：** 先看权重量化、PagedAttention 和显存模型，再看 FP8 与 KV Cache 量化会更容易。
-
-- [40. GPTQ and AWQ Weight Quantization | GPTQ 与 AWQ 权重量化](../02_PyTorch_Algorithms/40_GPTQ_and_AWQ_Weight_Quantization.md)
-- [25. Quantization W8A16 | W8A16 量化](../02_PyTorch_Algorithms/25_Quantization_W8A16.md)
-- [22. vLLM PagedAttention | vLLM PagedAttention](../02_PyTorch_Algorithms/22_vLLM_PagedAttention.md)
-- [P1: 06. VRAM Calculation and ZeRO | 显存计算与 ZeRO 优化](../01_Hardware_Math_and_Systems/06_VRAM_Calculation_and_ZeRO.md)
+- [22. vLLM PagedAttention | vLLM 分页注意力](./22_vLLM_PagedAttention.md)
+- [25. Quantization W8A16 | W8A16 量化](./25_Quantization_W8A16.md)
+- [40. GPTQ and AWQ Weight Quantization | GPTQ 与 AWQ 权重量化](./40_GPTQ_and_AWQ_Weight_Quantization.md)
 
 ## 相关阅读
 
-**导语：** FP8 与 KV Cache 量化之后，可以继续看 KV cache 调度和通信 profiling。
+- [37. KV Cache Scheduling | KV Cache 调度](./37_KV_Cache_Scheduling.md)
+- [67. Quantized Inference and Deployment | 量化推理与部署](./67_Quantized_Inference_and_Deployment.md)
+- [75. Memory Budget Compression Project | 显存预算压缩项目](./75_Memory_Budget_Compression_Project.md)
 
-- [37. KV Cache Scheduling | KV Cache 调度](../02_PyTorch_Algorithms/37_KV_Cache_Scheduling.md)
-- [46. Communication Profiling with NCCL | NCCL 通信性能剖析](../02_PyTorch_Algorithms/46_Communication_Profiling_with_NCCL.md)
-- [P1: 14. FlashAttention Memory Model | FlashAttention 显存模型](../01_Hardware_Math_and_Systems/14_FlashAttention_Memory_Model.md)
+---
 
 ### Step 1: 原理与痛点
 
@@ -94,6 +91,13 @@ KV Cache 分组量化只是把这个过程应用到多个小块上。假设最�
 
 完成后观察测试结果：`fp8_q` 和 `kv_q` 应该使用 int8 容器保存低精度值，`fp8_scale` 和 `kv_scale` 负责恢复数值范围，恢复后的 hidden states 和 KV Cache 形状应与原始输入一致。
 
+### 提示
+
+- 先把 `_sym_quantize` 这条最小链路补完：`absmax -> scale -> q`。后面 FP8 和 KV Cache 都会复用这套逻辑。
+- `quantize_fp8` 这一段只是在记录状态，不要重复发明新的量化规则。
+- KV Cache 的关键不是新公式，而是“按最后一维分组，再对每组复用同一套量化/反量化逻辑”。
+- `mse` 放在最后做记账即可。先保证量化、恢复和 shape 都跑通，再回来看误差。
+
 
 ```python
 import torch
@@ -124,23 +128,13 @@ class FP8KVCacheSim(nn.Module):
     def _sym_quantize(self, x: torch.Tensor, qmax: int):
         x = x.detach().float()
         # ==========================================
-        # TODO 1: 计算张量绝对最大值
-        # 提示: 对 abs(x) 取最大值
+        # TODO 1: 补完对称量化闭环
+        # 提示: 先算 absmax，再算 scale = qmax / absmax.clamp_min(self.eps)，
+        # 最后做 round + clamp + int8 转换得到 q。
         # ==========================================
         # absmax = ???
-        absmax = TODO_ABSMAX
-        # ==========================================
-        # TODO 2: 计算对称量化 scale
-        # 提示: scale = qmax / absmax，并用 eps 避免除零
-        # ==========================================
         # scale = ???
-        scale = TODO_SCALE
-        # ==========================================
-        # TODO 3: 完成 round + clamp + int8 转换
-        # 提示: 先 x * scale，再 round，最后 clamp 到 [-qmax, qmax]
-        # ==========================================
         # q = ???
-        q = TODO_Q
         return q, scale
 
     def _sym_dequantize(self, q: torch.Tensor, scale: torch.Tensor):
@@ -151,11 +145,11 @@ class FP8KVCacheSim(nn.Module):
         self.fp8_q = q
         self.fp8_scale = scale
         # ==========================================
-        # TODO 4: 记录 FP8 近似张量的原始形状
-        # 提示: 后续恢复或检查时需要知道输入 shape
+        # TODO 2: 补完 FP8 / KV Cache 的状态记录
+        # 提示: 这里先记录 self.fp8_shape = tuple(x.shape)。
+        # 后面 quantize_kv_cache 里再补 n_groups，用它初始化 scales。
         # ==========================================
         # self.fp8_shape = ???
-        self.fp8_shape = TODO_FP8_SHAPE
         return q, scale
 
     def dequantize_fp8(self):
@@ -170,11 +164,10 @@ class FP8KVCacheSim(nn.Module):
 
         last_dim = kv.size(-1)
         # ==========================================
-        # TODO 5: 计算 KV cache 最后一维需要切成多少组
-        # 提示: 使用向上取整，最后一组可以不足 kv_group_size
+        # TODO 2: 补完 FP8 / KV Cache 的状态记录
+        # 提示: n_groups 用向上取整计算，最后一组可以不足 kv_group_size。
         # ==========================================
         # n_groups = ???
-        n_groups = TODO_N_GROUPS
         qkv = torch.zeros_like(kv, dtype=torch.int8)
         scales = torch.zeros(kv.shape[:-1] + (n_groups,), dtype=kv.dtype, device=kv.device)
 
@@ -215,11 +208,11 @@ class FP8KVCacheSim(nn.Module):
                 end = min(start + self.kv_group_size, last_dim)
                 scale = flat_scale[row, g]
                 # ==========================================
-                # TODO 6: 恢复当前 KV group 的浮点近似值
-                # 提示: 复用 _sym_dequantize，并写回 flat_out 的对应区间
+                # TODO 3: 补完恢复与误差检查
+                # 提示: 先用当前 group 的 scale 恢复 flat[row, start:end]，
+                # 再把 restored_chunk 写回 flat_out 的同一区间。
                 # ==========================================
                 # restored_chunk = ???
-                restored_chunk = TODO_RESTORE
                 flat_out[row, start:end] = restored_chunk
 
         return flat_out.reshape(self.kv_shape)
@@ -243,11 +236,10 @@ class FP8KVCacheSim(nn.Module):
 
     def mse(self, original: torch.Tensor, restored: torch.Tensor) -> torch.Tensor:
         # ==========================================
-        # TODO 7: 计算原始张量与恢复张量之间的均方误差
-        # 提示: 先转 float，相减平方，再求平均
+        # TODO 3: 补完恢复与误差检查
+        # 提示: 把 original / restored 转成 float 后，相减平方再求平均。
         # ==========================================
         # error = ???
-        error = TODO_MSE
         return error
 
 ```
@@ -328,21 +320,14 @@ class FP8KVCacheSim(nn.Module):
     def _sym_quantize(self, x: torch.Tensor, qmax: int):
         x = x.detach().float()
         # ==========================================
-        # TODO 1: 计算张量绝对最大值
-        # 提示: 对 abs(x) 取最大值
+        # TODO 1: 补完对称量化闭环
+        # 提示: 先算 absmax，再算 scale = qmax / absmax.clamp_min(self.eps)，
+        # 最后做 round + clamp + int8 转换得到 q。
         # ==========================================
         # absmax = ???
         absmax = torch.max(torch.abs(x))
-        # ==========================================
-        # TODO 2: 计算对称量化 scale
-        # 提示: scale = qmax / absmax，并用 eps 避免除零
-        # ==========================================
         # scale = ???
         scale = qmax / absmax.clamp_min(self.eps)
-        # ==========================================
-        # TODO 3: 完成 round + clamp + int8 转换
-        # 提示: 先 x * scale，再 round，最后 clamp 到 [-qmax, qmax]
-        # ==========================================
         # q = ???
         q = torch.clamp(torch.round(x * scale), -qmax, qmax).to(torch.int8)
         return q, scale
@@ -355,8 +340,9 @@ class FP8KVCacheSim(nn.Module):
         self.fp8_q = q
         self.fp8_scale = scale
         # ==========================================
-        # TODO 4: 记录 FP8 近似张量的原始形状
-        # 提示: 后续恢复或检查时需要知道输入 shape
+        # TODO 2: 补完 FP8 / KV Cache 的状态记录
+        # 提示: 这里先记录 self.fp8_shape = tuple(x.shape)。
+        # 后面 quantize_kv_cache 里再补 n_groups，用它初始化 scales。
         # ==========================================
         # self.fp8_shape = ???
         self.fp8_shape = tuple(x.shape)
@@ -374,8 +360,8 @@ class FP8KVCacheSim(nn.Module):
 
         last_dim = kv.size(-1)
         # ==========================================
-        # TODO 5: 计算 KV cache 最后一维需要切成多少组
-        # 提示: 使用向上取整，最后一组可以不足 kv_group_size
+        # TODO 2: 补完 FP8 / KV Cache 的状态记录
+        # 提示: n_groups 用向上取整计算，最后一组可以不足 kv_group_size。
         # ==========================================
         # n_groups = ???
         n_groups = (last_dim + self.kv_group_size - 1) // self.kv_group_size
@@ -419,8 +405,9 @@ class FP8KVCacheSim(nn.Module):
                 end = min(start + self.kv_group_size, last_dim)
                 scale = flat_scale[row, g]
                 # ==========================================
-                # TODO 6: 恢复当前 KV group 的浮点近似值
-                # 提示: 复用 _sym_dequantize，并写回 flat_out 的对应区间
+                # TODO 3: 补完恢复与误差检查
+                # 提示: 先用当前 group 的 scale 恢复 flat[row, start:end]，
+                # 再把 restored_chunk 写回 flat_out 的同一区间。
                 # ==========================================
                 # restored_chunk = ???
                 restored_chunk = self._sym_dequantize(flat[row, start:end], scale)
@@ -447,8 +434,8 @@ class FP8KVCacheSim(nn.Module):
 
     def mse(self, original: torch.Tensor, restored: torch.Tensor) -> torch.Tensor:
         # ==========================================
-        # TODO 7: 计算原始张量与恢复张量之间的均方误差
-        # 提示: 先转 float，相减平方，再求平均
+        # TODO 3: 补完恢复与误差检查
+        # 提示: 把 original / restored 转成 float 后，相减平方再求平均。
         # ==========================================
         # error = ???
         error = torch.mean((original.float() - restored.float()) ** 2)
@@ -458,40 +445,11 @@ class FP8KVCacheSim(nn.Module):
 
 ### 解析
 
-**1. TODO 1: 计算绝对最大值**
-- **实现方式**：`absmax = torch.max(torch.abs(x))`
-- **关键点**：对称量化需要先确定张量的动态范围，绝对最大值决定正负两侧的缩放尺度
-- **技术细节**：后续会用 `clamp_min(self.eps)` 避免全零张量导致除零
+TODO 1：`_sym_quantize` 负责补完最小对称量化闭环。先用 `absmax = torch.max(torch.abs(x))` 找到动态范围，再用 `scale = qmax / absmax.clamp_min(self.eps)` 计算缩放系数，最后做 `round + clamp + int8` 得到低精度张量 `q`。
 
-**2. TODO 2: 计算量化 scale**
-- **实现方式**：`scale = qmax / absmax.clamp_min(self.eps)`
-- **关键点**：这里的 scale 表示浮点值乘以多少后能映射到整数区间
-- **技术细节**：本节采用 `q = round(x * scale)` 和 `x_hat = q / scale` 这一组互逆写法
+TODO 2：`quantize_fp8` 和 `quantize_kv_cache` 负责补完状态记录。`self.fp8_shape = tuple(x.shape)` 用来保存原始 FP8 近似张量形状；`n_groups = (last_dim + self.kv_group_size - 1) // self.kv_group_size` 则决定 KV Cache 沿最后一维要切成多少组，并据此初始化分组 scale。
 
-**3. TODO 3: 生成 int8 量化值**
-- **实现方式**：`q = torch.clamp(torch.round(x * scale), -qmax, qmax).to(torch.int8)`
-- **关键点**：`round` 产生整数近似，`clamp` 防止越界，`int8` 容器保存低精度值
-- **技术细节**：这里是教学模拟，不等价于真实硬件 FP8 编码，但保留了低精度存储和 scale 恢复的核心链路
-
-**4. TODO 4: 记录 FP8 张量形状**
-- **实现方式**：`self.fp8_shape = tuple(x.shape)`
-- **关键点**：量化状态不仅包括整数值和 scale，也包括原始张量的结构信息
-- **技术细节**：本节的 FP8 近似使用全局 scale，因此 shape 主要用于状态检查和教学可读性
-
-**5. TODO 5: 计算 KV 分组数量**
-- **实现方式**：`n_groups = (last_dim + self.kv_group_size - 1) // self.kv_group_size`
-- **关键点**：KV Cache 沿最后一维分组，最后一组可以不足 `kv_group_size`
-- **技术细节**：分组 scale 可以降低局部极端值对整条 hidden dimension 的影响
-
-**6. TODO 6: 恢复 KV group**
-- **实现方式**：`restored_chunk = self._sym_dequantize(flat[row, start:end], scale)`
-- **关键点**：每个 group 必须使用自己的 scale 恢复，不能混用其他 group 的 scale
-- **技术细节**：代码先把 KV Cache flatten 成二维，再按最后一维切 group，最后 reshape 回原始形状
-
-**7. TODO 7: 计算重构误差**
-- **实现方式**：`error = torch.mean((original.float() - restored.float()) ** 2)`
-- **关键点**：MSE 用来衡量量化恢复后的数值偏差
-- **技术细节**：误差越小不一定代表端到端效果越好，真实部署仍需要结合任务指标和吞吐/显存收益评估
+TODO 3：`dequantize_kv_cache` 和 `mse` 负责补完恢复与误差检查。前者用每个 group 自己的 scale 恢复 `restored_chunk`，再写回 `flat_out`；后者用 `torch.mean((original.float() - restored.float()) ** 2)` 计算重构误差，完成“量化 -> 恢复 -> 评估”的最小闭环。
 
 **FP8 与 KV Cache 量化核心机制**
 - **FP8 近似**：用低精度值和 scale 保存张量，降低带宽和存储压力

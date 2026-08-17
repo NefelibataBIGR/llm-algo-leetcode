@@ -1,5 +1,5 @@
 # 40. GPTQ and AWQ Weight Quantization | GPTQ 与 AWQ 权重量化
-**难度：** Hard | **环境：** GPU required | **标签：** `量化`, `GPTQ`, `AWQ` | **目标人群：** 模型压缩与部署工程
+**难度：** Hard | **环境：** CPU-first | **标签：** `量化压缩`, `权重量化`, `GPTQ/AWQ` | **目标人群：** 量化压缩学习者
 
 > 🚀 **云端运行环境**
 >
@@ -23,22 +23,18 @@
 
 ## 前置阅读
 
-**导语：** 先把 W8A16、QLoRA 和量化理论理顺，再看 GPTQ / AWQ 会更容易。
-
-- [25. Quantization W8A16 | W8A16 量化](../02_PyTorch_Algorithms/25_Quantization_W8A16.md)
-- [26. QLoRA and 4bit Quantization | QLoRA 与 4-bit 量化](../02_PyTorch_Algorithms/26_QLoRA_and_4bit_Quantization.md)
+- [25. Quantization W8A16 | W8A16 量化](./25_Quantization_W8A16.md)
+- [26. QLoRA and 4bit Quantization | QLoRA 与 4-bit 量化](./26_QLoRA_and_4bit_Quantization.md)
 - [P1: 21. Quantization Theory and INT4/INT8 | 量化理论与 INT4/INT8](../01_Hardware_Math_and_Systems/21_Quantization_Theory_and_INT4_INT8.md)
-- [P1: 01. Data Types and Precision | 大模型的数据格式与混合精度](../01_Hardware_Math_and_Systems/01_Data_Types_and_Precision.md)
 
 ## 相关阅读
 
-**导语：** 权重量化之后，可以继续看 FP8、KV Cache Quantization 和 cache scheduling。
-
-- [41. FP8 and KV Cache Quantization | FP8 与 KV Cache 量化](../02_PyTorch_Algorithms/41_FP8_and_KV_Cache_Quantization.md)
-- [37. KV Cache Scheduling | KV Cache 调度](../02_PyTorch_Algorithms/37_KV_Cache_Scheduling.md)
-- [P1: 03. GPU Architecture and Memory | GPU 物理架构与内存层级](../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.md)
+- [41. FP8 and KV Cache Quantization | FP8 与 KV Cache 量化](./41_FP8_and_KV_Cache_Quantization.md)
+- [67. Quantized Inference and Deployment | 量化推理与部署](./67_Quantized_Inference_and_Deployment.md)
+- [75. Memory Budget Compression Project | 显存预算压缩项目](./75_Memory_Budget_Compression_Project.md)
 
 ---
+
 ### Step 1: 原理与痛点
 
 > **为什么不能只把 W8A16 继续压到 4-bit？**
