@@ -1,6 +1,6 @@
 # 66. Inference Performance Comparison | 推理性能对比实验
 
-**难度：** Hard | **环境：** CPU-first | **标签：** `推理`, `benchmark`, `profiling` | **目标人群：** 推理工程与性能分析
+**难度：** Hard | **环境：** CPU-first | **标签：** `推理优化`, `基准对比`, `性能对比` | **目标人群：** 项目决策练习者
 
 > 🚀 **云端运行环境**
 >
@@ -14,39 +14,31 @@
 
 ## 本节导读
 
-推理优化里最容易出现的问题是只看单点收益：某个方案 latency 更低，另一个方案 throughput 更高，还有一个方案显存更省。如果模型、输入、batch size、精度、KV cache 策略和评测口径没有固定，这些数字很难放在一起比较，也很难支撑工程选型。
+这一节对应的真实项目问题不是“某个推理优化技巧能不能带来收益”，而是“在既定 workload、延迟约束和显存预算下，哪种推理方案最值得采用”。真实工程里，读者真正要判断的不是单点 latency 或单次吞吐，而是 workload、backend、batch、cache policy 和评测口径固定之后，baseline 与 candidate 是否还能做出可解释的选型结论。
 
-本节把推理优化做成一个对比项目：围绕同一个 workload，拆开 prefill 和 decode，记录 TTFT、TPOT、throughput、peak memory 和 cache 策略，再回答“在给定约束下哪种推理方案最划算”。代码区实现最小可复用的项目模板：推理配置、prefill/decode 指标汇总、瓶颈诊断、候选方案比较和最终决策。
+本节的核心矛盾是吞吐、延迟与显存预算之间的权衡：有的方案能压低 TTFT，有的方案能提高 throughput，还有的方案能节省 peak memory，但这些收益未必能同时成立。做完这一节，你应该能输出一份 baseline vs candidate 的推理选型结论，而不只是收集几组 benchmark 数字。
+
+因此，这一页把推理性能对比收成一个最小项目交付入口：先固定 workload 与 baseline，再拆开 prefill 和 decode 记录指标，用统一口径诊断瓶颈、比较候选方案，并把结论收成 `accept / tune / reject` 的项目报告。它直接承接 `20 / 21 / 22` 和 `P1:11` 的推理机制与 KV cache 直觉，并继续通向 `68` 的推测解码基准和 `67` 的量化推理部署。
 
 **关键词：** `benchmark`, `TTFT`, `TPOT`, `throughput`, `KV cache`
 
 ---
 ## 前置阅读
 
-**导语：** 先理解 Attention、KV cache 和显存层级，再做推理性能对比；本节不重复讲每个优化机制，而是把它们放到同一个 benchmark 口径里比较。
-- [04. Attention MHA/GQA | 多头注意力](./04_Attention_MHA_GQA.md)
-- [20. FlashAttention Sim | FlashAttention 模拟](./20_FlashAttention_Sim.md)
+**导语：** 先把解码、KV cache 和推理后端的最小口径理顺，再做推理性能对比；本节不重复讲每个优化机制，而是把它们放到同一个 benchmark 口径里比较。
 - [21. Decoding Strategies | 解码策略](./21_Decoding_Strategies.md)
 - [22. vLLM PagedAttention | vLLM 分页注意力](./22_vLLM_PagedAttention.md)
-- [P1: 03. GPU Architecture and Memory | GPU 物理架构与内存层级](../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.md)
+- [20. FlashAttention Sim | FlashAttention 模拟](./20_FlashAttention_Sim.md)
 - [P1: 11. KV Cache and Memory Growth | KV Cache 与显存增长](../01_Hardware_Math_and_Systems/11_KV_Cache_and_Memory_Growth.md)
-- [P1: 13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
 
 ## 相关阅读
 
-**导语：** 如果要继续深入某一类优化，可以沿着 FlashAttention、推测解码、prefix cache、调度和量化部署继续展开。
-- [23. Speculative Decoding | 推测解码](./23_Speculative_Decoding.md)
-- [24. SGLang RadixAttention | SGLang RadixAttention](./24_SGLang_RadixAttention.md)
+**导语：** 做完基础推理对比后，最自然的下一步是继续拆具体优化收益，或把结论推进到量化部署。
+- [68. Speculative Decoding Benchmark | 推测解码基准](./68_Speculative_Decoding_Benchmark.md)
 - [67. Quantized Inference and Deployment | 量化推理与部署](./67_Quantized_Inference_and_Deployment.md)
-- [34. Prefix Caching and Chunked Prefill | Prefix Caching 与 Chunked Prefill](./34_Prefix_Caching_and_Chunked_Prefill.md)
-- [35. Multi-Token Decoding | 多 Token 解码](./35_Multi_Token_Decoding.md)
-- [36. Decode Scheduling | 解码调度](./36_Decode_Scheduling.md)
-- [40. GPTQ and AWQ Weight Quantization | GPTQ 与 AWQ 权重量化](./40_GPTQ_and_AWQ_Weight_Quantization.md)
-- [41. FP8 and KV Cache Quantization | FP8 与 KV Cache 量化](./41_FP8_and_KV_Cache_Quantization.md)
-- [37. KV Cache Scheduling | KV Cache 调度](./37_KV_Cache_Scheduling.md)
 
 ---
-### Step 1: 定义 workload 与固定 baseline
+### Step 1: 定义推理对比项目目标
 先回答一个问题：在同一模型、同一输入集和同一硬件环境下，哪种推理策略更划算？
 
 - 固定模型、backend、batch size、prompt tokens、generated tokens、dtype、cache policy 和评测轮数。
@@ -55,18 +47,18 @@
 - 统一核心指标：TTFT、TPOT、generated tokens/s、total latency、peak memory。
 - 这节的目标不是证明某个方案“能跑”，而是在相同约束下输出可解释的推理选型结论。
 
-### Step 2: 拆分 prefill / decode 并记录指标
+### Step 2: 先确认 workload 和 baseline 口径合法
 
-推理项目不能只报一个总耗时。prefill 和 decode 的瓶颈不同，优化手段也不同。
+推理对比必须先确认 workload 和 baseline 可复现，不能直接把不同 prompt、不同 batch 或不同 backend 的数字放在一起比较。
 
-- `prefill` 处理 prompt，通常和 prompt length、attention 计算、batch size、kernel 访存有关。
-- `decode` 每步生成新 token，通常和 KV cache 读写、调度、batching、采样和小 batch 利用率有关。
-- TTFT 可以近似看成 prefill latency，TPOT 可以看成 decode 阶段平均每 token 延迟。
-- 同时记录 peak memory，避免只看吞吐而忽略 KV cache 或量化带来的显存变化。
+- 先固定模型、backend、batch size、prompt tokens、generated tokens、dtype、cache policy 和 warm-up / 多轮测量方式。
+- Baseline 建议从 `PyTorch eager + batch=1 + 固定 prompt/output length` 开始，保证后续 candidate 的改动边界清晰。
+- TTFT、TPOT、throughput、total latency 和 peak memory 必须来自同一套 workload，避免把不同实验口径拼成一张表。
+- 如果 baseline 自身波动很大，后面的 candidate 结果就没有解释空间。
 
-### Step 3: 诊断瓶颈并选择候选方案
+### Step 3: 用统一口径比较收益与成本
 
-先判断项目主要受什么限制，再选择候选优化方向。
+推理项目必须用统一口径同时看 latency、throughput 和 memory，不能只挑单一指标下结论。
 
 | 瓶颈类型 | 典型信号 | 候选方向 |
 | --- | --- | --- |
@@ -75,14 +67,14 @@
 | memory-bound | peak memory 接近预算，batch 上不去 | KV cache quantization、PagedAttention、GQA/MQA |
 | balanced | 各项都不突出 | 保持 baseline 或做小步 profiling |
 
-### Step 4: 输出推理选型报告
+### Step 4: 输出推理选型结论
 
-最后把 baseline 和 candidate 放到同一个口径下比较，输出可执行结论。
+推理选型最终不是输出“哪个 benchmark 更好看”，而是输出哪种方案值得在当前 workload 下继续保留、微调或切换。
 
 - 输出 baseline vs candidate 对比表，至少包含 TTFT、TPOT、throughput、total latency、peak memory 和瓶颈判断。
 - 如果 candidate 只提升吞吐但明显拉高 TTFT，要说明适合离线批处理还是在线交互。
 - 如果 candidate 显存更省但 TPOT 变差，要说明是否为了更大 batch 或更长上下文让路。
-- 最终决策使用 `keep / tune / switch`：保留 baseline、继续调候选方案、或切换到 candidate。
+- 最终决策统一使用 `accept / tune / reject`：候选方案值得采用、还需继续调优、或当前不值得切换。
 - 报告结论必须回扣 Step 1 的 workload，不能泛化成“某方案永远更好”。
 
 ### Step 5: 最小代码模板
@@ -99,7 +91,7 @@ workload config
 baseline run ──► prefill/decode metrics ──► bottleneck diagnosis
       │                                               │
       ▼                                               ▼
-candidate run ─► candidate comparison ───────────► keep / tune / switch
+candidate run ─► candidate comparison ───────────► accept / tune / reject
 ```
 
 项目页最小产物：
@@ -110,7 +102,7 @@ candidate run ─► candidate comparison ───────────► k
 | 指标 | TTFT、TPOT、throughput、total latency、peak memory | 保证同口径比较 |
 | 诊断 | prefill-bound、decode-bound、memory-bound、balanced | 解释为什么优化有效或无效 |
 | 对比 | latency / throughput / memory delta | 判断 candidate 是否值得保留 |
-| 决策 | keep / tune / switch | 输出推理选型结论 |
+| 决策 | accept / tune / reject | 输出推理选型结论 |
 
 
 ```python
@@ -124,6 +116,7 @@ import time
 # 目标：完成 workload -> metrics -> bottleneck -> comparison -> decision 的最小项目链路
 
 def build_inference_config(model_name, backend, batch_size, prompt_tokens, generated_tokens, dtype, cache_policy):
+    """汇总推理 workload 配置，形成统一比较口径。"""
     # ==========================================
     # TODO 1: 汇总推理 workload 配置
     # 提示：total_tokens = prompt_tokens + generated_tokens
@@ -141,6 +134,7 @@ def build_inference_config(model_name, backend, batch_size, prompt_tokens, gener
     }
 
 def summarize_prefill_decode(prefill_ms, decode_ms, generated_tokens):
+    """汇总 prefill / decode 延迟，形成最小延迟摘要。"""
     # ==========================================
     # TODO 2: 汇总 prefill / decode 延迟
     # 提示：TTFT 近似等于 prefill_ms；TPOT = decode_ms / generated_tokens。
@@ -161,6 +155,7 @@ def summarize_prefill_decode(prefill_ms, decode_ms, generated_tokens):
     }
 
 def compute_inference_metrics(config, latency_summary, peak_mem_mb):
+    """把 workload 和延迟摘要收束成统一推理指标。"""
     # ==========================================
     # TODO 3: 计算推理项目核心指标
     # 提示：throughput 表示整个 batch 每秒生成 token 数。
@@ -182,10 +177,14 @@ def compute_inference_metrics(config, latency_summary, peak_mem_mb):
     }
 
 def diagnose_inference_bottleneck(metrics, memory_budget_mb=None):
+    """根据显存预算与 prefill/decode 占比诊断推理瓶颈。"""
     # ==========================================
     # TODO 4: 诊断推理瓶颈
     # 规则：显存接近预算优先判 memory-bound；否则按 prefill/decode 占比判断。
     # ==========================================
+    # memory_pressure = ???
+    # prefill_heavy = ???
+    # decode_heavy = ???
     # if ???:
     #     bottleneck = ???
     #     reason = ???
@@ -201,6 +200,7 @@ def diagnose_inference_bottleneck(metrics, memory_budget_mb=None):
     return {'bottleneck': bottleneck, 'reason': reason}
 
 def compare_inference_candidates(baseline_metrics, candidate_metrics):
+    """统一比较 baseline 与 candidate 的推理收益和代价。"""
     # ==========================================
     # TODO 5: 比较 baseline 和 candidate
     # 提示：latency / TTFT / TPOT / memory 的 delta 用 baseline - candidate；throughput gain 用比例增益。
@@ -219,10 +219,14 @@ def compare_inference_candidates(baseline_metrics, candidate_metrics):
     }
 
 def recommend_inference_decision(comparison, candidate_bottleneck, min_throughput_gain=0.1, max_ttft_regression_ms=20.0):
+    """根据吞吐、TTFT 和瓶颈类型输出推理选型建议。"""
     # ==========================================
     # TODO 6: 输出推理选型建议
-    # 规则：吞吐明显提升且 TTFT 没明显退化则 switch；有收益但仍有瓶颈则 tune；否则 keep。
+    # 规则：吞吐明显提升且 TTFT 没明显退化则 accept；有收益但仍有瓶颈则 tune；否则 reject。
     # ==========================================
+    # throughput_good = ???
+    # ttft_ok = ???
+    # still_tunable = ???
     # if ???:
     #     decision = ???
     #     reason = ???
@@ -290,7 +294,7 @@ def test_inference_project_template():
         assert comparison['throughput_gain'] > 0.15, "throughput gain 应体现候选方案收益！"
 
         decision = recommend_inference_decision(comparison, decode_bound)
-        assert decision['decision'] == 'switch', "吞吐提升且 TTFT 未明显退化时应建议 switch！"
+        assert decision['decision'] == 'accept', "吞吐提升且 TTFT 未明显退化时应建议 accept！"
 
         weak_comparison = dict(comparison)
         weak_comparison['throughput_gain'] = 0.02
@@ -300,7 +304,7 @@ def test_inference_project_template():
         bad_comparison = dict(comparison)
         bad_comparison['throughput_gain'] = -0.05
         bad_comparison['ttft_delta_ms'] = -30.0
-        assert recommend_inference_decision(bad_comparison, {'bottleneck': 'balanced'})['decision'] == 'keep', "没有收益且 TTFT 退化时应建议 keep！"
+        assert recommend_inference_decision(bad_comparison, {'bottleneck': 'balanced'})['decision'] == 'reject', "没有收益且 TTFT 退化时应建议 reject！"
 
         print("✅ 推理性能对比项目模板代码通过基础校验。")
 
@@ -434,14 +438,14 @@ def compare_inference_candidates(baseline_metrics, candidate_metrics):
 def recommend_inference_decision(comparison, candidate_bottleneck, min_throughput_gain=0.1, max_ttft_regression_ms=20.0):
     ttft_regression_ms = -comparison['ttft_delta_ms']
     if comparison['throughput_gain'] >= min_throughput_gain and ttft_regression_ms <= max_ttft_regression_ms:
-        decision = 'switch'
-        reason = 'candidate 吞吐提升明显，TTFT 退化在可接受范围内，可以切换到候选方案。'
+        decision = 'accept'
+        reason = 'candidate 吞吐提升明显，TTFT 退化在可接受范围内，值得进入正式推理方案。'
     elif comparison['throughput_gain'] > 0.0 and candidate_bottleneck['bottleneck'] != 'balanced':
         decision = 'tune'
         reason = 'candidate 已有收益，但瓶颈仍然存在，继续围绕诊断结果调参或换策略。'
     else:
-        decision = 'keep'
-        reason = 'candidate 收益不足或交互延迟退化明显，先保留 baseline。'
+        decision = 'reject'
+        reason = 'candidate 收益不足或交互延迟退化明显，当前不值得切换。'
     return {'decision': decision, 'reason': reason}
 
 baseline_config = build_inference_config('tiny-llama', 'pytorch-eager', 2, 128, 32, 'fp16', 'static-kv-cache')
@@ -489,9 +493,9 @@ print(recommend_inference_decision(comparison, diagnose_inference_bottleneck(can
 - **项目意义**：项目报告不只写绝对值，更要说明 candidate 相比 baseline 改善或退化了多少。
 
 **6. TODO 6: 输出推理选型建议**
-- **switch**：吞吐提升达标，TTFT 退化在可接受范围内。
+- **accept**：吞吐提升达标，TTFT 退化在可接受范围内，说明候选方案值得采用。
 - **tune**：candidate 有收益，但瓶颈仍然存在，需要继续沿诊断方向调参。
-- **keep**：candidate 收益不足，或交互延迟退化明显，先保留 baseline。
+- **reject**：candidate 收益不足，或交互延迟退化明显，当前不值得切换。
 - **项目意义**：推理选型不能只看一个指标。最终结论要同时考虑 workload、吞吐、TTFT、TPOT、显存和瓶颈类型。
 
 **推理性能对比的实验原则**

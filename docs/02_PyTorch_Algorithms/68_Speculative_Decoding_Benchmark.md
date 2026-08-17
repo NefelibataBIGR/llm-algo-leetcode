@@ -1,6 +1,5 @@
 # 68. Speculative Decoding Benchmark | 推测解码基准
-
-**难度：** Hard | **环境：** CPU-first | **标签：** `项目实战`, `Inference`, `Benchmark` | **目标人群：** 推理优化与系统评估
+**难度：** Hard | **环境：** CPU-first | **标签：** `推理优化`, `Speculative Decoding`, `基准对比` | **目标人群：** 项目决策练习者
 
 > 🚀 **云端运行环境**
 >
@@ -14,45 +13,66 @@
 
 ## 本节导读
 
-推测解码的价值不在“能不能接入”，而在同一 workload 下是否真的能降低首 token 延迟、改善吞吐，并且不会把验证复杂度抬到不可接受的水平。本节把推测解码收成一个项目页：先固定 benchmark workload，再比较 baseline 与 candidate，最后输出是否继续推进的判断。
+这一节对应的真实项目问题不是“推测解码能不能提速”，而是“在既定 workload、质量约束和验证成本下，这条推测链路是否值得上线”。真实工程里，读者真正要判断的不是单独的吞吐涨幅，而是 baseline 与 speculative 方案在 acceptance rate、draft cost 和 verify cost 固定之后，是否还能支撑可解释的推理选型结论。
 
+本节的核心矛盾是吞吐收益与验证代价之间的权衡：推测解码可以减少有效解码步数、提高单位时间产出，也可能因为接受率不足、draft 模型过重或 verify 阶段太贵而把收益抵消掉。做完这一节，你应该能输出一份 baseline vs speculative 的 benchmark 结论，而不只是收集几组 TTFT 和 throughput 数字。
+
+因此，这一页把推测解码收成一个最小项目交付入口：先定义 benchmark workload，再确认 baseline 和质量口径合法，用统一口径比较 acceptance、draft / verify 成本和系统收益，并把结论收成 `accept / tune / reject` 的项目判断。它直接承接 `21 / 23 / 66 / 20` 的解码与基础推理直觉，并继续通向 `69` 的前缀缓存基准和 `70` 的 serving 调度基准。
+
+**关键词：** `acceptance rate`, `draft cost`, `verify cost`, `benchmark`
+
+---
 ## 前置阅读
 
-**导语：** 先看解码策略、FlashAttention、vLLM 和前缀缓存，再做推测解码基准；这页重点是指标口径和系统代价。
-- [20. FlashAttention Sim | FlashAttention 模拟](./20_FlashAttention_Sim.md)
+**导语：** 先把解码策略、推测解码机制和基础推理对比理顺，再进入这个 benchmark；本节默认你已经知道 draft / verify 的基本链路，重点转向这条链路是否值得保留。
 - [21. Decoding Strategies | 解码策略](./21_Decoding_Strategies.md)
-- [22. vLLM PagedAttention | vLLM 分页注意力](./22_vLLM_PagedAttention.md)
 - [23. Speculative Decoding | 推测解码](./23_Speculative_Decoding.md)
-- [24. SGLang RadixAttention | SGLang RadixAttention](./24_SGLang_RadixAttention.md)
+- [66. Inference Performance Comparison | 推理性能对比实验](./66_Inference_Performance_Comparison.md)
+- [20. FlashAttention Sim | FlashAttention 模拟](./20_FlashAttention_Sim.md)
 
-### Step 1: 定义 benchmark workload
-先回答一个问题：这次 benchmark 要比较的是 TTFT、TPOT、吞吐，还是在固定质量约束下的整体收益？
+## 相关阅读
+
+**导语：** 做完推测解码 benchmark 后，最自然的下一步是继续比较缓存与调度收益，或把结论推进到更完整的 serving 链路。
+- [69. Prefix Caching Benchmark | 前缀缓存基准](./69_Prefix_Caching_Benchmark.md)
+- [70. Serving Scheduler Benchmark | 推理服务调度基准](./70_Serving_Scheduler_Benchmark.md)
+
+### Step 1: 定义推测解码 benchmark 目标
 
 - 固定模型、prompt 分布、batch size、max new tokens 和解码温度。
-- 明确 candidate 的 draft 模型、验证策略和接受率口径。
-- 统一记录 TTFT、TPOT、吞吐、acceptance rate 和额外开销。
-- 先确定 benchmark 场景，再讨论推测解码是否值得接入。
+- 明确 candidate 的 draft model、verify policy 和 acceptance 统计口径。
+- 先把质量约束写清楚，再比较吞吐和延迟。
 
+### Step 2: 先确认 baseline 和质量口径合法
+
+- baseline 至少要先跑通，并记录 TTFT、throughput 和质量约束，保证后续 speculative 方案有稳定参照。
+- acceptance rate、draft cost、verify cost 和最终吞吐必须来自同一套 workload，不能把不同 prompt 分布或不同质量门槛的结果拼在一起比较。
+- 如果 baseline 自己波动很大，推测解码收益就没有解释空间。
+
+### Step 3: 用统一口径比较收益与代价
+
+- 推测解码项目必须同时看 acceptance rate、draft cost、verify cost 和最终吞吐，不能只挑单项速度收益下结论。
+- 如果 acceptance 低，吞吐提升很可能只是偶然 workload 下的结果。
+- 如果 verify 太贵，推测链路即使接受率高，也不一定值得保留。
+
+### Step 4: 输出 benchmark 结论
+
+- 推测解码最终不是输出“吞吐有没有涨”，而是输出这条 speculative 链路在当前 workload 下是否值得继续保留、微调或放弃。
+- 最终决策建议统一成 `accept / tune / reject`。
+- 若进入 `tune`，下一轮优先回 draft model 大小、proposal 长度和 verify 策略。 
 #### 图解：20-24 如何收束到 68 推测解码基准
 
-`68` 把推测解码从算法概念收成一个统一的系统 benchmark。
-
 ```text
-20 FlashAttention   attention compute baseline
-      │
-21 Decoding         TTFT / TPOT / sampling path
-      │
-22 vLLM             paged KV and serving behavior
-      │
-23 Spec Decode      draft + verify acceptance flow
-      │
-24 RadixAttention   prefix reuse and serving cache
-      │
-      ▼
-68 Spec bench      workload + metric + cost + decision
+20 FlashAttention -> 21 Decoding -> 23 Speculative -> 66 Inference compare -> 68 Benchmark
 ```
 
 项目页最小产物：
+
+| 模块 | 必须记录 | 用途 |
+|:---|:---|:---|
+| baseline | TTFT、throughput、质量约束 | 保证比较合法 |
+| candidate | acceptance rate、draft cost、verify cost | 解释收益来源 |
+| 对比 | 吞吐增益、延迟变化、验证成本 | 判断是否真的划算 |
+| 决策 | accept / tune / reject | 输出 benchmark 结论 |
 
 
 ```python
@@ -62,44 +82,17 @@ from typing import Dict, List
 
 
 ```python
-# TODO: 完成推测解码 workload、指标比较和项目判断
-# 目标：把推测解码结果整理成可比较的 benchmark 报告
+# 3 个核心 TODO：workload 汇总、baseline 对比、项目判断
+# 目标：把推测解码结果整理成可比较的 benchmark 报告，而不是只看吞吐单指标
 
-def summarize_speculative_benchmark(runs):
-    # ==========================================
-    # TODO 1: 汇总 benchmark 指标
-    # 提示：统计 TTFT、TPOT、吞吐、acceptance rate 和平均延迟。
-    # ==========================================
-    return {
-        'run_count': 0,
-        'avg_ttft_ms': 0.0,
-        'avg_tpot_ms': 0.0,
-        'avg_throughput': 0.0,
-        'avg_acceptance_rate': 0.0,
-    }
+def summarize_speculative_benchmark(runs: List[Dict[str, float]]) -> Dict[str, object]:
+    raise NotImplementedError("请先完成 TODO 代码！")
 
-def compare_speculative_vs_baseline(baseline, candidate):
-    # ==========================================
-    # TODO 2: 比较 baseline 与 candidate
-    # 提示：对比 TTFT、TPOT、吞吐和额外验证开销。
-    # ==========================================
-    return {
-        'baseline_name': baseline.get('name', 'baseline'),
-        'candidate_name': candidate.get('name', 'candidate'),
-        'ttft_delta_ms': 0.0,
-        'throughput_delta': 0.0,
-        'acceptance_delta': 0.0,
-    }
+def compare_speculative_to_baseline(baseline: Dict[str, float], candidate: Dict[str, float]) -> Dict[str, float]:
+    raise NotImplementedError("请先完成 TODO 代码！")
 
-def should_deploy_speculative(candidate, min_acceptance_rate):
-    # ==========================================
-    # TODO 3: 判断是否值得推进
-    # 提示：acceptance rate 低于门槛时直接判定不适合继续。
-    # ==========================================
-    return {
-        'deployable': False,
-        'min_acceptance_rate': min_acceptance_rate,
-    }
+def recommend_speculative_run(baseline: Dict[str, float], candidate: Dict[str, float], min_acceptance_rate: float) -> Dict[str, object]:
+    raise NotImplementedError("请先完成 TODO 代码！")
 
 ```
 
@@ -107,28 +100,34 @@ def should_deploy_speculative(candidate, min_acceptance_rate):
 ```python
 # 测试你的实现
 def test_speculative_benchmark_template():
-    try:
-        baseline = {'name': 'baseline', 'ttft_ms': 120, 'throughput': 100, 'acceptance_rate': 0.0}
-        candidate = {'name': 'spec_decode', 'ttft_ms': 90, 'throughput': 140, 'acceptance_rate': 0.72}
-        runs = [
-            {'ttft_ms': 120, 'tpot_ms': 18, 'throughput': 100, 'acceptance_rate': 0.0},
-            {'ttft_ms': 90, 'tpot_ms': 12, 'throughput': 140, 'acceptance_rate': 0.72},
-        ]
-        summary = summarize_speculative_benchmark(runs)
-        assert 'run_count' in summary, 'benchmark 汇总字段缺失！'
-        comp = compare_speculative_vs_baseline(baseline, candidate)
-        assert 'ttft_delta_ms' in comp and 'throughput_delta' in comp, '对比字段不完整！'
-        decision = should_deploy_speculative(candidate, min_acceptance_rate=0.7)
-        assert 'deployable' in decision, '推进判断字段缺失！'
-        print('测试通过：推测解码 benchmark 模板结构正常。')
-    except Exception as exc:
-        print(f'测试未通过：{exc}')
+    baseline = {'name': 'baseline', 'ttft_ms': 120, 'throughput': 100, 'acceptance_rate': 0.0, 'verify_cost_ms': 40}
+    candidate = {'name': 'spec', 'ttft_ms': 110, 'throughput': 135, 'acceptance_rate': 0.72, 'verify_cost_ms': 48}
+    summary = summarize_speculative_benchmark([baseline, candidate])
+    assert summary['run_count'] == 2
+    assert summary['best_throughput_run'] == 'spec'
+    comparison = compare_speculative_to_baseline(baseline, candidate)
+    assert comparison['ttft_delta_ms'] == -10
+    assert comparison['throughput_gain'] == 35
+    assert comparison['verify_cost_delta'] == 8
+    decision = recommend_speculative_run(baseline, candidate, min_acceptance_rate=0.6)
+    assert decision['decision'] == 'accept'
+    assert decision['next_action'] == 'promote_to_serving_eval'
+
 
 test_speculative_benchmark_template()
+print('测试通过：推测解码基准模板可以工作。')
 
 ```
 
+---
+
 🛑 **STOP HERE** 🛑
+<br><br><br><br><br><br><br><br><br><br>
+> 请先尝试自己完成代码并跑通测试。<br>
+> 如果你正在 Colab 中运行，并且遇到困难没有思路，可以向下滚动查看参考答案。
+<br><br><br><br><br><br><br><br><br><br>
+
+---
 
 ## 参考代码与解析
 
@@ -136,62 +135,49 @@ test_speculative_benchmark_template()
 
 
 ```python
-# TODO 1: 汇总 benchmark 指标
-def summarize_speculative_benchmark(runs):
-    run_count = len(runs)
-    if run_count == 0:
-        return {
-            'run_count': 0,
-            'avg_ttft_ms': 0.0,
-            'avg_tpot_ms': 0.0,
-            'avg_throughput': 0.0,
-            'avg_acceptance_rate': 0.0,
-        }
+# TODO 1: 汇总推测解码 workload
+def summarize_speculative_benchmark(runs: List[Dict[str, float]]) -> Dict[str, object]:
+    best = max(runs, key=lambda item: item.get('throughput', 0.0))
+    avg_acceptance_rate = sum(item.get('acceptance_rate', 0.0) for item in runs) / len(runs) if runs else 0.0
+    return {'run_count': len(runs), 'best_throughput_run': best.get('name', 'run'), 'avg_acceptance_rate': avg_acceptance_rate}
 
-    avg_ttft_ms = sum(run.get('ttft_ms', 0.0) for run in runs) / run_count
-    avg_tpot_ms = sum(run.get('tpot_ms', 0.0) for run in runs) / run_count
-    avg_throughput = sum(run.get('throughput', 0.0) for run in runs) / run_count
-    avg_acceptance_rate = sum(run.get('acceptance_rate', 0.0) for run in runs) / run_count
-    return {
-        'run_count': run_count,
-        'avg_ttft_ms': avg_ttft_ms,
-        'avg_tpot_ms': avg_tpot_ms,
-        'avg_throughput': avg_throughput,
-        'avg_acceptance_rate': avg_acceptance_rate,
-    }
 
-# TODO 2: 比较 baseline 与 candidate
-def compare_speculative_vs_baseline(baseline, candidate):
+# TODO 2: 比较 baseline 和 speculative candidate
+def compare_speculative_to_baseline(baseline: Dict[str, float], candidate: Dict[str, float]) -> Dict[str, float]:
     return {
-        'baseline_name': baseline.get('name', 'baseline'),
-        'candidate_name': candidate.get('name', 'candidate'),
         'ttft_delta_ms': candidate.get('ttft_ms', 0.0) - baseline.get('ttft_ms', 0.0),
-        'throughput_delta': candidate.get('throughput', 0.0) - baseline.get('throughput', 0.0),
-        'acceptance_delta': candidate.get('acceptance_rate', 0.0) - baseline.get('acceptance_rate', 0.0),
+        'throughput_gain': candidate.get('throughput', 0.0) - baseline.get('throughput', 0.0),
+        'acceptance_rate': candidate.get('acceptance_rate', 0.0),
+        'verify_cost_delta': candidate.get('verify_cost_ms', 0.0) - baseline.get('verify_cost_ms', 0.0),
     }
 
-# TODO 3: 判断是否值得推进
-def should_deploy_speculative(candidate, min_acceptance_rate):
-    return {
-        'deployable': candidate.get('acceptance_rate', 0.0) >= min_acceptance_rate,
-        'min_acceptance_rate': min_acceptance_rate,
-    }
+
+# TODO 3: 输出项目判断
+def recommend_speculative_run(baseline: Dict[str, float], candidate: Dict[str, float], min_acceptance_rate: float) -> Dict[str, object]:
+    comparison = compare_speculative_to_baseline(baseline, candidate)
+    if comparison['throughput_gain'] > 0 and comparison['acceptance_rate'] >= min_acceptance_rate and comparison['verify_cost_delta'] <= 10:
+        return {'decision': 'accept', 'reason': '吞吐收益、接受率和验证成本都达标', 'next_action': 'promote_to_serving_eval'}
+    if comparison['throughput_gain'] > 0 and comparison['acceptance_rate'] >= min_acceptance_rate:
+        return {'decision': 'tune', 'reason': '吞吐和接受率可用，但验证成本仍偏高', 'next_action': 'refine_draft_or_verify'}
+    return {'decision': 'reject', 'reason': '接受率不足或吞吐收益不明显', 'next_action': 'fallback_to_baseline'}
 
 ```
 
 ### 解析
 
-**1. TODO 1: 汇总 benchmark 指标**
-- **实现方式**：对多次运行的 TTFT、TPOT、吞吐和接受率求均值，得到基准结果。
-- **关键点**：推测解码的收益必须放到统一 workload 上比较，否则 TTFT 和吞吐没有可比性。
-- **项目意义**：把实验结果转成一张可直接讨论是否部署的指标表。
+这一页保留 `3` 个核心 TODO：workload 汇总、baseline 对比和项目判断。它不要求把 speculative decoding 的实现细节重写一遍，而是要求把 benchmark 收成清晰的项目决策。
 
-**2. TODO 2: 比较 baseline 与 candidate**
-- **实现方式**：计算 candidate 相对 baseline 的延迟、吞吐和接受率变化。
-- **关键点**：推测解码的代价常常藏在验证开销和接受率里，不能只看平均速度。
-- **项目意义**：这一步帮助判断系统改动是净收益还是局部优化。
+**1. TODO 1: 汇总推测解码 workload**
+- **实现方式**：统计 run 数、最高吞吐 run 和平均 acceptance rate。
+- **关键点**：这一步先固定 workload 视角，后面的收益判断才不会退回成单条 run 的偶然结果。
+- **项目意义**：没有 run 级摘要，就无法说明当前 speculative 配置到底是在什么 workload 下表现更好。
 
-**3. TODO 3: 判断是否值得推进**
-- **实现方式**：用接受率门槛决定 candidate 是否继续进入部署或进一步调优。
-- **关键点**：阈值必须先定，否则 benchmark 没有工程决策意义。
-- **项目意义**：把结果收束到“继续做还是停”的项目判断。
+**2. TODO 2: 比较 baseline 和 speculative candidate**
+- **实现方式**：统一比较 TTFT、吞吐、acceptance rate 和 verify cost 的变化。
+- **关键点**：这页现在显式补上了 `verify_cost`，不再只看吞吐和 acceptance rate。
+- **项目意义**：这一步把页面从“推测解码有没有提速”推进到“提速代价是否值得保留”。
+
+**3. TODO 3: 输出项目判断**
+- **实现方式**：把 comparison 收成 `accept / tune / reject` 与下一轮动作。
+- **关键点**：吞吐和 acceptance rate 可用但 verify cost 偏高时，应该走 `tune`，而不是直接 `accept`。
+- **项目意义**：这一步让 `68` 真正回答“这条 speculative 链路值不值得继续采用”，而不是只给一组指标。 

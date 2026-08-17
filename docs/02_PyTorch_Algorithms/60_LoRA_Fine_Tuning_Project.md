@@ -1,6 +1,6 @@
 # 60. LoRA Fine Tuning Project | LoRA 微调项目
 
-**难度：** Hard | **环境：** CPU-first | **标签：** `项目实战`, `LoRA`, `Finetuning` | **目标人群：** 模型微调与工程部署
+**难度：** Hard | **环境：** CPU-first | **标签：** `训练微调`, `LoRA`, `项目评估` | **目标人群：** 项目决策练习者
 
 > 🚀 **云端运行环境**
 >
@@ -14,31 +14,30 @@
 
 ## 本节导读
 
-前面已经分别讲过 SFT 数据构造、LoRA 机制、学习率调度、梯度累积和端到端训练报告，但真实项目里不能只回答“LoRA 能不能跑”。更关键的问题是：数据是否干净，loss mask 是否正确，LoRA 相比 baseline 到底少训练了多少参数，省了多少显存，速度和 train/val loss 又付出了什么代价。
+这一节对应的真实项目问题不是“LoRA 能不能训起来”，而是“在既定数据、预算和训练口径下，LoRA 相比 baseline 是否值得采用”。一旦进入工程场景，读者真正要判断的不是单点 loss，而是数据是否可信、loss mask 是否正确、LoRA 少训练了多少参数、节省了多少显存，以及这些收益是否值得可能的速度和 val loss 代价。
 
-本节把 LoRA 微调做成一个项目交付模板：训练前先做数据审计和 loss mask 抽样核对，中间固定 LoRA 配置、训练口径和参数账本，训练后再把 adapter artifact、merge 检查、sanity generation、资源指标和采用建议收成 baseline vs LoRA 的项目结论。代码区只实现最小可复用的项目配置、数据审计、loss 核对、参数账本、结果汇总和交付检查，完整训练循环、loss 曲线和 profiling 截图可以基于这份报告继续补充。
+本节的核心矛盾是训练成本与效果之间的权衡：baseline 往往更直接，但参数、显存和优化器状态更重；LoRA 更轻，但需要证明它没有把效果损失放大到不可接受。做完这一节，你应该能输出一份 baseline vs LoRA 的项目结论，而不只是跑出一条训练曲线。
+
+因此，这一页把 LoRA 微调收成一个最小项目交付入口：训练前做数据审计和 loss mask 核对，训练中固定 LoRA 配置、训练口径和参数账本，训练后把 adapter artifact、merge 检查、sanity generation、资源指标和采用建议收成一份可复现的项目报告。它直接承接 `09-13` 的训练闭环，并继续通向 `63` 的 LoRA 变体对比和 `73` 的训练性能分析。
 
 **关键词：** `LoRA`, `training`, `project`, `profiling`, `report`
 
 ---
 ## 前置阅读
 
-**导语：** 先看 LoRA 机制、端到端训练闭环和显存优化，再做这个项目；本节默认你已经知道训练循环怎么跑，重点转向 LoRA 方案是否值得采用。
+**导语：** 先把 LoRA 机制、有效 batch 口径和端到端训练闭环理顺，再进入这个项目；本节默认你已经知道训练循环怎么跑，重点转向 LoRA 方案是否值得采用。
 - [10. LoRA Tutorial | LoRA 教程](./10_LoRA_Tutorial.md)
-- [11. LR Schedulers WSD Cosine | WSD 余弦学习率调度器](./11_LR_Schedulers_WSD_Cosine.md)
 - [12. Gradient Accumulation | 梯度累积](./12_Gradient_Accumulation.md)
 - [13. End-to-End Fine-Tuning Experiment | 端到端微调实验](./13_End_to_End_Fine_Tuning_Experiment.md)
-- [P0: 20. Profiling and Memory Ledger | 性能剖析与显存账本](../00_Prerequisites/20_Profiling_and_Memory_Ledger.md)
+- [11. LR Schedulers WSD Cosine | WSD 余弦学习率调度器](./11_LR_Schedulers_WSD_Cosine.md)
 
 ## 相关阅读
 
-**导语：** 完成 LoRA 项目账本后，建议继续用训练性能分析、推理性能对比和 profiling 方法验证这套方案的实际成本。
-- [P1: 13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
-- [P1: 19. Operator Fusion Introduction | 算子融合导论](../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.md)
-- [66. Inference Performance Comparison | 推理性能对比实验](./66_Inference_Performance_Comparison.md)
+**导语：** 做完基础 LoRA 项目后，最自然的下一步是继续比较 LoRA 变体，或回看训练成本是否真的划算。
+- [63. LoRA Variants Benchmark | LoRA 变体对比项目](./63_LoRA_Variants_Benchmark.md)
 - [73. Training Performance Analysis | 训练性能分析](./73_Training_Performance_Analysis.md)
 
-
+---
 ### Step 1: 定义 LoRA 微调目标
 先回答一个问题：在尽量少训练参数的前提下，LoRA 能否完成目标任务，并保留可接受的 train / val loss 表现？
 
@@ -132,10 +131,11 @@ import math
 ```python
 import math
 
-# TODO: 完成 LoRA 项目配置、数据审计、loss 核对、参数账本和项目汇总
+# TODO: 完成 LoRA 项目的 5 个核心判断：数据审计、loss 核对、项目汇总、交付检查和最终决策
 # 目标：从 09-13 的训练闭环收束到 baseline vs LoRA 项目交付报告
 
 def audit_sft_examples(examples, max_total_chars):
+    """审计 SFT 样本，输出训练前最小数据可信度摘要。"""
     # ==========================================
     # TODO 1: 审计 SFT 样本
     # 提示：检查样本数、空 response、重复 prompt/response 和超长样本。
@@ -154,6 +154,7 @@ def audit_sft_examples(examples, max_total_chars):
     }
 
 def loss_mask_report(attention_mask, labels, ignore_index=-100):
+    """汇总真正参与监督损失的 token 口径。"""
     # ==========================================
     # TODO 2: 核对 loss mask
     # 提示：labels != -100 的 token 会参与 loss；attention_mask == 0 的 padding 不应参与 loss。
@@ -171,6 +172,7 @@ def loss_mask_report(attention_mask, labels, ignore_index=-100):
         'supervised_ratio': round(supervised_ratio, 4),
     }
 
+# 给定实现：汇总 LoRA 项目配置
 def build_lora_project_config(
     base_model,
     target_modules,
@@ -182,11 +184,8 @@ def build_lora_project_config(
     accum_steps,
     scheduler,
 ):
-    # ==========================================
-    # TODO 3: 汇总 LoRA 项目配置
-    # 提示：effective_batch_size = micro_batch_size * accum_steps
-    # ==========================================
-    # effective_batch_size = ???
+    """打包一次 LoRA 训练的最小复现实验配置。"""
+    effective_batch_size = micro_batch_size * accum_steps
     return {
         'base_model': base_model,
         'target_modules': target_modules,
@@ -200,42 +199,37 @@ def build_lora_project_config(
         'scheduler': scheduler,
     }
 
+# 给定实现：计算单层 LoRA 的可训练参数量
 def lora_trainable_params(in_dim, out_dim, rank):
-    # ==========================================
-    # TODO 4: 计算单层 LoRA 的可训练参数量
-    # 提示：LoRA 旁路包含 A 和 B 两个低秩矩阵。
-    # ==========================================
-    # trainable_params = ???
+    """估算单层 LoRA 需要训练的参数量。"""
+    trainable_params = rank * (in_dim + out_dim)
     return trainable_params
 
+# 给定实现：计算完整线性层的参数量
 def full_linear_params(in_dim, out_dim):
-    # ==========================================
-    # TODO 5: 计算完整线性层的参数量
-    # 提示：这里只统计 weight，不额外考虑 bias。
-    # ==========================================
-    # total_params = ???
+    """计算对应完整线性层的参数量。"""
+    total_params = in_dim * out_dim
     return total_params
 
+# 给定实现：计算 LoRA 参数占比
 def lora_param_ratio(in_dim, out_dim, rank):
-    # ==========================================
-    # TODO 6: 计算 LoRA 参数占比
-    # 提示：先算 LoRA 参数量和全参基线，再做比例。
-    # ==========================================
+    """计算 LoRA 可训练参数占完整层参数的比例。"""
     trainable = lora_trainable_params(in_dim, out_dim, rank)
     total = full_linear_params(in_dim, out_dim)
-    # ratio = ???
+    ratio = trainable / total
     return ratio
 
 def summarize_lora_project(baseline_metrics, lora_metrics):
+    """把 baseline 与 LoRA 指标收束成项目对比摘要。"""
     # ==========================================
-    # TODO 7: 汇总 baseline 和 LoRA 的项目指标
-    # 提示：资源类 delta = baseline - lora；loss delta = lora - baseline。
+    # TODO 3: 汇总 baseline 和 LoRA 的项目指标
+    # 提示：这里重点只补 5 个项目判断量，资源类 delta = baseline - lora；loss delta = lora - baseline。
     # ==========================================
-    # param_reduction = ???
-    # memory_delta = ???
-    # time_delta = ???
-    # train_loss_delta = ???
-    # val_loss_delta = ???
+    # param_reduction = 1.0 - ??? / ???
+    # memory_delta = ??? - ???
+    # time_delta = ??? - ???
+    # train_loss_delta = ??? - ???
+    # val_loss_delta = ??? - ???
     return {
         'param_reduction': round(param_reduction, 4),
         'peak_mem_delta_mb': round(memory_delta, 2),
@@ -244,11 +238,9 @@ def summarize_lora_project(baseline_metrics, lora_metrics):
         'final_val_loss_delta': round(val_loss_delta, 4),
     }
 
+# 给定实现：记录 adapter 交付物
 def build_adapter_artifact_record(adapter_path, tokenizer_path, merge_checked, sanity_generation_checked):
-    # ==========================================
-    # TODO 8: 记录 adapter 交付物
-    # 提示：微调项目交付时至少要知道 adapter、tokenizer、merge check 和 sanity generation 是否完成。
-    # ==========================================
+    """记录 adapter 交付所需的最小产物信息。"""
     return {
         'adapter_path': adapter_path,
         'tokenizer_path': tokenizer_path,
@@ -257,38 +249,48 @@ def build_adapter_artifact_record(adapter_path, tokenizer_path, merge_checked, s
     }
 
 def check_lora_project_readiness(data_audit, mask_report, artifact_record):
+    """检查数据、loss 口径和交付产物是否达到上线前闸门。"""
     # ==========================================
-    # TODO 9: 检查项目是否可以交付
-    # 提示：数据、loss mask、adapter artifact 任一关键项有问题，都不能直接 accept。
+    # TODO 4: 检查项目是否可以交付
+    # 提示：这里只补关键闸门条件，把 issue 名称按下面给定字符串挂上去即可。
     # ==========================================
     issues = []
-    # if ???:
+    # 这里只做训练前闸门判断，不在这里做最终 accept / reject。
+    # if data_audit['empty_response_count'] > ???:
     #     issues.append('empty_response')
-    # if ???:
+    # if data_audit['duplicate_count'] > ???:
     #     issues.append('duplicate_examples')
-    # if ???:
+    # if mask_report['padding_supervised_tokens'] > ???:
     #     issues.append('padding_supervised')
-    # if ???:
+    # if mask_report['supervised_tokens'] == ???:
     #     issues.append('no_supervised_tokens')
-    # if ???:
+    # if not artifact_record['merge_checked']:
     #     issues.append('merge_not_checked')
-    # if ???:
+    # if not artifact_record['sanity_generation_checked']:
     #     issues.append('sanity_generation_not_checked')
     return {'ready': len(issues) == 0, 'issues': issues}
 
-def recommend_lora_decision(summary, readiness, min_param_reduction=0.5, max_val_loss_delta=0.03):
+def recommend_lora_decision(summary, readiness, min_param_reduction=0.5, max_val_loss_delta=0.03, min_peak_mem_delta_mb=128.0, min_step_time_delta_ms=-3.0):
+    """根据项目摘要输出 accept / tune / reject 结论。"""
     # ==========================================
-    # TODO 10: 根据项目汇总和交付检查给出采用建议
+    # TODO 5: 根据项目汇总和交付检查给出采用建议
     # 规则：
     # - 数据、loss 或 artifact 未准备好：tune
-    # - 参数节省达标且 val loss 损失可接受：accept
+    # - 参数节省达标、val loss 损失可接受，且显存收益足够或速度没有明显恶化：accept
+    # - 参数节省达标、val loss 可接受，但显存收益偏弱且速度变慢：tune
     # - 参数节省达标但 val loss 损失偏大：tune
     # - 参数节省不达标：reject
     # ==========================================
+    # 资源判断不是只看省了多少参数，还要看显存收益和速度代价是否值得。
+    # memory_gain_ok = summary['peak_mem_delta_mb'] >= ???
+    # speed_not_too_bad = summary['step_time_delta_ms'] >= ???
     # if ???:
     #     decision = ???
     #     reason = ???
     # elif ???:
+    #     decision = ???
+    #     reason = ???
+    # elif ??? and not (memory_gain_ok or speed_not_too_bad):
     #     decision = ???
     #     reason = ???
     # elif ???:
@@ -386,7 +388,7 @@ def test_lora_project_template():
         assert 'empty_response' in dirty_readiness['issues'], "应报告空 response 问题！"
         assert 'padding_supervised' in dirty_readiness['issues'], "应报告 padding 参与 loss 问题！"
 
-        decision = recommend_lora_decision(summary, readiness, min_param_reduction=0.5, max_val_loss_delta=0.03)
+        decision = recommend_lora_decision(summary, readiness, min_param_reduction=0.5, max_val_loss_delta=0.03, min_peak_mem_delta_mb=128.0, min_step_time_delta_ms=-3.0)
         assert decision['decision'] == 'accept', "LoRA 决策应为 accept！"
 
         assert recommend_lora_decision(summary, dirty_readiness)['decision'] == 'tune', "交付检查未通过时应建议 tune！"
@@ -398,6 +400,11 @@ def test_lora_project_template():
         weak_summary = dict(summary)
         weak_summary['param_reduction'] = 0.2
         assert recommend_lora_decision(weak_summary, readiness)['decision'] == 'reject', "参数节省不足时应建议 reject！"
+
+        tradeoff_summary = dict(summary)
+        tradeoff_summary['peak_mem_delta_mb'] = 32.0
+        tradeoff_summary['step_time_delta_ms'] = -6.0
+        assert recommend_lora_decision(tradeoff_summary, readiness)['decision'] == 'tune', "显存收益偏弱且速度恶化时应建议 tune！"
 
         print("✅ LoRA 项目数据审计、loss 核对、账本、交付检查和决策代码通过基础校验。")
 
@@ -495,7 +502,7 @@ def loss_mask_report(attention_mask, labels, ignore_index=-100):
         'supervised_ratio': round(supervised_ratio, 4),
     }
 
-# TODO 3: 汇总 LoRA 项目配置
+# 给定实现：汇总 LoRA 项目配置
 def build_lora_project_config(
     base_model,
     target_modules,
@@ -521,25 +528,25 @@ def build_lora_project_config(
         'scheduler': scheduler,
     }
 
-# TODO 4: 计算单层 LoRA 的可训练参数量
+# 给定实现：计算单层 LoRA 的可训练参数量
 def lora_trainable_params(in_dim, out_dim, rank):
     """Estimate trainable LoRA parameters for a single linear layer."""
     trainable_params = rank * (in_dim + out_dim)
     return trainable_params
 
-# TODO 5: 计算完整线性层的参数量
+# 给定实现：计算完整线性层的参数量
 def full_linear_params(in_dim, out_dim):
     total_params = in_dim * out_dim
     return total_params
 
-# TODO 6: 计算 LoRA 参数占比
+# 给定实现：计算 LoRA 参数占比
 def lora_param_ratio(in_dim, out_dim, rank):
     trainable = lora_trainable_params(in_dim, out_dim, rank)
     total = full_linear_params(in_dim, out_dim)
     ratio = trainable / total
     return ratio
 
-# TODO 7: 汇总 baseline 和 LoRA 项目指标
+# TODO 3: 汇总 baseline 和 LoRA 项目指标
 def summarize_lora_project(baseline_metrics, lora_metrics):
     param_reduction = 1.0 - lora_metrics['trainable_params'] / baseline_metrics['trainable_params']
     memory_delta = baseline_metrics['peak_mem_mb'] - lora_metrics['peak_mem_mb']
@@ -554,7 +561,7 @@ def summarize_lora_project(baseline_metrics, lora_metrics):
         'final_val_loss_delta': round(val_loss_delta, 4),
     }
 
-# TODO 8: 记录 adapter 交付物
+# 给定实现：记录 adapter 交付物
 def build_adapter_artifact_record(adapter_path, tokenizer_path, merge_checked, sanity_generation_checked):
     return {
         'adapter_path': adapter_path,
@@ -563,7 +570,7 @@ def build_adapter_artifact_record(adapter_path, tokenizer_path, merge_checked, s
         'sanity_generation_checked': sanity_generation_checked,
     }
 
-# TODO 9: 检查项目是否可以交付
+# TODO 4: 检查项目是否可以交付
 def check_lora_project_readiness(data_audit, mask_report, artifact_record):
     issues = []
     if data_audit['empty_response_count'] > 0:
@@ -580,8 +587,10 @@ def check_lora_project_readiness(data_audit, mask_report, artifact_record):
         issues.append('sanity_generation_not_checked')
     return {'ready': len(issues) == 0, 'issues': issues}
 
-# TODO 10: 根据项目汇总和交付检查给出采用建议
-def recommend_lora_decision(summary, readiness, min_param_reduction=0.5, max_val_loss_delta=0.03):
+# TODO 5: 根据项目汇总和交付检查给出采用建议
+def recommend_lora_decision(summary, readiness, min_param_reduction=0.5, max_val_loss_delta=0.03, min_peak_mem_delta_mb=128.0, min_step_time_delta_ms=-3.0):
+    memory_gain_ok = summary['peak_mem_delta_mb'] >= min_peak_mem_delta_mb
+    speed_not_too_bad = summary['step_time_delta_ms'] >= min_step_time_delta_ms
     if not readiness['ready']:
         decision = 'tune'
         reason = '数据、loss mask 或 adapter 交付检查未通过，先修复项目可信度问题。'
@@ -591,6 +600,9 @@ def recommend_lora_decision(summary, readiness, min_param_reduction=0.5, max_val
     elif summary['final_val_loss_delta'] > max_val_loss_delta:
         decision = 'tune'
         reason = '参数节省达标，但验证集 loss 损失偏大，优先调 rank、target modules 或学习率。'
+    elif not (memory_gain_ok or speed_not_too_bad):
+        decision = 'tune'
+        reason = '参数节省和验证损失可接受，但显存收益偏弱且速度恶化，优先继续调 rank、插层范围或 batch 配置。'
     else:
         decision = 'accept'
         reason = '参数节省达标，验证集损失可接受，交付检查通过，可以保留当前 LoRA 配置。'
@@ -641,6 +653,9 @@ print(recommend_lora_decision(summary, readiness))
 
 ### 解析
 
+这一版题目区保留 `5` 个核心 TODO：数据审计、loss 核对、项目汇总、交付检查和最终决策；其余配置打包、参数公式和 artifact 字段整理改成给定实现，把练习重点收回到项目判断本身。
+
+
 **1. TODO 1: 审计 SFT 样本**
 - **实现方式**：遍历 `prompt / response` 样本，统计总样本数、空 response、重复样本、超长样本和平均长度。
 - **关键点**：微调前先确认数据可信。空 response 会让样本没有有效监督，重复样本会放大小数据过拟合风险，超长样本会改变截断和显存口径。
@@ -651,43 +666,43 @@ print(recommend_lora_decision(summary, readiness))
 - **关键点**：`labels != -100` 的 token 会参与 loss；`attention_mask == 0` 的 padding token 不应该参与 loss。
 - **项目意义**：这是 SFT 项目最关键的正确性检查之一。loss 下降不代表训练对了，必须确认监督 token 的位置正确。
 
-**3. TODO 3: 汇总 LoRA 项目配置**
+**给定实现 A：汇总 LoRA 项目配置**
 - **实现方式**：把 base model、target modules、rank、alpha、dropout、学习率、micro batch、accum steps 和 scheduler 放进同一个配置对象。
 - **关键点**：`effective_batch_size = micro_batch_size * accum_steps`，这要和第 12 节的梯度累积口径一致。
-- **项目意义**：LoRA 项目必须能复现；只报告 loss 和显存，不记录配置，后续无法判断差异来自哪里。
+- **项目意义**：这部分更偏复现实验的脚手架，因此直接给出实现，不占用核心 TODO 配额。
 
-**4. TODO 4: 计算单层 LoRA 的可训练参数量**
+**给定实现 B：计算单层 LoRA 的可训练参数量**
 - **实现方式**：LoRA 为一个线性层增加两个低秩矩阵，`A` 的参数量是 `rank * in_dim`，`B` 的参数量是 `rank * out_dim`，合起来是 `rank * (in_dim + out_dim)`。
 - **关键点**：这里统计的是 LoRA adapter 的可训练参数，不包括冻结的底座权重。
-- **项目意义**：这是 LoRA 微调项目的第一张账本，用来说明训练侧到底少更新了多少参数。
+- **项目意义**：这是 LoRA 微调项目的第一张账本，但公式本身偏机械，因此也改为给定实现。
 
-**5. TODO 5: 计算完整线性层的参数量**
+**给定实现 C：计算完整线性层的参数量**
 - **实现方式**：完整线性层的 weight 参数量是 `in_dim * out_dim`。本节为了突出主线，不额外统计 bias。
 - **关键点**：全参线性层是 baseline，用来衡量 LoRA 的参数节省比例。
 - **技术细节**：如果真实模型中包含 bias 或多个投影层，需要把这些层逐项累加。
 
-**6. TODO 6: 计算 LoRA 参数占比**
+**给定实现 D：计算 LoRA 参数占比**
 - **实现方式**：先分别计算 LoRA 参数量和完整线性层参数量，再用 `trainable / total` 得到参数占比。
 - **关键点**：参数占比越小，说明同一层上需要训练和保存的 adapter 越少。
-- **项目意义**：这个比例可以和 step time、peak memory、train/val loss 一起放进项目报告，不能单独作为最终结论。
+- **项目意义**：这个比例可以和 step time、peak memory、train/val loss 一起放进项目报告，但不需要读者再为基础公式分散注意力。
 
-**7. TODO 7: 汇总 baseline 和 LoRA 项目指标**
+**3. TODO 3: 汇总 baseline 和 LoRA 项目指标**
 - **实现方式**：资源类指标使用 `baseline - LoRA`，正数表示 LoRA 更省或更快；loss 指标使用 `LoRA - baseline`，正数表示 LoRA 效果更差。
 - **关键点**：train loss 和 val loss 要分开看。train loss 接近不代表泛化可接受，最终决策更应该看 val loss delta。
 - **工程判断**：如果参数和显存明显下降，但 val loss 损失很小，LoRA 方案通常值得保留；如果 val loss 明显变差，需要继续调整 rank、插层位置或学习率。
 
-**8. TODO 8: 记录 adapter 交付物**
+**给定实现 E：记录 adapter 交付物**
 - **实现方式**：记录 adapter 路径、tokenizer 路径、merge 检查和最小生成样例检查。
 - **关键点**：LoRA 微调的交付物不是一行 loss，而是一组可加载、可复现、能做 sanity check 的 artifact。
-- **项目意义**：这一步把训练实验推进到交付边界，避免“训练完但无法复现或无法加载”。
+- **项目意义**：这一步把训练实验推进到交付边界，但字段整理本身不应挤占核心 TODO。
 
-**9. TODO 9: 检查项目是否可以交付**
+**4. TODO 4: 检查项目是否可以交付**
 - **实现方式**：把数据审计、loss mask 报告和 artifact 记录合并检查，返回 `ready` 和问题列表。
 - **关键点**：只要存在空 response、padding 参与 loss、无监督 token、merge 未检查或生成样例未检查，就不应该直接把项目判为 accept。
 - **项目意义**：这一步让项目报告不只比较指标，也能说明指标是否可信。
 
-**10. TODO 10: 输出采用建议**
+**5. TODO 5: 输出采用建议**
 - **accept**：交付检查通过，参数节省达标，val loss 损失在阈值内。
-- **tune**：交付检查未通过，或参数节省达标但 val loss 损失偏大。
+- **tune**：交付检查未通过，或参数节省达标但 val loss 损失偏大，或显存收益偏弱且速度恶化。
 - **reject**：交付检查通过，但参数节省不足，LoRA 没有带来足够训练成本收益。
 - **项目意义**：决策不再只看 LoRA 参数比例，而是同时看数据可信度、loss 口径、artifact 交付、资源收益和效果损失。
