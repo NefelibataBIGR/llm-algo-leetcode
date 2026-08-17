@@ -1,6 +1,6 @@
 # 20. NCCL and AllReduce Basics | NCCL 与 AllReduce 基础
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `NCCL`, `AllReduce`, `Distributed Training` | **目标人群：** 分布式训练入门者
+**难度：** Medium | **环境：** CPU-first | **标签：** `并行通信`, `NCCL`, `AllReduce` | **目标人群：** 通信机制入门者
 
 > 🚀 **云端运行环境**
 >
@@ -10,12 +10,20 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-这一页把多卡通信的底层直觉讲清楚，重点是知道 AllReduce 为什么重要、NCCL 为什么常被放在并行训练和分布式扩展里一起谈。
+---
+
+## 本节导读
+
+多卡训练扩不动，很多时候不是算子不够快，而是同步点太重。梯度要不要聚合、聚合走哪条链路、等待会不会把 step time 重新拉长，这些问题一旦没想清楚，GPU 数量上去之后也可能只是在放大通信成本。
+
+这一页在整个教程的纵向主线里属于 `Part 01` 的多卡通信基础页，优先服务 `监督微调路线` 的分布式训练判断，也给后续并行与系统优化页建立 collective 前置。学完这里，后面再看 `26 / 27 / 79` 以及多卡训练相关项目页时，你会更容易把“多卡同步”拆成更具体的判断：同步发生在哪里、频率高不高、通信有没有压过计算；如果这里没学明白，后面很容易把扩展效率问题都归因到“卡不够快”，而忽略 collective 本身已经成了 step time 的主瓶颈。按专题归类，这一页主要属于 `通信与并行专题`，也和 `监督微调路线` 的训练工程判断直接相连。
 
 **关键词：** `NCCL`, `AllReduce`, `DP`
+
+---
 ## 前置阅读
 
-**导语：** 先把通信和并行层级对齐，再看 AllReduce 与 NCCL 会更顺。
+**导语：** 先把通信和并行层级对齐，再看 AllReduce 与 NCCL 会更顺；如果你正在走 `监督微调路线`，这里会直接服务多卡训练同步、effective batch 和扩展效率判断。
 
 - [Group 1C: Distributed Communication and Memory Sharing | 1C: 多卡通信与显存共享](./1C.md)
 - [Group 1E: Compiler Optimization and Hardware Ecosystem | 1E: 编译优化与硬件生态](./1E.md)
@@ -23,12 +31,12 @@
 
 ## 相关阅读
 
-**导语：** 把多卡通信放进 ZeRO、Pipeline、Tensor Parallelism 里看，能更好判断通信代价。
+**导语：** 把 AllReduce 放回 ZeRO、流水线并行和训练性能分析里看，更容易把通信原语和实际扩展效果连起来。
 
 - [27. ZeRO Optimizer Sim | ZeRO 优化器模拟](../02_PyTorch_Algorithms/27_ZeRO_Optimizer_Sim.md)
 - [28. Pipeline Parallelism MicroBatch | Pipeline 并行微批次](../02_PyTorch_Algorithms/28_Pipeline_Parallelism_MicroBatch.md)
-- [09. Triton PagedAttention | KV Cache 间接寻址](../03_Triton_Kernels/09_Triton_PagedAttention.md)
-
+- [73. Training Performance Analysis | 训练性能分析](../02_PyTorch_Algorithms/73_Training_Performance_Analysis.md)
+---
 ## Q1：NCCL 在分布式训练里到底解决什么问题？
 
 <details>
