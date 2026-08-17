@@ -1,54 +1,25 @@
 # Profiling 正文
 
-## 页面目标
+这页只做 profiling 问题的判断框架：不重复 `intro` 的路线入口，也不写 `walkthrough` 的连续故事。
 
-这页负责把 `01-06` 的正文页组织成一份“诊断地图”。它不替代 profiler 工具文档，而是回答：看见哪些现象时，应该先走哪条证据链。
+## 判断表
 
-## profiling 的核心任务
+先分清问题在时间热点、memory timeline、通信等待还是 benchmark 验证，再判断证据链是否足够支撑下一步动作。
 
-profiling 不只是“找热点”，而是把一次性能判断拆成三步：
+| 现象 | 优先判断 | 先看哪条线 | 常见动作 |
+|:---|:---|:---|:---|
+| 系统变慢了，但不知道慢在哪 | `time hotspot` | [02](./02_time_breakdown_and_trace_reading.md) | 先看 operator、trace、阶段拆分 |
+| 时间和显存一起波动 | `memory residency` | [03](./03_memory_timeline_and_residency.md) | 看 allocation、residency、timeline |
+| 多卡收益不稳 | `wait / overlap mismatch` | [04](./04_communication_wait_and_overlap.md) | 看同步等待、communication trace |
+| before / after 结果说不清 | `benchmark gap` | [05](./05_benchmark_design_and_regression_validation.md), [06](./06_diagnosis_and_action_decision.md) | 回到 workload 和回归验证 |
 
-1. 先采到足够解释问题的证据。
-2. 再把证据归因到 compute / memory / communication / experiment design。
-3. 最后决定是否要改代码、改调度、改实验，还是根本不该动。
-
-## 01-06 的职责
-
-| 章节 | 关注问题 | 该页不负责什么 |
+| 检查项 | 主要回答什么 | 常见误判 |
 |:---|:---|:---|
-| `01` | profiling 的目标与误区 | 不替代具体 trace 教程 |
-| `02` | 时间热点和 operator 证据 | 不直接给出显存预算方案 |
-| `03` | memory timeline 和 residency | 不直接替代显存优化专题 |
-| `04` | wait / overlap / communication 证据 | 不替代并行切分决策 |
-| `05` | benchmark 与回归验证 | 不替代项目页实验正文 |
-| `06` | 从证据到行动 | 不直接保证某个优化一定成立 |
-
-## 常见阅读路线
-
-### 路线 1：感觉变慢了，但不知道慢在哪
-
-从 `01 -> 02` 进入，先把 trace 和时间热点立住，再决定是否需要看 `03 / 04`。
-
-### 路线 2：显存和性能一起波动
-
-从 `03` 进入，再回查 `02` 和 `05`，确认这是不是“时间换空间”的结果。
-
-### 路线 3：多卡收益不稳
-
-从 `04 -> 05 -> 06` 进入，看同步等待、benchmark 设计和最终行动建议。
-
-## 与显存优化专题的边界
-
-这两条专题最容易混：
-
-- `profiling` 关心的是**证据链**：慢在哪里、谁在等、哪条时间线支持这个判断。
-- `显存优化` 关心的是**资源决策**：谁占显存、怎样压预算、值不值得换。
-
-所以：
-
-- 在 `profiling` 里看 memory timeline，是为了证明瓶颈位置。
-- 在 `显存优化` 里看 memory timeline，是为了证明预算和 trade-off。
+| 时间热点 | 慢点是不是已经被定位清楚 | 看一眼 trace 就下结论 |
+| memory timeline | 时间问题是不是伴随显存驻留问题 | 看显存高就直接去省显存 |
+| communication wait | 多卡是不是在等而不是在算 | 多卡慢就一定是算子问题 |
+| benchmark | 这次优化是不是可复现、可比较 | before / after 口径不统一 |
 
 ## 小结
 
-这条专题的任务不是教人“截图”，而是教人如何用 profiling 把一个性能猜测变成可执行证据。
+这页的职责不是教工具按钮，而是把 profiling 里最常见的判断点压成一张表。路线入口留给 `intro`，连续故事留给 `walkthrough`。
