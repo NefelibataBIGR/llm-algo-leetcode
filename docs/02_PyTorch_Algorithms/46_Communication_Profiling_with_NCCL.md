@@ -1,5 +1,5 @@
 # 46. Communication Profiling with NCCL | NCCL 通信剖析
-**难度：** Hard | **环境：** GPU required | **标签：** `Distributed`, `NCCL`, `Profiling` | **目标人群：** 并行训练与通信工程
+**难度：** Hard | **环境：** CPU-first | **标签：** `并行通信`, `NCCL`, `性能剖析` | **目标人群：** 并行通信学习者
 
 > 🚀 **云端运行环境**
 >
@@ -25,12 +25,18 @@
 
 **导语：** 先看并行策略、通信拓扑和 profiling 方法，再看 NCCL 通信剖析会更容易。
 
-- [27. ZeRO Optimizer Sim | ZeRO 优化器模拟](./27_ZeRO_Optimizer_Sim.md)
-- [28. Pipeline Parallelism MicroBatch | Pipeline 并行微批次](./28_Pipeline_Parallelism_MicroBatch.md)
 - [29. Tensor Parallelism Sim | Tensor 并行模拟](./29_Tensor_Parallelism_Sim.md)
 - [P1: 05. Communication Topologies | 通信拓扑与分布式基石](../01_Hardware_Math_and_Systems/05_Communication_Topologies.md)
-- [P1: 13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
 - [P1: 20. NCCL and AllReduce Basics | NCCL 与 AllReduce 基础](../01_Hardware_Math_and_Systems/20_NCCL_and_AllReduce_Basics.md)
+
+## 相关阅读
+
+**导语：** 学完这页后，下一步重点不是继续背通信算子名称，而是看 profiling 结果怎样反过来指导 MoE、分布式 benchmark 和整体性能分析，确认通信到底是不是关键路径上的主瓶颈。
+
+- [47. MoE Expert Parallel | MoE 专家并行](./47_MoE_Expert_Parallel.md)
+- [73. Training Performance Analysis | 训练性能分析](./73_Training_Performance_Analysis.md)
+- [79. Distributed Parallel Benchmark | 分布式并行 Benchmark](./79_Distributed_Parallel_Benchmark.md)
+- [2.9](./2_9.md)
 
 ---
 ### Step 1: 原理与痛点
@@ -94,6 +100,13 @@ from typing import Any, Dict, List
 
 ```
 
+### 提示
+
+- 先记 `compute`，再记 `comm`；通信是否 overlap，要依赖前面已经登记过的 compute 区间。
+- 判断 overlap 时，可以先想“什么时候完全不重叠”，再把这个条件取反。
+- `summarize` 最好分两步写：先为当前 `op` 拿到统计桶，再累加 `count / time / bytes`。
+- `timeline` 只是把单条事件导出成字典，字段名保持和测试里访问的一致即可。
+
 
 ```python
 @dataclass
@@ -118,31 +131,29 @@ class NCCLProfilerSim:
 
     def add_compute(self, name: str, start: float, end: float):
         # ==========================================
-        # TODO 1: 记录一个 compute 事件
-        # 提示: 用 dict 保存 name、start、end
+        # TODO 1: 完成事件记录层
+        # 提示: 这里先构造 compute event 字典并 append；
+        # add_comm 里再构造 CommEvent，并补 overlap_with_compute 状态。
         # ==========================================
         # event = ???
-        event = TODO_COMPUTE_EVENT
         self.compute_events.append(event)
 
     def add_comm(self, op: str, start: float, end: float, bytes: int):
         # ==========================================
-        # TODO 2: 构造通信事件对象
-        # 提示: CommEvent 保存 op、start、end、bytes
+        # TODO 1: 完成事件记录层
+        # 提示: 先构造 CommEvent，再调用 _has_overlap 判断是否和 compute 重叠。
         # ==========================================
         # event = ???
-        event = TODO_COMM_EVENT
         event.overlap_with_compute = self._has_overlap(event.start, event.end)
         self.events.append(event)
 
     def _has_overlap(self, start: float, end: float) -> bool:
         for c in self.compute_events:
             # ==========================================
-            # TODO 3: 判断通信区间是否与 compute 区间重叠
-            # 提示: 如果两个区间不是完全错开，就说明有重叠
+            # TODO 2: 完成 overlap 判断与汇总统计
+            # 提示: 先排除 end <= c["start"] 或 start >= c["end"] 这两种完全错开情况。
             # ==========================================
             # overlaps = ???
-            overlaps = TODO_OVERLAP
             if overlaps:
                 return True
         return False
@@ -153,16 +164,15 @@ class NCCLProfilerSim:
         by_op: Dict[str, Dict[str, float]] = {}
         for e in self.events:
             # ==========================================
-            # TODO 4: 为当前 op 取出或创建聚合桶
-            # 提示: 每个 op 统计 count、time、bytes 三项
+            # TODO 2: 完成 overlap 判断与汇总统计
+            # 提示: 先为当前 op 取出或创建 {"count": 0, "time": 0.0, "bytes": 0} 统计桶。
             # ==========================================
             # item = ???
-            item = TODO_BUCKET
             # ==========================================
-            # TODO 5: 累加当前 op 的事件数量、耗时和 bytes
-            # 提示: count 加 1，time 加 duration，bytes 加 e.bytes
+            # TODO 2: 完成 overlap 判断与汇总统计
+            # 提示: 再在同一个 item 上依次累加 count、time 和 bytes。
             # ==========================================
-            item["count"] = TODO_COUNT
+            # item["count"] = ???
             item["time"] += e.duration
             item["bytes"] += e.bytes
         return {
@@ -177,11 +187,10 @@ class NCCLProfilerSim:
         records = []
         for e in sorted(self.events, key=lambda x: (x.start, x.end, x.op)):
             # ==========================================
-            # TODO 6: 导出单条通信事件记录
-            # 提示: 包含 op、start、end、duration、bytes、overlap
+            # TODO 3: 导出 timeline 记录
+            # 提示: 返回的字典至少包含 op、start、end、duration、bytes、overlap 这 6 个字段。
             # ==========================================
             # record = ???
-            record = TODO_TIMELINE_ITEM
             records.append(record)
         return records
 
@@ -264,8 +273,9 @@ class NCCLProfilerSim:
 
     def add_compute(self, name: str, start: float, end: float):
         # ==========================================
-        # TODO 1: 记录一个 compute 事件
-        # 提示: 用 dict 保存 name、start、end
+        # TODO 1: 完成事件记录层
+        # 提示: 这里先构造 compute event 字典并 append；
+        # add_comm 里再构造 CommEvent，并补 overlap_with_compute 状态。
         # ==========================================
         # event = ???
         event = {"name": name, "start": start, "end": end}
@@ -273,8 +283,8 @@ class NCCLProfilerSim:
 
     def add_comm(self, op: str, start: float, end: float, bytes: int):
         # ==========================================
-        # TODO 2: 构造通信事件对象
-        # 提示: CommEvent 保存 op、start、end、bytes
+        # TODO 1: 完成事件记录层
+        # 提示: 先构造 CommEvent，再调用 _has_overlap 判断是否和 compute 重叠。
         # ==========================================
         # event = ???
         event = CommEvent(op=op, start=start, end=end, bytes=bytes)
@@ -284,8 +294,8 @@ class NCCLProfilerSim:
     def _has_overlap(self, start: float, end: float) -> bool:
         for c in self.compute_events:
             # ==========================================
-            # TODO 3: 判断通信区间是否与 compute 区间重叠
-            # 提示: 如果两个区间不是完全错开，就说明有重叠
+            # TODO 2: 完成 overlap 判断与汇总统计
+            # 提示: 先排除 end <= c["start"] 或 start >= c["end"] 这两种完全错开情况。
             # ==========================================
             # overlaps = ???
             overlaps = not (end <= c["start"] or start >= c["end"])
@@ -299,14 +309,14 @@ class NCCLProfilerSim:
         by_op: Dict[str, Dict[str, float]] = {}
         for e in self.events:
             # ==========================================
-            # TODO 4: 为当前 op 取出或创建聚合桶
-            # 提示: 每个 op 统计 count、time、bytes 三项
+            # TODO 2: 完成 overlap 判断与汇总统计
+            # 提示: 先为当前 op 取出或创建 {"count": 0, "time": 0.0, "bytes": 0} 统计桶。
             # ==========================================
             # item = ???
             item = by_op.setdefault(e.op, {"count": 0, "time": 0.0, "bytes": 0})
             # ==========================================
-            # TODO 5: 累加当前 op 的事件数量、耗时和 bytes
-            # 提示: count 加 1，time 加 duration，bytes 加 e.bytes
+            # TODO 2: 完成 overlap 判断与汇总统计
+            # 提示: 再在同一个 item 上依次累加 count、time 和 bytes。
             # ==========================================
             item["count"] = item["count"] + 1
             item["time"] += e.duration
@@ -323,8 +333,8 @@ class NCCLProfilerSim:
         records = []
         for e in sorted(self.events, key=lambda x: (x.start, x.end, x.op)):
             # ==========================================
-            # TODO 6: 导出单条通信事件记录
-            # 提示: 包含 op、start、end、duration、bytes、overlap
+            # TODO 3: 导出 timeline 记录
+            # 提示: 返回的字典至少包含 op、start、end、duration、bytes、overlap 这 6 个字段。
             # ==========================================
             # record = ???
             record = {"op": e.op, "start": e.start, "end": e.end, "duration": e.duration, "bytes": e.bytes, "overlap": e.overlap_with_compute}
@@ -335,35 +345,11 @@ class NCCLProfilerSim:
 
 ### 解析
 
-**1. TODO 1: 记录 compute 事件**
-- **实现方式**：`event = {"name": name, "start": start, "end": end}`
-- **关键点**：compute 事件只需要保存名称和时间区间，后续 overlap 判断会遍历这些区间
-- **技术细节**：真实 profiler 中 compute event 可能还包含 stream、rank、kernel name 等字段，本节只保留最小必要信息
+TODO 1：`add_compute` 和 `add_comm` 负责完成事件记录层。前者把 compute 区间保存成最小字典 `{name, start, end}`；后者构造 `CommEvent`，再调用 `_has_overlap` 补出 `overlap_with_compute`，这样通信事件一落表就带上了后续分析要用的状态。
 
-**2. TODO 2: 构造通信事件**
-- **实现方式**：`event = CommEvent(op=op, start=start, end=end, bytes=bytes)`
-- **关键点**：通信事件需要记录 op 类型、起止时间和传输数据量
-- **技术细节**：`overlap_with_compute` 不是输入字段，而是在加入事件时通过 `_has_overlap` 动态计算
+TODO 2：`_has_overlap` 和 `summarize` 负责完成 overlap 判断与汇总统计。重叠条件可以写成 `not (end <= c["start"] or start >= c["end"])`；按 op 汇总时，先用 `by_op.setdefault(...)` 取出统计桶，再累加 `count / time / bytes`，就能得到最小通信画像。
 
-**3. TODO 3: 判断 overlap**
-- **实现方式**：`overlaps = not (end <= c["start"] or start >= c["end"])`
-- **关键点**：两个区间只要不是完全错开，就存在重叠
-- **技术细节**：这里判断的是“是否有重叠”，不是精确重叠时长；真实 profiling 可能需要计算交集长度
-
-**4. TODO 4: 创建 op 聚合桶**
-- **实现方式**：`item = by_op.setdefault(e.op, {"count": 0, "time": 0.0, "bytes": 0})`
-- **关键点**：同一种通信 op 的多次事件应该聚合到同一个统计桶里
-- **技术细节**：`setdefault` 可以避免每次手写 if 初始化逻辑
-
-**5. TODO 5: 累加 op 统计**
-- **实现方式**：`item["count"] = item["count"] + 1`，同时累加 `time` 和 `bytes`
-- **关键点**：count 表示事件次数，time 表示累计耗时，bytes 表示累计通信量
-- **技术细节**：这些聚合指标可以帮助判断瓶颈来自高频小通信，还是少量大通信
-
-**6. TODO 6: 导出时间线记录**
-- **实现方式**：`record = {"op": e.op, "start": e.start, "end": e.end, "duration": e.duration, "bytes": e.bytes, "overlap": e.overlap_with_compute}`
-- **关键点**：timeline 要按时间排序，便于观察通信事件在整体执行过程中的位置
-- **技术细节**：timeline 和 summary 是互补的：前者看顺序和位置，后者看聚合统计
+TODO 3：`timeline` 负责导出单条事件记录。这里把 `op`、起止时间、`duration`、`bytes` 和 `overlap` 打包成统一字典，并按时间顺序返回，便于把聚合统计和时间线位置结合起来看。
 
 **NCCL Profiling 核心机制**
 - **通信热点**：按 op 汇总时间和 bytes，可以快速定位 all-reduce、broadcast 或 reduce-scatter 中的主要开销

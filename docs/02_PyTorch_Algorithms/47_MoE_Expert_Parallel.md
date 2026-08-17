@@ -1,6 +1,6 @@
 # 47. MoE Expert Parallel | MoE 专家并行
 
-**难度：** Hard | **环境：** CPU-first | **标签：** `MoE`, `并行`, `通信`, `专家路由` | **目标人群：** 大模型并行与系统优化学习者
+**难度：** Hard | **环境：** CPU-first | **标签：** `并行通信`, `MoE`, `Expert Parallel`, `All-to-All` | **目标人群：** 并行通信学习者
 
 > 🚀 **云端运行环境**
 >
@@ -14,20 +14,32 @@
 
 ## 本节导读
 
-MoE 不是简单地“把参数变多”，它真正难的地方在于：token 被路由到不同专家后，专家往往分布在不同设备上，训练和推理都会引入额外通信、负载不均和 capacity 溢出。
+MoE 不是简单地“把参数变多”，它真正难的地方在于：token 被路由到不同专家后，专家往往分布在不同设备上，训练和推理都会引入额外通信、负载不均和 capacity 溢出。也就是说，MoE 一旦走到多设备阶段，它面对的就不再只是模型结构问题，而是一个典型的并行与通信问题。
 
-这一节不做工业级并行实现，而是用纯 Python / PyTorch 风格的最小模拟，把 expert placement、token dispatch、capacity limit 和 all-to-all 代价串起来。学完后，你应该能看清“MoE 专家并行为什么是并行问题，而不只是模型结构问题”。
+这是一节**机制原理节**：它和 `06`、`07` 是前后承接关系。`06` 主讲 router 如何选专家，`07` 主讲负载均衡损失如何约束路由；而 `47` 开始回答另一个问题：当专家真的被分到不同设备上后，路由结果会怎样变成 dispatch、热点和 all-to-all 通信成本。
+
+这一节不做工业级 expert parallel 实现，而是用纯 Python / PyTorch 风格的最小模拟，把 expert load、capacity、overflow 和通信账本串起来。一个实用判断可以先保持简单：如果路由已经明显偏斜，或者 overflow 很重，那么继续堆专家数并不会自动带来收益；只有当负载还能控住、通信开销没有压过稀疏激活收益时，MoE expert parallel 才值得继续放大。
+
+**关键词：** `expert parallel`, `dispatch`, `all-to-all`
+
+---
+
 ## 前置阅读
 
-**导语：** 先看最小必要前置，再进入本节。
+**导语：** 先把 MoE 路由、负载均衡和通信视角补齐，再进入 expert parallel，会更容易把“选哪个专家”和“专家如何跨设备落地”区分开。
+
 - [06. MoE Router | MoE 路由器](./06_MoE_Router.md)
 - [07. MoE Load Balancing Loss | MoE 负载均衡损失](./07_MoE_Load_Balancing_Loss.md)
-- [29. Tensor Parallelism Sim | Tensor Parallelism 模拟](./29_Tensor_Parallelism_Sim.md)
 - [46. Communication Profiling with NCCL | NCCL 通信 Profiling](./46_Communication_Profiling_with_NCCL.md)
 ## 相关阅读
 
-- [2.8](./2_8.md)：先看分布式并行策略组页的整体位置。
-- [2.9](./2_9.md)：看并行能力如何进入项目实战与 benchmark。
+**导语：** 学完 expert parallel 后，下一步重点不是继续背概念，而是看它怎样进入 benchmark、通信分析和分布式项目闭环，确认稀疏激活带来的收益是否真的抵得过负载与通信代价。
+
+- [79. Distributed Parallel Benchmark | 分布式并行 Benchmark](./79_Distributed_Parallel_Benchmark.md)
+- [80. MoE Expert Parallel Benchmark | MoE 专家并行 Benchmark](./80_MoE_Expert_Parallel_Benchmark.md)
+- [81. Distributed Inference Project | 分布式推理项目](./81_Distributed_Inference_Project.md)
+
+---
 ### Step 1: 核心思想与痛点
 
 MoE 的核心是“稀疏激活”：每个 token 只激活少量专家，所以理论上可以在较低计算代价下扩展参数规模。
@@ -82,17 +94,21 @@ token batch
 注意：这里要做的是**并行与通信的最小评估**，不是训练项目。
 ### 提示
 
-- `routes` 里的每个元素表示一个 token 被路由到哪些专家。
-- `capacity = ceil((total_routes / num_experts) * capacity_factor)`。
-- `overflow` 是超出 capacity 的路由数，不要把它和 `total_routes` 混在一起。
-- `balance_ratio = max(expert_loads) / avg_load`，它反映最重的 expert 是否明显偏热。
-- 这里不要模拟真实分布式 kernel，只要做最小的并行与通信账本即可。
+- `routes` 里的每个元素表示一个 token 被路由到哪些专家；先把它展开统计成每个 expert 的负载。
+- `TODO 1` 建议按这个顺序做：`total_tokens / total_routes -> expert_loads -> capacity -> overflow -> dispatch_bytes / all_to_all_bytes -> balance_ratio`。
+- `capacity = ceil((total_routes / num_experts) * capacity_factor)`，`overflow` 只统计超出 capacity 的那部分路由数。
+- `TODO 2` 不需要设计复杂策略，只要把 `accept / tune / reject` 写成最小规则判断即可。
+- `TODO 3` 不是做真实性能模型，而是返回一个最小的 dense vs MoE 对比字典。
 
 ```python
 from collections import Counter
 from dataclasses import dataclass
 import math
 
+```
+
+
+```python
 @dataclass
 class MoEParallelSummary:
     total_tokens: int
@@ -107,42 +123,47 @@ class MoEParallelSummary:
 
 def summarize_expert_parallel(routes, num_experts, hidden_size, bytes_per_elem=2, capacity_factor=1.0):
     """
-    TODO:
-    1. 统计每个 expert 的负载 expert_loads。
-    2. 按 capacity_factor 计算 capacity。
-    3. 统计 overflow、dispatch_bytes、all_to_all_bytes 和 balance_ratio。
-    4. 返回 MoEParallelSummary。
+    TODO 1:
+    汇总 expert parallel 的最小账本，返回 MoEParallelSummary。
+    需要包含 expert_loads、capacity、overflow、dispatch_bytes、all_to_all_bytes、balance_ratio。
     """
-    # TODO 1: 校验 num_experts 是否为正
-    # TODO 2: 遍历 routes，统计每个 expert 的路由数
-    # TODO 3: 计算 total_tokens、total_routes 和 expert_loads
-    # TODO 4: 计算 avg_load、capacity、overflow
-    # TODO 5: 估算通信量 dispatch_bytes / all_to_all_bytes
-    # TODO 6: 计算 balance_ratio
+    # 提示：先统计 total_tokens / total_routes，再得到 expert_loads。
+    # 提示：接着补出 capacity、overflow、dispatch_bytes、all_to_all_bytes、balance_ratio。
+    # total_tokens = ???
+    # total_routes = ???
+    # expert_loads = ???
+    # capacity = ???
+    # overflow = ???
+    # dispatch_bytes = ???
+    # all_to_all_bytes = ???
+    # balance_ratio = ???
     raise NotImplementedError
 
 
 def recommend_moe_parallel_plan(summary: MoEParallelSummary) -> str:
     """
-    TODO:
+    TODO 2:
     根据 summary 的 overflow 和 balance_ratio，返回 'accept' / 'tune' / 'reject'。
     """
-    # TODO 1: 空 summary 直接 reject
-    # TODO 2: 无 overflow 且负载均匀 -> accept
-    # TODO 3: 少量 overflow 且负载尚可 -> tune
-    # TODO 4: 其他情况 -> reject
+    # 提示：先处理空 summary，再判断 accept / tune，剩下的统一 reject。
+    # if ???:
+    #     return "accept"
+    # if ???:
+    #     return "tune"
     raise NotImplementedError
 
 
 def compare_dense_vs_moe_cost(token_count, top_k, hidden_size, num_experts, bytes_per_elem=2):
     """
-    TODO:
+    TODO 3:
     返回一个最小 dense vs MoE 成本对比字典。
     """
-    # TODO 1: 计算 dense_compute_units
-    # TODO 2: 计算 moe_routes
-    # TODO 3: 估算 moe_dispatch_bytes / moe_all_to_all_bytes
-    # TODO 4: 返回 sparsity_ratio
+    # 提示：先算 dense_compute_units 和 moe_routes，再补通信量与 sparsity_ratio。
+    # dense_compute_units = ???
+    # moe_routes = ???
+    # moe_dispatch_bytes = ???
+    # moe_all_to_all_bytes = ???
+    # sparsity_ratio = ???
     raise NotImplementedError
 
 ```
@@ -153,71 +174,76 @@ def compare_dense_vs_moe_cost(token_count, top_k, hidden_size, num_experts, byte
 
 ```python
 def test_moe_expert_parallel():
-    balanced = summarize_expert_parallel(
-        routes=[[0, 1], [1, 2], [0, 2]],
-        num_experts=3,
-        hidden_size=4,
-        bytes_per_elem=2,
-        capacity_factor=1.0,
-    )
-    assert balanced.total_tokens == 3
-    assert balanced.total_routes == 6
-    assert balanced.expert_loads == [2, 2, 2]
-    assert balanced.capacity == 2
-    assert balanced.overflow == 0
-    assert balanced.dispatch_bytes == 48
-    assert balanced.all_to_all_bytes == 96
-    assert balanced.balance_ratio == 1.0
-    assert recommend_moe_parallel_plan(balanced) == "accept"
+    try:
+        balanced = summarize_expert_parallel(
+            routes=[[0, 1], [1, 2], [0, 2]],
+            num_experts=3,
+            hidden_size=4,
+            bytes_per_elem=2,
+            capacity_factor=1.0,
+        )
+        assert balanced.total_tokens == 3
+        assert balanced.total_routes == 6
+        assert balanced.expert_loads == [2, 2, 2]
+        assert balanced.capacity == 2
+        assert balanced.overflow == 0
+        assert balanced.dispatch_bytes == 48
+        assert balanced.all_to_all_bytes == 96
+        assert balanced.balance_ratio == 1.0
+        assert recommend_moe_parallel_plan(balanced) == "accept"
 
-    tuned = summarize_expert_parallel(
-        routes=[[0], [0], [0], [1]],
-        num_experts=2,
-        hidden_size=8,
-        bytes_per_elem=2,
-        capacity_factor=1.0,
-    )
-    assert tuned.total_routes == 4
-    assert tuned.expert_loads == [3, 1]
-    assert tuned.capacity == 2
-    assert tuned.overflow == 1
-    assert recommend_moe_parallel_plan(tuned) == "tune"
+        tuned = summarize_expert_parallel(
+            routes=[[0], [0], [0], [1]],
+            num_experts=2,
+            hidden_size=8,
+            bytes_per_elem=2,
+            capacity_factor=1.0,
+        )
+        assert tuned.total_routes == 4
+        assert tuned.expert_loads == [3, 1]
+        assert tuned.capacity == 2
+        assert tuned.overflow == 1
+        assert recommend_moe_parallel_plan(tuned) == "tune"
 
-    rejected = summarize_expert_parallel(
-        routes=[[0]] * 10 + [[1]],
-        num_experts=2,
-        hidden_size=8,
-        bytes_per_elem=2,
-        capacity_factor=1.0,
-    )
-    assert rejected.total_routes == 11
-    assert rejected.expert_loads == [10, 1]
-    assert rejected.capacity == 6
-    assert rejected.overflow == 4
-    assert rejected.balance_ratio > 1.8
-    assert recommend_moe_parallel_plan(rejected) == "reject"
+        rejected = summarize_expert_parallel(
+            routes=[[0]] * 10 + [[1]],
+            num_experts=2,
+            hidden_size=8,
+            bytes_per_elem=2,
+            capacity_factor=1.0,
+        )
+        assert rejected.total_routes == 11
+        assert rejected.expert_loads == [10, 1]
+        assert rejected.capacity == 6
+        assert rejected.overflow == 4
+        assert rejected.balance_ratio > 1.8
+        assert recommend_moe_parallel_plan(rejected) == "reject"
 
-    empty = summarize_expert_parallel(
-        routes=[],
-        num_experts=2,
-        hidden_size=8,
-        bytes_per_elem=2,
-        capacity_factor=1.0,
-    )
-    assert empty.total_tokens == 0
-    assert empty.total_routes == 0
-    assert empty.expert_loads == [0, 0]
-    assert empty.capacity == 0
-    assert empty.overflow == 0
-    assert recommend_moe_parallel_plan(empty) == "reject"
+        empty = summarize_expert_parallel(
+            routes=[],
+            num_experts=2,
+            hidden_size=8,
+            bytes_per_elem=2,
+            capacity_factor=1.0,
+        )
+        assert empty.total_tokens == 0
+        assert empty.total_routes == 0
+        assert empty.expert_loads == [0, 0]
+        assert empty.capacity == 0
+        assert empty.overflow == 0
+        assert recommend_moe_parallel_plan(empty) == "reject"
 
-    cost = compare_dense_vs_moe_cost(token_count=4, top_k=2, hidden_size=8, num_experts=4)
-    assert cost["dense_compute_units"] == 32
-    assert cost["moe_routes"] == 8
-    assert cost["moe_dispatch_bytes"] == 128
-    assert cost["moe_all_to_all_bytes"] == 256
-    assert cost["sparsity_ratio"] == 0.5
-    print("moe expert parallel passed")
+        cost = compare_dense_vs_moe_cost(token_count=4, top_k=2, hidden_size=8, num_experts=4)
+        assert cost["dense_compute_units"] == 32
+        assert cost["moe_routes"] == 8
+        assert cost["moe_dispatch_bytes"] == 128
+        assert cost["moe_all_to_all_bytes"] == 256
+        assert cost["sparsity_ratio"] == 0.5
+        print("moe expert parallel passed")
+    except NotImplementedError:
+        raise
+    except (AttributeError, NameError, TypeError, ValueError, AssertionError) as e:
+        raise NotImplementedError("请先完成 TODO 部分的代码！") from e
 
 
 test_moe_expert_parallel()
@@ -254,11 +280,18 @@ class MoEParallelSummary:
 
 
 def summarize_expert_parallel(routes, num_experts, hidden_size, bytes_per_elem=2, capacity_factor=1.0):
-    # TODO 1: 校验 num_experts 是否为正
+    """
+    TODO 1:
+    汇总 expert parallel 的最小账本，返回 MoEParallelSummary。
+    需要包含 expert_loads、capacity、overflow、dispatch_bytes、all_to_all_bytes、balance_ratio。
+    """
+    # 提示 1: 先校验 num_experts，再遍历 routes 统计每个 expert 的路由数。
+    # 提示 2: capacity = ceil((total_routes / num_experts) * capacity_factor)。
+    # 提示 3: dispatch_bytes = total_routes * hidden_size * bytes_per_elem，all_to_all_bytes = dispatch_bytes * 2。
+    # 提示 4: balance_ratio = max(expert_loads) / avg_load；如果 avg_load 为 0，则返回 0.0。
     if num_experts <= 0:
         raise ValueError("num_experts must be positive")
 
-    # TODO 2: 遍历 routes，统计每个 expert 的路由数
     counts = Counter()
     total_tokens = len(routes)
     total_routes = 0
@@ -269,19 +302,12 @@ def summarize_expert_parallel(routes, num_experts, hidden_size, bytes_per_elem=2
             counts[expert_id] += 1
             total_routes += 1
 
-    # TODO 3: 计算 expert_loads
     expert_loads = [counts.get(i, 0) for i in range(num_experts)]
-
-    # TODO 4: 计算 avg_load、capacity、overflow
     avg_load = total_routes / num_experts if num_experts else 0.0
     capacity = math.ceil(avg_load * capacity_factor) if total_routes else 0
     overflow = sum(max(load - capacity, 0) for load in expert_loads)
-
-    # TODO 5: 估算通信量 dispatch_bytes / all_to_all_bytes
     dispatch_bytes = total_routes * hidden_size * bytes_per_elem
     all_to_all_bytes = dispatch_bytes * 2
-
-    # TODO 6: 计算 balance_ratio
     balance_ratio = (max(expert_loads) / avg_load) if avg_load > 0 else 0.0
 
     return MoEParallelSummary(
@@ -297,28 +323,34 @@ def summarize_expert_parallel(routes, num_experts, hidden_size, bytes_per_elem=2
 
 
 def recommend_moe_parallel_plan(summary: MoEParallelSummary) -> str:
-    # TODO 1: 空 summary 直接 reject
+    """
+    TODO 2:
+    根据 summary 的 overflow 和 balance_ratio，返回 'accept' / 'tune' / 'reject'。
+    """
+    # 提示 1: 空 summary 直接 reject。
+    # 提示 2: 无 overflow 且负载足够均匀时 accept。
+    # 提示 3: 少量 overflow 且负载尚可时 tune，其余 reject。
     if summary.total_routes == 0:
         return "reject"
-    # TODO 2: 无 overflow 且负载均匀 -> accept
     if summary.overflow == 0 and summary.balance_ratio <= 1.2:
         return "accept"
-    # TODO 3: 少量 overflow 且负载尚可 -> tune
     if summary.overflow <= 1 and summary.balance_ratio <= 1.8:
         return "tune"
-    # TODO 4: 其他情况 -> reject
     return "reject"
 
 
 def compare_dense_vs_moe_cost(token_count, top_k, hidden_size, num_experts, bytes_per_elem=2):
-    # TODO 1: 计算 dense_compute_units
+    """
+    TODO 3:
+    返回一个最小 dense vs MoE 成本对比字典。
+    """
+    # 提示 1: dense_compute_units = token_count * hidden_size。
+    # 提示 2: moe_routes = token_count * top_k。
+    # 提示 3: sparsity_ratio 可以写成 top_k / num_experts；num_experts 为 0 时返回 0.0。
     dense_compute_units = token_count * hidden_size
-    # TODO 2: 计算 moe_routes
     moe_routes = token_count * top_k
-    # TODO 3: 估算 moe_dispatch_bytes / moe_all_to_all_bytes
     moe_dispatch_bytes = moe_routes * hidden_size * bytes_per_elem
     moe_all_to_all_bytes = moe_dispatch_bytes * 2
-    # TODO 4: 返回 sparsity_ratio
     return {
         "dense_compute_units": dense_compute_units,
         "moe_routes": moe_routes,
@@ -331,19 +363,20 @@ def compare_dense_vs_moe_cost(token_count, top_k, hidden_size, num_experts, byte
 
 ### 解析
 
-**1. TODO 1-3：`summarize_expert_parallel` 的三个核心步骤**
-- 先校验 `num_experts`，避免非法输入。
-- 再遍历 `routes` 统计每个 expert 的负载。
-- 最后把负载汇总成 capacity、overflow、通信量和 balance_ratio。
+**1. TODO 1：汇总 expert parallel 的最小账本**
+- 先校验 `num_experts`，再遍历 `routes` 统计每个 expert 的路由数。
+- 然后按 `capacity_factor` 计算 `capacity`，再汇总 `overflow`、`dispatch_bytes`、`all_to_all_bytes` 和 `balance_ratio`。
+- 这一部分的核心不是模拟真实分布式 kernel，而是建立最小并行通信账本，帮助你看清“负载是否偏、容量是否溢出、通信是否变贵”。
 
-**2. TODO 4：`recommend_moe_parallel_plan` 的判断规则**
-- `accept`：没有 overflow，且负载足够均匀。
-- `tune`：有少量 overflow，但还在可接受范围。
-- `reject`：负载太偏或 overflow 太多。
+**2. TODO 2：给出 `accept / tune / reject` 决策**
+- `accept`：没有 overflow，且负载足够均匀，说明当前 expert parallel 计划基本成立。
+- `tune`：有少量 overflow 或轻度失衡，说明方案还能救，但需要继续调 capacity、路由策略或 expert 布局。
+- `reject`：空 summary、overflow 过多或负载明显偏热，说明这套并行方案不适合直接采用。
 
-**3. TODO 5：`compare_dense_vs_moe_cost` 的作用**
-- 它不做真实 kernel，而是给出最小的 dense vs MoE 代价对比。
-- 这样你能快速判断 MoE 的稀疏激活是否值回通信开销。
+**3. TODO 3：比较 dense vs MoE 的最小成本**
+- `dense_compute_units` 用最小方式表示 dense 路线的计算规模；`moe_routes` 和通信量则表示稀疏激活带来的并行代价。
+- `sparsity_ratio = top_k / num_experts` 反映了每个 token 实际激活专家数占总专家数的比例。
+- 这不是精确性能模型，而是一个最小比较框架，帮助你快速判断 MoE 的稀疏收益是否可能抵得过额外通信。
 
 **4. 这一页的边界**
 - 它讲的是 MoE 专家并行和通信代价。
