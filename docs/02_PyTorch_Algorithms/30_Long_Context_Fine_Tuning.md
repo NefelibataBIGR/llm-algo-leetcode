@@ -1,6 +1,5 @@
 # 30. Long Context Fine Tuning | 长上下文微调
-
-**难度：** Placeholder | **环境：** CPU-first | **标签：** `占位`, `fine-tuning`, `long-context` | **目标人群：** 该小节后续承接的学习者
+**难度：** Medium | **环境：** CPU-first | **标签：** `训练微调`, `Long Context`, `数据组织` | **目标人群：** 训练机制学习者
 
 > 🚀 **云端运行环境**
 >
@@ -14,52 +13,256 @@
 
 ## 本节导读
 
-占位页，用于后续补齐长上下文微调的机制、数据和实验闭环。
+长上下文微调最容易犯的错，不是“上下文不够长”，而是还没把数据长度、显存预算和评测口径说清楚，就直接把 `seq_len` 拉大。结果通常是训练更慢、显存更高、收益却不稳定。
 
-**占位说明：** 30 先占位，后续承接长上下文微调的真实内容。
+这一节先不碰真实训练框架，而是把项目里最先该做的三件事拆出来：
+- 统计长度分布，确认问题到底出在少量超长样本，还是整体长度迁移。
+- 规划长上下文批次，估算哪些样本真的能进目标窗口。
+- 用统一口径比较 baseline 和 long-context run，判断是否值得继续投入。
 
-## Step 1: 定义长上下文目标
+**关键词：** `context budget`, `packing`, `length distribution`
 
-先回答一个问题：这次长上下文微调到底是在扩上下文长度，还是在保持原有质量的前提下扩可用范围？
+---
 
-- 固定 base model、目标上下文长度、训练数据来源和评测口径，先把任务边界说清楚。
-- 明确训练目标，是让模型学会更长的 prompt 处理，还是让它在更长输入下保持可接受的 loss 和生成质量。
-- 先记录 baseline 的最大可用长度、截断策略、显存占用和训练稳定性。
+## 前置阅读
 
-## Step 2: 组织数据与上下文预算
+**导语：** 先把训练循环、显存账本和推理阶段的 KV cache 压力看过，再进入长上下文微调，会更容易理解为什么“能塞进去”和“值得训练”是两件事。
 
-长上下文微调的关键不是把序列一味拉长，而是让数据、长度和显存预算三者对齐。
+- [11. KV Cache and Memory Growth | KV Cache 与显存增长](../01_Hardware_Math_and_Systems/11_KV_Cache_and_Memory_Growth.md)
+- [12. Gradient Accumulation | 梯度累积](./12_Gradient_Accumulation.md)
+- [19. Activation Checkpointing and Activation Offload | 激活检查点与激活卸载](./19_Activation_Checkpointing_and_Activation_Offload.md)
 
-- 统计样本长度分布，区分短样本、长样本和超长样本。
-- 明确 padding、truncation、packing 或 sliding window 的使用方式。
-- 如果需要分段输入，要标出 chunk 边界和跨段监督口径。
+## 相关阅读
 
-## Step 3: 运行最小训练闭环
+**导语：** 学完长上下文微调后，下一步重点不是继续拉大窗口，而是看数据组织、显存动作和项目验证能否一起支撑这条方案真正落地。
+- [32. Data Engineering for SFT | SFT 数据工程](./32_Data_Engineering_for_SFT.md)
+- [42. Activation Offload | 激活卸载](./42_Activation_Offload.md)
+- [62. Instruction Fine-Tuning Project | 指令微调项目](./62_Instruction_Fine_Tuning_Project.md)
 
-先跑一个最小可复现版本，再看是否值得继续加长上下文。
+---
 
-- 固定 micro batch、accum steps、seq len 和评测 batch，避免比较对象漂移。
-- 记录 step time、peak memory、loss 变化和是否出现不稳定梯度。
-- 如果长上下文只是让显存爆掉，而没有带来有效收益，就需要回到数据或策略层重新设计。
+### Step 1: 先确认长度问题长什么样
 
-## Step 4: 输出项目判断
+- 先统计长度分布，区分短样本、过渡样本和超长样本。
+- 不要只看最大长度，要看落在不同区间的样本占比。
+- 如果超长样本只占很少比例，优先考虑重写数据组织和 packing，而不是盲目扩大训练窗口。
 
-最后把长上下文方案收成一份可执行结论。
+### Step 2: 把上下文预算写成显式规则
 
-- 输出 baseline vs long-context 对比表，至少包含长度、显存、step time 和 loss。
-- 说明收益来自更长的可学习范围，还是来自更合理的上下文组织。
-- 给出下一步动作：继续加长、调整 packing、改截断策略，或回退到更保守的上下文长度。
+![Long Context Fine-Tuning Budget](/02_PyTorch_Algorithms/30_long_context_budget.svg)
 
-## STOP HERE
+- 先给 response 预留固定 token 空间，避免 prompt 把监督区全部吃掉。
+- 再判断样本是否能在目标窗口内完整放下。
+- 若放不下，要明确是截断、切块，还是延后到更大窗口实验。
 
-先自己补一轮：你现在的长上下文任务，真正卡住的是长度、显存还是数据组织。
+### Step 3: 用统一口径比较 baseline 和 candidate run
+
+- 对齐 `fit_rate`、`peak_memory_gb`、`step_time_s` 和 `eval_score`。
+- 如果窗口更大，但 fit rate 只提升一点点、显存和步时却显著上升，就不该直接推进。
+- 真正应该保留的是“长度收益明显，且成本可接受”的方案。
+
+### Step 4: 动手实战
+
+1. 补全 `bucket_length_distribution`，把样本长度分成 `short / medium / long` 三档。
+2. 补全 `plan_long_context_batches`，判断样本在预留 response token 后能否完整装入上下文窗口。
+3. 补全 `summarize_long_context_experiment`，输出 baseline 和 candidate 的对比结论。
+
+### 提示
+
+- `TODO 1` 先按 `short_threshold / long_threshold` 把长度分成 `short / medium / long` 三档。
+- `TODO 2` 先算 `available_prompt_tokens`，再判断每个样本是能完整装入还是溢出。
+- `TODO 3` 先分别比较 `fit_rate / memory / step_time / eval` 的变化，再决定 `keep_candidate`。
+
+
+```python
+from typing import Dict, List
+
+```
+
+
+```python
+def bucket_length_distribution(lengths: List[int], short_threshold: int, long_threshold: int) -> Dict[str, int]:
+    """
+    TODO 1: 把样本长度分成 `short / medium / long` 三档。
+    """
+    # 提示：先创建 counts，再逐个长度判断落在哪个区间。
+    # counts = ???
+    # if ???:
+    #     counts['short'] += 1
+    # elif ???:
+    #     counts['medium'] += 1
+    # else:
+    #     counts['long'] += 1
+    raise NotImplementedError
+
+
+def plan_long_context_batches(samples: List[Dict[str, int]], target_context_len: int, reserved_response_tokens: int) -> Dict[str, object]:
+    """
+    TODO 2: 规划长上下文批次。
+    """
+    # 提示：先算 available_prompt_tokens，再把样本分到 fit_names 和 overflow_names。
+    # available_prompt_tokens = ???
+    # fit_names = ???
+    # overflow_names = ???
+    # fit_rate = ???
+    raise NotImplementedError
+
+
+def summarize_long_context_experiment(baseline_run: Dict[str, float], candidate_run: Dict[str, float]) -> Dict[str, object]:
+    """
+    TODO 3: 输出 baseline 和 candidate 的对比结论。
+    """
+    # 提示：先算 fit_rate_gain、memory_delta_gb、step_time_delta_s、eval_gain，再判断 keep_candidate。
+    # fit_rate_gain = ???
+    # memory_delta_gb = ???
+    # step_time_delta_s = ???
+    # eval_gain = ???
+    # keep_candidate = ???
+    raise NotImplementedError
+
+```
+
+
+```python
+def test_long_context_template():
+    try:
+        counts = bucket_length_distribution([64, 128, 300, 900], short_threshold=128, long_threshold=512)
+        assert counts == {'short': 2, 'medium': 1, 'long': 1}
+
+        samples = [
+            {'name': 'short_doc', 'prompt_tokens': 300},
+            {'name': 'medium_doc', 'prompt_tokens': 1200},
+            {'name': 'too_long_doc', 'prompt_tokens': 1900},
+        ]
+        batch_plan = plan_long_context_batches(samples, target_context_len=2048, reserved_response_tokens=256)
+        assert batch_plan['available_prompt_tokens'] == 1792
+        assert batch_plan['fit_count'] == 2 and batch_plan['overflow_count'] == 1
+        assert abs(batch_plan['fit_rate'] - 2 / 3) < 1e-8
+
+        baseline = {'fit_rate': 0.45, 'peak_memory_gb': 14.0, 'step_time_s': 0.8, 'eval_score': 0.61}
+        candidate = {'fit_rate': 0.80, 'peak_memory_gb': 18.5, 'step_time_s': 1.1, 'eval_score': 0.64}
+        summary = summarize_long_context_experiment(baseline, candidate)
+        assert abs(summary['fit_rate_gain'] - 0.35) < 1e-8
+        assert summary['memory_delta_gb'] == 4.5
+        assert summary['keep_candidate'] is True
+        print('测试通过：长上下文微调模板可以工作。')
+    except NotImplementedError:
+        raise
+    except (AttributeError, NameError, TypeError, ValueError, AssertionError) as e:
+        raise NotImplementedError('请先完成 TODO 代码！') from e
+
+
+test_long_context_template()
+
+```
+
+---
+
+🛑 **STOP HERE** 🛑
+<br><br><br><br><br><br><br><br><br><br>
+> 请先尝试自己完成代码并跑通测试。<br>
+> 如果你正在 Colab 中运行，并且遇到困难没有思路，可以向下滚动查看参考答案。
+<br><br><br><br><br><br><br><br><br><br>
+
+---
 
 ## 参考代码与解析
 
-```python
-def summarize_context_budget(*args, **kwargs):
-    raise NotImplementedError
+### 代码
 
-def compare_long_context_runs(*args, **kwargs):
-    raise NotImplementedError
+
+```python
+def bucket_length_distribution(lengths: List[int], short_threshold: int, long_threshold: int) -> Dict[str, int]:
+    """
+    TODO 1: 把样本长度分成 `short / medium / long` 三档。
+    """
+    # 提示：先创建 counts，再逐个长度判断落在哪个区间。
+    # counts = ???
+    # if ???:
+    #     counts['short'] += 1
+    # elif ???:
+    #     counts['medium'] += 1
+    # else:
+    #     counts['long'] += 1
+    counts = {'short': 0, 'medium': 0, 'long': 0}
+    for length in lengths:
+        if length <= short_threshold:
+            counts['short'] += 1
+        elif length <= long_threshold:
+            counts['medium'] += 1
+        else:
+            counts['long'] += 1
+    return counts
+
+
+def plan_long_context_batches(samples: List[Dict[str, int]], target_context_len: int, reserved_response_tokens: int) -> Dict[str, object]:
+    """
+    TODO 2: 规划长上下文批次。
+    """
+    # 提示：先算 available_prompt_tokens，再把样本分到 fit_names 和 overflow_names。
+    # available_prompt_tokens = ???
+    # fit_names = ???
+    # overflow_names = ???
+    # fit_rate = ???
+    fit_names: List[str] = []
+    overflow_names: List[str] = []
+    available_prompt_tokens = max(target_context_len - reserved_response_tokens, 0)
+    for sample in samples:
+        if sample.get('prompt_tokens', 0) <= available_prompt_tokens:
+            fit_names.append(sample.get('name', 'sample'))
+        else:
+            overflow_names.append(sample.get('name', 'sample'))
+    total = len(samples)
+    return {
+        'available_prompt_tokens': available_prompt_tokens,
+        'fit_count': len(fit_names),
+        'overflow_count': len(overflow_names),
+        'fit_rate': len(fit_names) / total if total else 0.0,
+        'fit_names': fit_names,
+        'overflow_names': overflow_names,
+    }
+
+
+def summarize_long_context_experiment(baseline_run: Dict[str, float], candidate_run: Dict[str, float]) -> Dict[str, object]:
+    """
+    TODO 3: 输出 baseline 和 candidate 的对比结论。
+    """
+    # 提示：先算 fit_rate_gain、memory_delta_gb、step_time_delta_s、eval_gain，再判断 keep_candidate。
+    # fit_rate_gain = ???
+    # memory_delta_gb = ???
+    # step_time_delta_s = ???
+    # eval_gain = ???
+    # keep_candidate = ???
+    fit_rate_gain = candidate_run.get('fit_rate', 0.0) - baseline_run.get('fit_rate', 0.0)
+    memory_delta_gb = candidate_run.get('peak_memory_gb', 0.0) - baseline_run.get('peak_memory_gb', 0.0)
+    step_time_delta_s = candidate_run.get('step_time_s', 0.0) - baseline_run.get('step_time_s', 0.0)
+    eval_gain = candidate_run.get('eval_score', 0.0) - baseline_run.get('eval_score', 0.0)
+    return {
+        'fit_rate_gain': fit_rate_gain,
+        'memory_delta_gb': memory_delta_gb,
+        'step_time_delta_s': step_time_delta_s,
+        'eval_gain': eval_gain,
+        'keep_candidate': fit_rate_gain > 0 and eval_gain >= 0,
+    }
+
 ```
+
+### 解析
+
+**1. TODO 1：把样本长度分成 `short / medium / long` 三档**
+- 先按 `short_threshold` 和 `long_threshold` 做长度分桶，避免把“少量超长样本”误判成“整体都需要更长上下文”。
+- 长度分布是长上下文项目的第一张账本，因为它决定了问题到底是整体迁移，还是局部极端样本驱动。
+
+**2. TODO 2：规划长上下文批次**
+- 先从 `target_context_len` 中扣掉 `reserved_response_tokens`，得到真正可用于 prompt 的 `available_prompt_tokens`。
+- 再把样本分成能装入窗口的 `fit_names` 和溢出的 `overflow_names`，最后算出 `fit_rate`。
+- 这一步回答的是“哪些样本真的能进目标窗口”，而不是只看理论最大上下文长度。
+
+**3. TODO 3：输出 baseline 和 candidate 的对比结论**
+- 同时比较 `fit_rate_gain`、`memory_delta_gb`、`step_time_delta_s` 和 `eval_gain`，再决定 `keep_candidate`。
+- 长上下文方案不是窗口越大越好，只有当覆盖率收益和效果收益都成立时，才值得接受更高成本。
+
+**4. 这页的定位**
+- 先做长度分桶，避免把“少量极长样本”误判成“整体都需要更长上下文”。
+- 上下文预算要扣除 response 预留区，真正能用来装 prompt 的空间才是关键。
+- 对比实验至少要同时看覆盖率增益和效果增益，不能只看窗口是否变大。
