@@ -1,159 +1,30 @@
 # 推理优化正文
 
-## 页面目标
+这页只做推理问题的判断框架：不重复 `intro` 的路线入口，也不写 `walkthrough` 的连续故事。
 
-这页把推理优化专题沉淀成可操作的判断框架。它不重复每个 notebook 的机制细节，而是回答：
+## 判断表
 
-- 看到 TTFT、TPOT、throughput、peak memory 后怎么判断瓶颈？
-- 长 prompt、decode 慢、cache 涨、量化收益不稳定分别应该看哪条线？
-- 最后怎么把判断收束到 `66` 的推理性能对比项目？
+先分清问题在 `prefill`、`decode`、`cache / scheduling` 还是 `deployment`，再统一 `TTFT / TPOT / throughput / peak memory` 口径，最后回到同一 workload，把候选方案收成 `accept / tune / reject`。
 
-## 指标口径
-
-| 指标 | 含义 | 主要关联 |
-|:---|:---|:---|
-| `TTFT` | Time To First Token，首 token 延迟，通常近似 prefill latency | 长 prompt、attention kernel、chunked prefill |
-| `TPOT` | Time Per Output Token，decode 阶段平均每 token 延迟 | decode loop、KV cache 读写、调度 |
-| `throughput` | 单位时间生成 token 数，通常看 generated tokens/s | batching、调度、推测解码、多 token 解码 |
-| `peak memory` | 推理峰值显存 | 权重、KV cache、batch size、量化 |
-| `prefill_share` | prefill 占总耗时比例 | attention 访存、prompt length |
-| `decode_share` | decode 占总耗时比例 | KV cache、sampling、decode scheduling |
-
-`66` 已经把这些指标放进项目模板：先固定 workload，再拆 prefill/decode，再比较 baseline 和 candidate。
-
-## 瓶颈诊断
-
-| 瓶颈 | 典型信号 | 先看哪页 | 常见动作 |
+| 现象 | 优先判断 | 先看哪条线 | 常见动作 |
 |:---|:---|:---|:---|
-| `prefill-bound` | `TTFT` 高、`prefill_share` 高、长 prompt 变慢明显 | `02` | FlashAttention、chunked prefill、prefix caching |
-| `decode-bound` | `TPOT` 高、`decode_share` 高、并发下 token 产出慢 | `03` | speculative decoding、multi-token decoding、decode scheduling |
-| `memory-bound` | peak memory 接近预算，batch 或上下文上不去 | `04` + `05` | PagedAttention、KV cache scheduling、KV cache quantization |
-| `balanced` | 没有明显单点瓶颈 | `06` + Profiling 专题 | 保持 baseline 或继续做更细粒度 profiling |
+| 长 prompt 下首 token 明显变慢 | `prefill-bound` | [02](./02_prefill_and_attention_kernel.md) | FlashAttention、chunked prefill、prefix caching |
+| 并发一高，生成速度掉下去 | `decode-bound` | [03](./03_decoding_strategies.md) | speculative decoding、multi-token decoding、decode scheduling |
+| cache 一边跑一边涨，batch 上不去 | `memory-bound` | [04](./04_kv_cache_and_scheduling.md) | paging、prefix reuse、eviction、KV cache quant |
+| 显存降了，但交互体验变差 | `deployment trade-off` | [05](./05_quantized_inference_and_deployment.md) + [06](./06_benchmark_and_decision.md) | 区分权重量化、KV cache quant、FP8，再回 benchmark |
 
-显存接近预算时，优先按 `memory-bound` 处理。显存是硬约束；即使 decode 占比高，如果 KV cache 已经顶到预算，继续扩大 batch 或上下文都不可靠。
+显存已经接近预算时，优先把它当成硬约束处理；即使 decode 也慢，继续上 batch 或上下文都不可靠。
 
-## 文献锚点
+| 指标 | 主要回答什么 | 常见误判 |
+|:---|:---|:---|
+| `TTFT` | 首 token 是否被 prefill 拖慢 | 只看总时延，看不出 prefill 问题 |
+| `TPOT` | decode 阶段每 token 是否过慢 | 把 decode 慢误判成模型整体慢 |
+| `throughput` | 系统单位时间产出是否够高 | 只看吞吐，不看交互延迟 |
+| `peak memory` | 当前配置是否还能继续推 batch / context | 不把它当硬约束，只看速度 |
+| `prefill_share` / `decode_share` | 主要时间花在哪一段 | 没拆阶段，无法判断下一步该改哪里 |
 
-每个主题保留少量可继续深挖的入口，不追求长综述，只保留最常用的起点。
-
-- `02 Prefill and Attention Kernel`：FlashAttention、chunked prefill、attention memory model。
-- `03 Decoding Strategies`：speculative decoding、多 token decoding、decode loop 优化。
-- `04 KV Cache and Scheduling`：vLLM PagedAttention、SGLang RadixAttention、prefix caching。
-- `05 Quantized Inference and Deployment`：W8A16、GPTQ、AWQ、FP8、KV cache quantization。
-- `06 Benchmark and Decision`：TTFT、TPOT、throughput、peak memory 的同 workload 对比。
-
-## 编号页入口
-
-下面 6 页是这条专题真正的正文主体，当前这页只负责把它们放到同一张判断框架里。
-
-## 问题切面
-
-### 01 请求链路与指标口径
-
-先统一 `TTFT / TPOT / throughput / peak memory`，不然后面所有优化都没法比较。`66` 的第一步也是固定 workload。
-
-### 02 Prefill 与 Attention Kernel
-
-讲 `FlashAttention / chunked prefill / kernel 访存`。长 prompt 慢，通常先从这里看。
-
-### 03 解码策略
-
-讲 `sampling / speculative decoding / multi-token decoding`。生成阶段 token 产出慢，先看这里。
-
-### 04 KV Cache 与调度
-
-讲 `paged attention / prefix reuse / eviction / decode scheduling`。服务侧吞吐和并发，通常绕不开这一页。
-
-### 05 量化推理与部署
-
-讲 `W8A16 / GPTQ / AWQ / FP8 / KV cache quantization`。显存和带宽受限时，这页最关键。
-
-### 06 端到端对比与选型
-
-直接对接 `66`，输出 `keep / tune / switch` 结论。
-
-对应正文页：
-
-- [01 Request Path and Metrics](./01_request_path_and_metrics.md)
-- [02 Prefill and Attention Kernel](./02_prefill_and_attention_kernel.md)
-- [03 Decoding Strategies](./03_decoding_strategies.md)
-- [04 KV Cache and Scheduling](./04_kv_cache_and_scheduling.md)
-- [05 Quantized Inference and Deployment](./05_quantized_inference_and_deployment.md)
-- [06 Benchmark and Decision](./06_benchmark_and_decision.md)
-- [07 Visual Assets](./07_visual_assets.md)
-
-## 典型案例
-
-### 案例 1：长 prompt 进来后首 token 延迟高
-
-现象：prompt 长度一上去，首 token 延迟明显升高，但 decode 阶段单 token 速度还可以。
-
-判断：
-- 先看 `02`，确认 attention 是否卡在中间 score 矩阵和 HBM 读写。
-- 再看 `04`，确认是否存在重复前缀、chunked prefill 是否有意义。
-- 最后用 `66` 的 `TTFT / prefill_share` 验证优化收益。
-
-常见结论：首 token 慢不等于 decode 慢，要先分清 prefill 和 decode。
-
-### 案例 2：并发一高，整体吞吐上不去
-
-现象：单请求还可以，但多请求同时进来后 generated tokens/s 不高，TPOT 变差。
-
-判断：
-- 先看 `03`，确认解码策略是否增加了无效计算。
-- 再看 `04`，确认 prefill 和 decode 是否互相阻塞，decode batch 是否排顺。
-- 最后用 `66` 比较 baseline 和 candidate 的 `throughput_gain / TTFT delta / TPOT delta`。
-
-常见结论：吞吐问题常常不是模型本身慢，而是请求组织没有把 decode 阶段排好。
-
-### 案例 3：cache 一边跑一边涨，batch 上不去
-
-现象：长上下文或多轮对话下显存持续增长，batch size 被迫降低。
-
-判断：
-- 先看 `04`，理解 KV cache 随层数、头数、长度和 batch 的增长。
-- 再看 `22 / 24 / 34 / 37`，确认分页、前缀复用、驱逐策略是否匹配请求分布。
-- 如果仍接近显存预算，再看 `05` 的 KV cache 量化。
-
-常见结论：cache 变大有一部分是自然增长，优化重点是减少碎片、提高复用、控制驱逐和压缩存储。
-
-### 案例 4：量化后显存省了，但体验变差
-
-现象：peak memory 降了，batch 能上去，但 TTFT 或 TPOT 变差。
-
-判断：
-- 先分清权重量化、KV cache 量化和 FP8 改的是哪类数据。
-- 再回到 `66` 看吞吐收益是否抵消延迟退化。
-- 如果在线交互场景 TTFT 退化明显，即使 throughput 更高，也不一定应该切换。
-
-常见结论：量化不是免费收益，最终要回到 workload 和服务目标。
-
-## 决策清单
-
-做推理优化报告前，至少确认这些项：
-
-- workload 是否固定：模型、backend、batch、prompt tokens、generated tokens、dtype、cache policy。
-- 是否拆分 prefill 和 decode，而不是只报 total latency。
-- 是否同时报告 TTFT、TPOT、throughput 和 peak memory。
-- candidate 是否只改一个变量。
-- 瓶颈诊断是否能解释下一步动作。
-- 决策是否回到 `keep / tune / switch`，而不是只说“更快”。
-
-## 常见误区
-
-- 只看 throughput，不看 TTFT，导致在线交互体验退化。
-- 只优化 attention kernel，不看 KV cache 和请求调度。
-- 只看单条 prompt benchmark，不看请求分布。
-- 把训练显存优化手段直接搬到推理场景，忽略 KV cache 是推理侧主要变量。
-- 看到量化省显存就直接切换，不检查 TPOT、质量和部署复杂度。
-
-## 相关跳转
-
-- 完整路线见 [推理优化专题入口](./intro.md)。
-- 连续链路见 [推理优化深入阅读](./walkthrough.md)。
-- 需要证明慢点在哪里时，先看 [Profiling 专题](../profiling/intro.md)。
-- 需要处理显存预算时，先看 [显存优化与性能调优专题](../memory_performance_tuning/intro.md)。
+`66` 的价值不在于再讲机制，而在于把这些指标放回同一 workload 比较 baseline 和 candidate。
 
 ## 小结
 
-推理优化不是堆技巧，而是把 workload、指标、瓶颈和候选方案放在同一张报告里判断。横向专题负责讲清问题切面和选择逻辑，`66` 负责证明收益。
+这页的职责不是列技巧，而是把症状、指标和下一步动作压成一张判断表。路线入口留给 `intro`，连续故事留给 `walkthrough`，项目证明留给 `66`。

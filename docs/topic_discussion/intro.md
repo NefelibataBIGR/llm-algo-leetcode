@@ -1,71 +1,53 @@
 # 专题讨论轴
 
-## 总览
-`topic_discussion` 是横向专题讨论轴，用于承接跨 Part 的专题页面与案例串联。
+`topic_discussion` 是跨 `Part00-04` 的知识组织层。它不替代纵向 notebook 主线，只负责三件事：
 
-当前状态上，横向专题的基础骨架已经基本统一完成；本轮主线工作已经回到 `Part 02`，并完成了 `30-45` 的一整轮配图收口。接下来横向专题的重点不再是继续扩骨架，而是补论文锚点、案例和少量图。
+- 把 `Part02` 的主学习路线收成更清楚的入口
+- 给跨路线反复出现的方法轴补判断框架
+- 给基础机制补解释层，避免读者只记结论、不懂来源
 
-## 专题建设标准
+## 主学习路线
 
-横向专题不只是文件索引，而是跨 Part 的知识组织者。它需要把“为什么要看、看什么、怎么串起来、看完后能得到什么”讲清楚，而不是只列出相关 notebook。
+这三条专题直接承接 `Part02` 的主任务带和项目收口带：
 
-一个完整专题，至少要同时具备三层内容：
+| 路线 | 主入口 | 适合什么时候进入 |
+|:---|:---|:---|
+| 训练微调方向 | [监督微调专题](./fine_tuning_training/intro.md) | 当你要从结构前置、SFT、LoRA 一路走到项目交付时 |
+| 推理优化方向 | [推理优化专题](./inference_optimization/intro.md) | 当你要系统理解 prefill、decode、KV cache、服务和 benchmark 时 |
+| 显存优化方向 | [显存优化专题](./memory_performance_tuning/intro.md) | 当你要把训练显存、推理 cache、量化预算和 trade-off 串起来时 |
 
-- `文字串联`
-  - 用问题驱动的叙事，把主题的重要性、技术演化和跨 Part 关系讲清楚。
-  - 重点不是目录，而是让读者沿着一条可读的主线进入专题。
-  - 叙事建议包含：问题导入、核心脉络、技术演进、关键取舍。
-- `文献阅读`
-  - 用 3 到 5 篇代表性论文或官方文档做溯源锚点。
-  - 重点不是长综述，而是回答“这篇为什么值得读”。
-  - 适合补充原始动机、设计取舍和后续演进。
-- `可视化增强`
-  - 用一张图把专题里的核心关系画出来。
-  - 重点是降低抽象感，让读者能快速定位自己的问题落在哪一层。
-  - 不追求精美，追求信息密度和解释力。
+## 横切支撑专题
 
-如果一个专题暂时还做不到三层齐备，至少也要先把 `文字串联` 做起来，再逐步补文献和图。
+这些专题不替代主路线，而是把跨路线反复出现的方法轴单独拉出来：
 
-当前这 10 个专题已经不只是索引入口，而是在逐步收口成“知识锚点”。当前可以按下面的完成度理解：
+| 专题 | 主入口 | 更适合什么时候进入 |
+|:---|:---|:---|
+| 量化与压缩 | [quantization](./quantization/intro.md) | 当你同时要看精度、显存、带宽和部署取舍时 |
+| 通信与并行 | [communication_parallel](./communication_parallel/intro.md) | 当你开始进入多卡训练、并行切分和通信瓶颈时 |
+| Profiling | [profiling](./profiling/intro.md) | 当你需要拿证据，而不是只靠经验猜测时 |
+| 后训练与对齐 | [post_training_alignment](./post_training_alignment/intro.md) | 当你完成 SFT 主线后，准备进入对齐与偏好优化时 |
 
-| 类别 | 专题 | 当前状态 | 建设重点 |
-|:---|:---|:---|:---|
-| 样板完成 | `大模型结构和原理` | 已完成 `01-09 + 10_visual_assets`，图册和主题页最完整 | 后续优先补论文锚点和少量案例 |
-| 基础层完成 | `反向传播与训练机制` | 已完成 `01-05 + 06_visual_assets` | 后续优先补论文锚点和机制案例 |
-| 基础层完成 | `监督微调（SFT）闭环` | 已完成 `01-05 + 06_visual_assets`，`30-32` 进阶占位保留 | 后续优先补进阶层正文与案例 |
-| 基础层完成 | `推理优化` | 已完成 `01-06 + 07_visual_assets` | 后续优先补系统论文和少量案例 |
-| 基础层完成 | `显存优化与性能调优` | 已完成 `01-06 + 07_visual_assets` | 后续优先补 VRAM / trade-off 案例 |
-| 基础层完成 | `量化与压缩` | 已完成 `01-06 + 07_visual_assets` | 后续优先补 GPTQ / AWQ / FP8 文献与案例 |
-| 基础层完成 | `通信与并行` | 已完成 `01-06 + 07_visual_assets` | 后续优先补 AllReduce、ZeRO、TP/PP 文献与案例 |
-| 基础层完成 | `后训练与对齐` | 已完成 `01-06 + 07_visual_assets` | 后续优先补 DPO / RLHF / judge-eval 文献与案例 |
-| 基础层完成 | `Profiling` | 已完成 `01-06 + 07_visual_assets` | 后续优先补系统论文、trace 案例和诊断清单 |
-| 基础层完成 | `编译与图优化` | 已完成 `01-06 + 07_visual_assets` | 后续优先补 MLIR / TVM / backend 成本模型文献与案例 |
+## 基础支撑专题
 
-与横向专题并行的纵向状态补充：
+这些专题更偏机制解释和背景支撑，常作为主路线的前置桥：
 
-- `Part 02 30-45` 本轮已完成配图收口，可视为当前纵向主线里一段阶段性完成的阅读链。
-- 后续如果继续回到 `Part 02`，优先处理其余项目页、预留页和少量版式微调，而不是重新拆这批基础原理页。
+| 专题 | 主入口 | 更常服务哪条路线 |
+|:---|:---|:---|
+| 反向传播与训练机制 | [backpropagation_training_mechanism](./backpropagation_training_mechanism/intro.md) | 训练微调、显存优化 |
+| 大模型架构 | [model_architecture](./model_architecture/intro.md) | 训练微调、推理优化 |
+| 编译与图优化 | [compiler_graph_optimization](./compiler_graph_optimization/intro.md) | 推理优化、系统优化 |
 
-## 当前内容
-- [Profiling 专题](./profiling/intro.md)
-- [反向传播与训练机制专题](./backpropagation_training_mechanism/intro.md)
-- [大模型结构和原理专题](./model_architecture/intro.md)
-- [监督微调（SFT）闭环专题](./fine_tuning_training/intro.md)
-- [后训练与对齐专题](./post_training_alignment/intro.md)
-- [量化与压缩专题](./quantization/intro.md)
-- [编译与图优化专题](./compiler_graph_optimization/intro.md)
-- [推理优化专题](./inference_optimization/intro.md)
-- [通信与并行专题](./communication_parallel/intro.md)
-- [显存优化与性能调优专题](./memory_performance_tuning/intro.md)
+## 怎么选入口
 
-## 后续主题规划
+- 如果你要完整走 `Part02` 主线，先从三条主学习路线里选一条。
+- 如果你已经在做项目，只是遇到瓶颈，再按问题进入横切支撑专题。
+- 如果你需要补机制背景，再回看基础支撑专题。
 
-- `训练专题`：已收敛为 [监督微调（SFT）闭环专题](./fine_tuning_training/intro.md)，优先覆盖 `09-13 + 60`，不泛化成完整预训练专题。
-- `对齐专题`：已单列为 [后训练与对齐专题](./post_training_alignment/intro.md)，优先覆盖 `14-16 + 50 + 84-85`，不要继续散落在 `Part 2.4` 里。
-- `Triton / Kernel 开发专题`：以后有必要可以单开，用来横切 `Part 3` 的 Triton 和算子开发内容。
-- `反向传播与训练机制专题`：已新增，优先用于串起 autograd、backward、accumulation、checkpointing/offload 和 profiling。
-- `分布式训练专题`：如果后续内容继续膨胀，可以从 `通信与并行` 里再细分出来，但当前优先放在同一专题下更稳。
-- `分布式推理逻辑验证项目`：已在 `2.9` 中落地，优先用单卡、单进程模拟分布式推理的路由和成本口径，必要时再迁移到真实多卡环境。
+常见跳转：
 
-## 说明
-专题讨论轴不属于 `Part 0-5` 的纵向主线，而是用于补充跨 Part 的方法论、案例和系统化视角。
+- `结构前置 / SFT / LoRA / 实验收口` -> [监督微调专题](./fine_tuning_training/intro.md)
+- `prefill / decode / PagedAttention / benchmark` -> [推理优化专题](./inference_optimization/intro.md)
+- `VRAM / checkpoint / offload / memory trade-off` -> [显存优化专题](./memory_performance_tuning/intro.md)
+- `量化是否值得做` -> [量化与压缩专题](./quantization/intro.md)
+- `为什么慢、为什么爆显存、证据怎么拿` -> [Profiling 专题](./profiling/intro.md)
+- `多卡通信和并行切分怎么判断` -> [通信与并行专题](./communication_parallel/intro.md)
