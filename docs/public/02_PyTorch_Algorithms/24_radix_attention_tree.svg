@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1660 740" role="img" aria-labelledby="title desc">
+  <title id="title">RadixAttention prefix tree</title>
+  <desc id="desc">Shows shared prefix paths stored once in a radix tree and longest prefix matching for new requests.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#f0fdf4"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+    </marker>
+    <style>
+      .title { font: 700 30px "Inter", "Noto Sans SC", sans-serif; fill: #0f172a; }
+      .sub { font: 500 16px "Inter", "Noto Sans SC", sans-serif; fill: #475569; }
+      .label { font: 700 18px "Inter", "Noto Sans SC", sans-serif; fill: #111827; }
+      .small { font: 500 14px "Inter", "Noto Sans SC", sans-serif; fill: #334155; }
+      .box { fill: #ffffff; stroke-width: 3; rx: 16; ry: 16; }
+      .node { fill: #ffffff; stroke-width: 3; rx: 14; ry: 14; }
+      .arrow { stroke: #475569; stroke-width: 4; fill: none; marker-end: url(#arrow); }
+      .share { stroke: #16a34a; stroke-width: 5; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect width="1660" height="740" fill="url(#bg)"/>
+  <text x="64" y="66" class="title">RadixAttention: one shared prefix tree for many requests</text>
+  <text x="64" y="96" class="sub">Store shared prefixes once, then route each new prompt by longest-prefix match and reuse KV on the hit path.</text>
+
+  <rect x="90" y="150" width="1470" height="96" class="box" fill="#fff7ed" stroke="#f59e0b"/>
+  <text x="120" y="186" class="label">New request arrives</text>
+  <text x="120" y="220" class="small">match the request against cached paths and reuse the longest shared prefix.</text>
+
+  <rect x="160" y="320" width="130" height="62" class="node" fill="#ecfccb" stroke="#65a30d"/>
+  <text x="225" y="358" text-anchor="middle" class="label">root</text>
+
+  <path d="M 225 382 L 225 470" class="share"/>
+  <path d="M 225 470 L 420 470" class="share"/>
+  <path d="M 420 470 L 620 470" class="share"/>
+
+  <rect x="330" y="430" width="180" height="70" class="node" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="420" y="466" text-anchor="middle" class="label">shared prefix</text>
+  <text x="420" y="490" text-anchor="middle" class="small">stored once</text>
+
+  <rect x="550" y="430" width="180" height="70" class="node" fill="#ecfeff" stroke="#0891b2"/>
+  <text x="640" y="466" text-anchor="middle" class="label">branch A</text>
+  <text x="640" y="490" text-anchor="middle" class="small">request A</text>
+
+  <rect x="780" y="430" width="180" height="70" class="node" fill="#ecfeff" stroke="#0891b2"/>
+  <text x="870" y="466" text-anchor="middle" class="label">branch B</text>
+  <text x="870" y="490" text-anchor="middle" class="small">request B</text>
+
+  <path d="M 420 500 L 420 560" class="arrow"/>
+  <path d="M 640 500 L 640 560" class="arrow"/>
+  <path d="M 870 500 L 870 560" class="arrow"/>
+
+  <rect x="1000" y="320" width="500" height="180" class="box" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="1030" y="358" class="label">How reuse works</text>
+  <text x="1030" y="392" class="small">1. compare the prompt with cached paths</text>
+  <text x="1030" y="422" class="small">2. reuse KV on the matched prefix</text>
+  <text x="1030" y="452" class="small">3. compute only the unmatched suffix</text>
+
+  <rect x="90" y="560" width="1470" height="110" class="box" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="120" y="598" class="label">Read it in one line</text>
+  <text x="120" y="632" class="small">PagedAttention organizes blocks per request; RadixAttention additionally shares KV across requests when their prefixes overlap.</text>
+</svg>

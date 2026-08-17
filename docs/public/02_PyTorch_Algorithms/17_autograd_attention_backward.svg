@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1660 760" role="img" aria-labelledby="title desc">
+  <title id="title">Autograd attention backward</title>
+  <desc id="desc">Shows the backward path for attention from output gradient to V, P, S, Q, and K with saved tensors.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#ecfeff"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+    </marker>
+    <style>
+      .title { font: 700 30px "Inter", "Noto Sans SC", sans-serif; fill: #0f172a; }
+      .sub { font: 500 16px "Inter", "Noto Sans SC", sans-serif; fill: #475569; }
+      .label { font: 700 18px "Inter", "Noto Sans SC", sans-serif; fill: #111827; }
+      .small { font: 500 14px "Inter", "Noto Sans SC", sans-serif; fill: #334155; }
+      .box { fill: #ffffff; stroke-width: 3; rx: 18; ry: 18; }
+      .arrow { stroke: #475569; stroke-width: 4; fill: none; marker-end: url(#arrow); }
+      .faint { stroke: #94a3b8; stroke-width: 3; fill: none; stroke-dasharray: 8 6; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect width="1660" height="760" fill="url(#bg)"/>
+  <text x="64" y="66" class="title">Attention backward: dV -> dP -> dS -> dQ / dK</text>
+  <text x="64" y="96" class="sub">Save the minimum state in forward, then push gradients backward through matrix multiply and softmax.</text>
+
+  <rect x="80" y="190" width="170" height="90" class="box" fill="#fff7ed" stroke="#f59e0b"/>
+  <text x="165" y="224" text-anchor="middle" class="label">dO</text>
+  <text x="165" y="250" text-anchor="middle" class="small">output grad</text>
+
+  <rect x="310" y="190" width="170" height="90" class="box" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="395" y="224" text-anchor="middle" class="label">dV</text>
+  <text x="395" y="250" text-anchor="middle" class="small">P^T dO</text>
+
+  <rect x="540" y="190" width="170" height="90" class="box" fill="#ecfccb" stroke="#65a30d"/>
+  <text x="625" y="224" text-anchor="middle" class="label">dP</text>
+  <text x="625" y="250" text-anchor="middle" class="small">dO V^T</text>
+
+  <rect x="770" y="190" width="170" height="90" class="box" fill="#f5f3ff" stroke="#8b5cf6"/>
+  <text x="855" y="224" text-anchor="middle" class="label">dS</text>
+  <text x="855" y="250" text-anchor="middle" class="small">softmax backward</text>
+
+  <rect x="1000" y="190" width="170" height="90" class="box" fill="#ecfeff" stroke="#0891b2"/>
+  <text x="1085" y="224" text-anchor="middle" class="label">dQ</text>
+  <text x="1085" y="250" text-anchor="middle" class="small">dS K / sqrt(d)</text>
+
+  <rect x="1230" y="190" width="170" height="90" class="box" fill="#fdf2f8" stroke="#db2777"/>
+  <text x="1315" y="224" text-anchor="middle" class="label">dK</text>
+  <text x="1315" y="250" text-anchor="middle" class="small">dS^T Q / sqrt(d)</text>
+
+  <path d="M 250 235 L 310 235" class="arrow"/>
+  <path d="M 480 235 L 540 235" class="arrow"/>
+  <path d="M 710 235 L 770 235" class="arrow"/>
+  <path d="M 940 235 L 1000 235" class="arrow"/>
+  <path d="M 1170 235 L 1230 235" class="arrow"/>
+
+  <rect x="90" y="340" width="1460" height="150" class="box" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="120" y="376" class="label">Saved tensors and what they buy you</text>
+  <text x="120" y="410" class="small">• `ctx.save_for_backward(q, k, v, p)` stores the minimum state needed for backward.</text>
+  <text x="120" y="440" class="small">• You do not build the full softmax Jacobian; you use the row-wise correction term.</text>
+  <text x="120" y="470" class="small">• The price is memory: saving P for long context can dominate the budget.</text>
+
+  <rect x="90" y="540" width="1460" height="150" class="box" fill="#fffef2" stroke="#cbd5e1"/>
+  <text x="120" y="576" class="label">Why this page matters</text>
+  <text x="120" y="610" class="small">1. backward order matters: dV first, then dP, then dS, then dQ / dK.</text>
+  <text x="120" y="640" class="small">2. the diagram connects the math derivation to the custom autograd Function.</text>
+  <text x="820" y="610" class="small">3. it also explains why FlashAttention exists: recompute instead of storing P.</text>
+  <text x="820" y="640" class="small">4. later memory pages reuse the same logic at larger scale.</text>
+</svg>

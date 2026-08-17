@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 760" role="img" aria-labelledby="title desc">
+  <title id="title">Attention Head Relation Diagram</title>
+  <desc id="desc">Compares MHA, GQA, MQA, and MLA style KV sharing and compression patterns.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#ecfeff"/>
+    </linearGradient>
+    <style>
+      .title { font: 700 30px "Inter", "Noto Sans SC", sans-serif; fill: #0f172a; }
+      .sub { font: 500 16px "Inter", "Noto Sans SC", sans-serif; fill: #475569; }
+      .box { fill: #ffffff; stroke-width: 3; rx: 18; ry: 18; }
+      .label { font: 700 18px "Inter", "Noto Sans SC", sans-serif; fill: #111827; }
+      .small { font: 500 13px "Inter", "Noto Sans SC", sans-serif; fill: #334155; }
+      .arrow { stroke: #475569; stroke-width: 3.5; fill: none; marker-end: url(#arrow); }
+      .blue { stroke: #2563eb; stroke-width: 3.5; fill: none; marker-end: url(#arrowBlue); }
+      .purple { stroke: #7c3aed; stroke-width: 3.5; fill: none; marker-end: url(#arrowPurple); }
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+    </marker>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2563eb"/>
+    </marker>
+    <marker id="arrowPurple" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#7c3aed"/>
+    </marker>
+  </defs>
+  <rect width="1500" height="760" fill="url(#bg)"/>
+  <text x="64" y="66" class="title">Attention heads: MHA -> GQA -> MQA -> MLA</text>
+  <text x="64" y="96" class="sub">The main axis is how much KV state gets shared or compressed during decoding</text>
+
+  <rect x="60" y="165" width="320" height="110" class="box" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="220" y="205" text-anchor="middle" class="label">MHA</text>
+  <text x="220" y="232" text-anchor="middle" class="small">each Q head owns K/V</text>
+  <text x="220" y="254" text-anchor="middle" class="small">largest KV cache</text>
+
+  <rect x="420" y="165" width="320" height="110" class="box" fill="#ecfccb" stroke="#65a30d"/>
+  <text x="580" y="205" text-anchor="middle" class="label">GQA</text>
+  <text x="580" y="232" text-anchor="middle" class="small">many Q heads share fewer KV heads</text>
+  <text x="580" y="254" text-anchor="middle" class="small">good balance for modern LLMs</text>
+
+  <rect x="780" y="165" width="320" height="110" class="box" fill="#f5f3ff" stroke="#8b5cf6"/>
+  <text x="940" y="205" text-anchor="middle" class="label">MQA</text>
+  <text x="940" y="232" text-anchor="middle" class="small">all Q heads share one K/V</text>
+  <text x="940" y="254" text-anchor="middle" class="small">smallest shared KV cache</text>
+
+  <rect x="1140" y="165" width="300" height="110" class="box" fill="#fff1f2" stroke="#e11d48"/>
+  <text x="1290" y="205" text-anchor="middle" class="label">MLA</text>
+  <text x="1290" y="232" text-anchor="middle" class="small">compress KV into latent state</text>
+  <text x="1290" y="254" text-anchor="middle" class="small">reconstruct or route when needed</text>
+
+  <path d="M 380 220 L 420 220" class="arrow"/>
+  <path d="M 740 220 L 780 220" class="blue"/>
+  <path d="M 1100 220 L 1140 220" class="purple"/>
+
+  <rect x="90" y="360" width="390" height="240" class="box" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="285" y="398" text-anchor="middle" class="label">KV cache footprint</text>
+  <text x="120" y="440" class="small">MHA: full per-head KV state</text>
+  <text x="120" y="472" class="small">GQA: shared KV state across groups</text>
+  <text x="120" y="504" class="small">MQA: one shared KV state</text>
+  <text x="120" y="536" class="small">MLA: compressed latent memory instead of full KV</text>
+  <text x="120" y="572" class="small">The lower the cache footprint, the cheaper long-context decoding becomes</text>
+
+  <rect x="540" y="360" width="420" height="240" class="box" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="750" y="398" text-anchor="middle" class="label">Why GQA is the common compromise</text>
+  <text x="570" y="440" class="small">- keeps more expressivity than MQA</text>
+  <text x="570" y="472" class="small">- cuts KV cache compared with MHA</text>
+  <text x="570" y="504" class="small">- fits large decoder-only models well</text>
+  <text x="570" y="536" class="small">- avoids the full rewrite required by latent attention</text>
+  <text x="570" y="572" class="small">This is why many open models land on GQA before moving further</text>
+
+  <rect x="1000" y="360" width="410" height="240" class="box" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="1205" y="398" text-anchor="middle" class="label">DeepSeek-style direction</text>
+  <text x="1030" y="440" class="small">MLA: compress KV into latent state</text>
+  <text x="1030" y="472" class="small">Sparse attention: select before full compute</text>
+  <text x="1030" y="504" class="small">DSA / NSA: hardware-aligned sparse branches</text>
+  <text x="1030" y="536" class="small">The goal is not only smaller cache, but lower decode cost under long context</text>
+</svg>

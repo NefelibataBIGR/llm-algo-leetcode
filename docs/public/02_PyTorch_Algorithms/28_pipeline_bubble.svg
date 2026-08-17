@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1660 820" role="img" aria-labelledby="title desc">
+  <title id="title">Pipeline parallelism bubble timeline</title>
+  <desc id="desc">Shows a 1F1B pipeline with multiple stages and micro-batches, highlighting bubble regions before fill and drain.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#f0fdf4"/>
+    </linearGradient>
+    <style>
+      .title { font: 700 30px "Inter", "Noto Sans SC", sans-serif; fill: #0f172a; }
+      .sub { font: 500 16px "Inter", "Noto Sans SC", sans-serif; fill: #475569; }
+      .label { font: 700 18px "Inter", "Noto Sans SC", sans-serif; fill: #111827; }
+      .small { font: 500 14px "Inter", "Noto Sans SC", sans-serif; fill: #334155; }
+      .box { fill: #ffffff; stroke-width: 3; rx: 16; ry: 16; }
+      .stage { stroke-width: 2.5; rx: 12; ry: 12; }
+    </style>
+  </defs>
+  <rect width="1660" height="820" fill="url(#bg)"/>
+  <text x="64" y="66" class="title">Pipeline parallelism: stages, micro-batches, and bubble</text>
+  <text x="64" y="96" class="sub">Split the batch into micro-batches so stages can overlap work under a 1F1B schedule.</text>
+
+  <rect x="80" y="150" width="1470" height="130" class="box" fill="#fff7ed" stroke="#f59e0b"/>
+  <text x="120" y="186" class="label">Why pipeline needs micro-batches</text>
+  <text x="120" y="220" class="small">a single big batch would leave later stages idle; micro-batches let each stage do useful work sooner</text>
+  <text x="120" y="248" class="small">the fill and drain periods create bubbles that depend on stage count and micro-batch count</text>
+
+  <rect x="120" y="350" width="180" height="70" class="stage" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="210" y="393" text-anchor="middle" class="label">Stage 0</text>
+  <rect x="350" y="350" width="180" height="70" class="stage" fill="#ecfccb" stroke="#65a30d"/>
+  <text x="440" y="393" text-anchor="middle" class="label">Stage 1</text>
+  <rect x="580" y="350" width="180" height="70" class="stage" fill="#f5f3ff" stroke="#8b5cf6"/>
+  <text x="670" y="393" text-anchor="middle" class="label">Stage 2</text>
+  <rect x="810" y="350" width="180" height="70" class="stage" fill="#ecfeff" stroke="#0891b2"/>
+  <text x="900" y="393" text-anchor="middle" class="label">Stage 3</text>
+
+  <rect x="100" y="460" width="1460" height="160" class="box" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="130" y="498" class="label">1F1B timeline sketch</text>
+  <text x="130" y="532" class="small">micro-batch 0 enters stage 0, then moves stage by stage while the next micro-batch fills earlier stages</text>
+  <text x="130" y="562" class="small">once the pipeline is full, one stage can do forward while another does backward</text>
+  <text x="130" y="592" class="small">the bubble is the empty space before fill and after drain</text>
+
+  <rect x="100" y="650" width="1460" height="120" class="box" fill="#fffef2" stroke="#cbd5e1"/>
+  <text x="130" y="688" class="label">Reading rule</text>
+  <text x="130" y="722" class="small">If the timeline makes the idle gaps visible, the reader will understand why schedule design matters as much as layer partitioning.</text>
+</svg>

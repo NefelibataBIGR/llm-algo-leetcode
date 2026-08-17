@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1660 740" role="img" aria-labelledby="title desc">
+  <title id="title">PagedAttention block table</title>
+  <desc id="desc">Shows logical token sequence mapped to fixed-size physical blocks through a block table in paged KV cache management.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#ecfeff"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+    </marker>
+    <style>
+      .title { font: 700 30px "Inter", "Noto Sans SC", sans-serif; fill: #0f172a; }
+      .sub { font: 500 16px "Inter", "Noto Sans SC", sans-serif; fill: #475569; }
+      .label { font: 700 18px "Inter", "Noto Sans SC", sans-serif; fill: #111827; }
+      .small { font: 500 14px "Inter", "Noto Sans SC", sans-serif; fill: #334155; }
+      .box { fill: #ffffff; stroke-width: 3; rx: 16; ry: 16; }
+      .cell { fill: #fff; stroke-width: 2; rx: 12; ry: 12; }
+      .arrow { stroke: #475569; stroke-width: 4; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect width="1660" height="740" fill="url(#bg)"/>
+  <text x="64" y="66" class="title">PagedAttention: logical sequence -> block table -> physical blocks</text>
+  <text x="64" y="96" class="sub">The cache is not one giant tensor; it is a set of fixed-size blocks reached through a block table.</text>
+
+  <rect x="90" y="160" width="1470" height="104" class="box" fill="#fff7ed" stroke="#f59e0b"/>
+  <text x="120" y="196" class="label">Logical token stream</text>
+  <text x="120" y="228" class="small">tokens 0 ... 15 -> block 0, tokens 16 ... 31 -> block 1, tokens 32 ... 47 -> block 2</text>
+  <text x="120" y="252" class="small">decode allocates a new block only when the current one overflows.</text>
+
+  <rect x="90" y="330" width="520" height="200" class="box" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="120" y="368" class="label">Block table</text>
+  <rect x="120" y="396" width="110" height="54" class="cell" fill="#e0f2fe" stroke="#60a5fa"/>
+  <rect x="240" y="396" width="110" height="54" class="cell" fill="#e0f2fe" stroke="#60a5fa"/>
+  <rect x="360" y="396" width="110" height="54" class="cell" fill="#e0f2fe" stroke="#60a5fa"/>
+  <rect x="480" y="396" width="110" height="54" class="cell" fill="#e0f2fe" stroke="#60a5fa"/>
+  <text x="175" y="429" text-anchor="middle" class="small">logical 0</text>
+  <text x="295" y="429" text-anchor="middle" class="small">logical 1</text>
+  <text x="415" y="429" text-anchor="middle" class="small">logical 2</text>
+  <text x="535" y="429" text-anchor="middle" class="small">logical 3</text>
+  <text x="120" y="492" class="small">mapping: logical block id -> physical block id</text>
+  <text x="120" y="520" class="small">rebuilds a contiguous logical view from scattered physical blocks</text>
+
+  <rect x="690" y="330" width="790" height="200" class="box" fill="#ecfccb" stroke="#65a30d"/>
+  <text x="720" y="368" class="label">Physical block pool</text>
+  <rect x="720" y="398" width="120" height="54" class="cell" fill="#f7fee7" stroke="#84cc16"/>
+  <rect x="850" y="398" width="120" height="54" class="cell" fill="#f7fee7" stroke="#84cc16"/>
+  <rect x="980" y="398" width="120" height="54" class="cell" fill="#f7fee7" stroke="#84cc16"/>
+  <rect x="1110" y="398" width="120" height="54" class="cell" fill="#f7fee7" stroke="#84cc16"/>
+  <rect x="1240" y="398" width="120" height="54" class="cell" fill="#f7fee7" stroke="#84cc16"/>
+  <rect x="1370" y="398" width="80" height="54" class="cell" fill="#f7fee7" stroke="#84cc16"/>
+  <text x="780" y="432" text-anchor="middle" class="small">B0</text>
+  <text x="910" y="432" text-anchor="middle" class="small">B1</text>
+  <text x="1040" y="432" text-anchor="middle" class="small">B2</text>
+  <text x="1170" y="432" text-anchor="middle" class="small">B3</text>
+  <text x="1300" y="432" text-anchor="middle" class="small">B4</text>
+  <text x="1410" y="432" text-anchor="middle" class="small">...</text>
+  <text x="720" y="492" class="small">free blocks are assigned on demand</text>
+
+  <path d="M 350 330 C 350 300 500 300 500 330" class="arrow"/>
+  <path d="M 1170 330 C 1170 300 980 300 980 330" class="arrow"/>
+
+  <rect x="90" y="570" width="1470" height="110" class="box" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="120" y="608" class="label">Read it in one line</text>
+  <text x="120" y="642" class="small">PagedAttention reduces fragmentation by letting each request grow through logical block-table entries instead of owning one giant contiguous KV tensor.</text>
+</svg>
