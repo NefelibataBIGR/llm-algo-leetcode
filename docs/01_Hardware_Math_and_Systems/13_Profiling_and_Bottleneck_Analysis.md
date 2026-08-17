@@ -1,6 +1,6 @@
 # 13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位
 
-**难度：** Medium | **环境：** GPU optional | **标签：** `Profiling`, `Performance`, `Bottleneck` | **目标人群：** 性能分析入门者
+**难度：** Medium | **环境：** GPU optional | **标签：** `系统性能`, `Profiling`, `瓶颈分析` | **目标人群：** 系统性能入门者
 
 > 🚀 **云端运行环境**
 >
@@ -10,24 +10,33 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
+---
+
+## 本节导读
+
 这一页把“看懂硬件”和“会定位问题”接起来，先建立先测量、再优化的判断习惯。
 
+这一页在整个教程的纵向主线里属于 `Part 01` 的性能取证基础页，主服务 `监督微调路线`，也给 `推理优化路线` 补一层证据链视角。学完这里，后面再看 `60 / 62 / 66 / 73` 时，你会更容易把 step time、数据搬运、同步等待和 kernel 瓶颈放进同一条 profiling 证据链里；如果这里没学明白，后面很容易只剩经验判断，而不知道瓶颈到底卡在算子、调度还是通信。按专题归类，这一页主要属于 `Profiling 专题`，并同时支撑训练与推理两条路线的定位能力。
+
 **关键词：** `profiling`, `bottleneck`, `latency`
+
+---
+
 ## 前置阅读
 
-**导语：** 先从单卡硬件与编程模型入手，再看 profiling 的瓶颈定位会更顺。
+**导语：** 先从单卡硬件与编程模型入手，再看 profiling 的瓶颈定位会更顺；如果你正在走 `监督微调路线`，这里会直接服务训练实验、项目页和训练性能分析链。
 
 - [Group 1B: Single-GPU Hardware and Memory Optimization | 1B: 单卡硬件与访存优化](./1B.md)
 - [Group 1D: Heterogeneous Scheduling and Operator Programming | 1D: 异构调度与算子编程](./1D.md)
 
 ## 相关阅读
 
-**导语：** 把 profiling 放到推理和训练实战里看，更容易验证结论。
+**导语：** 把 profiling 放到推理和训练实战里看，更容易验证结论；如果你正在走 `监督微调路线`，它会直接服务 `04 / 60 / 62 / 73`，把“感觉慢”变成“证据显示慢在哪里”。
 
 - [66. Inference Performance Comparison | 推理性能对比实验](../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.md)
 - [73. Training Performance Analysis | 训练性能分析](../02_PyTorch_Algorithms/73_Training_Performance_Analysis.md)
-- [05. Triton 性能调优与基准测试 (Autotune & Profiling)](../03_Triton_Kernels/05_Triton_Autotune_and_Profiling.md)
-
+- [60. LoRA Fine-Tuning Project | LoRA 微调项目](../02_PyTorch_Algorithms/60_LoRA_Fine_Tuning_Project.md)
+---
 ## 常用工具链
 
 **导语：** profiling 不只是“看图”，更重要的是按层级选工具：先看时间线，再看 kernel，再回到代码。
