@@ -1,77 +1,27 @@
 # 反向传播与训练机制正文
 
-## 页面目标
+这页只做训练机制问题的判断框架：不重复 `intro` 的路线入口，也不写 `walkthrough` 的连续故事。
 
-这页把专题拆成五个机制块。它不是章节索引，而是每个块的写作骨架和排障清单。
+## 判断表
 
-## 机制块
+先分清问题在计算图、autograd、loss 对齐、activation 保存还是训练节奏，再判断它是不是已经转成显存或 profiling 问题。
 
-### 01 反向传播总览与计算图
-
-- backward 为什么会决定训练能不能跑起来
-- 计算图如何组织梯度回传
-- 哪些状态必须保留，哪些可以重算
-
-### 02 Autograd 与 Attention Backward
-
-- `grad_fn` / `saved_tensors` / 自定义 `autograd.Function`
-- attention 的 `dV -> dP -> dS -> dQ / dK`
-- 为什么 attention backward 同时是数学问题和访存问题
-
-### 03 Loss Backward、标签对齐与显存账本
-
-- `mask / shift / ignore_index`
-- prompt / response 的监督边界
-- activation、参数、梯度、optimizer state 的显存账本
-
-### 04 Checkpointing 与 Offload
-
-- 重算换显存
-- 搬运换显存
-- 两者的边界、代价和适用场景
-
-### 05 梯度累积、训练闭环与 Profiling
-
-- `micro-batch / accumulation steps / effective batch`
-- backward / step / profiling 的闭环
-- 什么时候先看调度，什么时候先看显存
-
-## 常见检查项
-
-| 检查项 | 你要确认什么 | 常见问题 |
-|:---|:---|:---|
-| 计算图 | 梯度沿什么路径回传 | 只会写 forward，不会解释 backward |
-| Autograd | `grad_fn`、`saved_tensors` 是否看得懂 | 把 API 当成机制本身 |
-| Attention backward | `Q / K / V / P` 的反向顺序是否清楚 | 只记公式，不看保存点 |
-| 标签对齐 | 监督区间是否正确 | loss 算对了，标签口径错了 |
-| 显存账本 | 训练显存到底被什么占住 | 只盯 activation，忽略参数和 optimizer state |
-| Checkpointing / Offload | 是重算还是搬运 | 混淆两类代价模型 |
-| 梯度累积 | backward 次数和 step 次数是否统一 | 训练节奏错位 |
-| Profiling | 优化前后收益是否可复现 | 只看感觉，不看 baseline |
-
-## 机制对照
-
-| 机制 | 解决什么 | 代价是什么 | 适合什么时候用 |
+| 现象 | 优先判断 | 先看哪条线 | 常见动作 |
 |:---|:---|:---|:---|
-| 反向传播与计算图 | 让梯度能正确回传 | 需要保存或重算状态 | 所有训练任务 |
-| Autograd 与 attention backward | 把机制落到 PyTorch / 算子上 | 依赖中间量保存 | 需要理解实现细节时 |
-| Loss 对齐与显存账本 | 监督口径 + 训练显存预算 | 需要更细的标签和状态管理 | SFT / chat 训练 |
-| Checkpointing / Offload | 省 GPU 显存 | 重算或搬运代价 | 显存紧张时 |
-| 梯度累积 + Profiling | 把训练放回闭环验证 | 节奏更长、观测成本更高 | 需要稳定训练和定位瓶颈时 |
+| 会写 forward，但解释不清梯度怎么回去 | `graph mismatch` | [01](./01_backpropagation_and_graph.md) | 先画清计算图和梯度路径 |
+| attention 能跑，但 backward 看不懂 | `autograd / attention backward` | [02](./02_autograd_and_attention_backward.md) | 看 `grad_fn`、`saved_tensors`、`dV -> dP -> dS -> dQ/dK` |
+| loss 在降，但监督口径不可信 | `loss alignment mismatch` | [03](./03_loss_alignment_memory_ledger.md) | 检查 `mask / shift / ignore_index / labels` |
+| 训练侧显存明显过高 | `activation residency` | [04](./04_checkpointing_and_offload.md) | 区分 checkpointing 和 offload 的代价模型 |
+| 训练能跑，但 step 口径混乱 | `training rhythm mismatch` | [05](./05_accumulation_decision_profiling.md) | 检查 accumulation、optimizer step、effective batch |
 
-## 任务映射
+| 检查项 | 主要回答什么 | 常见误判 |
+|:---|:---|:---|
+| 计算图 | 梯度沿什么路径回传 | 会用 API 就等于懂 backward |
+| `saved_tensors` | 哪些状态必须保留 | 把公式理解和保存代价分开看 |
+| 标签对齐 | supervision 是否真的进了 loss | loss 有值就算标签正确 |
+| activation 保存 | 显存主峰值是不是来自中间状态 | 把所有问题都归到 batch 太大 |
+| accumulation | backward 次数和 step 次数是否一致 | 训练能跑就等于训练节奏对了 |
 
-| Task | 关注点 |
-|:---|:---|
-| Task1 | 反向传播与计算图 |
-| Task2 | Autograd 与 attention backward |
-| Task3 | Loss 对齐与显存账本 |
-| Task4 | Checkpointing 与 offload |
-| Task5 | 梯度累积与 profiling |
+## 小结
 
-## 相关跳转
-
-- 想看完整路线，回到 [反向传播与训练机制专题入口](./intro.md)。
-- 想看连续故事线，去 [反向传播与训练机制深入阅读](./walkthrough.md)。
-- 想看训练微调闭环，去 [训练微调闭环专题](../fine_tuning_training/intro.md)。
-- 想看显存调优，去 [显存优化与性能调优专题](../memory_performance_tuning/intro.md)。
+这页的职责不是再讲一遍 backward 流程，而是把训练机制里最常见的判断点压成一张表。路线入口留给 `intro`，连续故事留给 `walkthrough`。
