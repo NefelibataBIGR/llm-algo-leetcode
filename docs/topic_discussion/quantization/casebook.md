@@ -1,144 +1,26 @@
 # 量化与压缩正文
 
-## 页面目标
+这页只做量化问题的判断框架：不重复 `intro` 的路线入口，也不写 `walkthrough` 的连续故事。
 
-这页的目标不是给量化做术语索引，而是把 `Part00-02` 里分散的量化内容压成一张“怎么判断”的地图。它主要回答：
+## 判断表
 
-- 什么时候做 PTQ，什么时候考虑 QAT？
-- GPTQ / AWQ / FP8 / KV cache quant 分别解决什么问题？
-- 量化收益怎么和精度损失、硬件支持和部署复杂度一起判断？
+先分清问题出在权重、激活还是 KV cache，再判断量化应该发生在训练后还是训练中，最后再看部署与 benchmark 是否支持这条路线。
 
-## 编号页入口
+| 现象 | 优先判断 | 先看哪条线 | 常见动作 |
+|:---|:---|:---|:---|
+| 模型太大，先想快速压缩 | `PTQ entry` | [02](./02_ptq_and_qat_timing.md), [04](./04_weight_only_compression.md) | 先做 PTQ / W8A16 验证收益 |
+| PTQ 之后误差太大 | `QAT / adaptation` | [02](./02_ptq_and_qat_timing.md), [03](./03_low_bit_training_adaptation.md) | 看 QAT、QLoRA 或训练适配路线 |
+| 想保住低比特精度 | `post-training compensation` | [04](./04_weight_only_compression.md) | 看 GPTQ / AWQ 的误差补偿 |
+| 长上下文服务被 cache 顶住 | `cache quant` | [05](./05_fp8_and_kv_cache_quantization.md) | 看 FP8 / KV cache quant |
+| 量化结果能跑，但值不值得上线 | `deployment validation` | [06](./06_deployment_and_benchmark_decision.md) | 回到 workload、精度、吞吐和部署成本 |
 
-下面 6 页是这条专题真正的正文主体，当前这页只负责把它们放到同一张量化判断框架里。
-
-## 故事骨架
-
-这条专题真正的主问题不是“哪种量化方法更流行”，而是“为什么系统会走向低比特表示，以及不同低比特路线分别服务哪一种约束”。
-
-把故事压缩一下，通常是这条线：
-
-1. 先发现模型太大、带宽太高，或者 cache 预算撑不住。
-2. 再分清问题出在权重、激活还是 KV cache。
-3. 再判断量化应当发生在训练后还是训练中。
-4. 如果后训练压缩不够，就继续往 GPTQ / AWQ 或训练适配路线走。
-5. 如果问题更偏执行栈和硬件支持，就进入 FP8。
-6. 最后必须回到部署和 benchmark，判断这条量化路线是否真的值。
-
-## 量化口径
-
-| 术语 | 核心含义 | 常见场景 |
+| 检查项 | 主要回答什么 | 常见误判 |
 |:---|:---|:---|
-| PTQ | Post-Training Quantization，训练后量化 | 快速落地、权重压缩 |
-| QAT | Quantization-Aware Training，量化感知训练 | 需要把量化误差纳入训练 |
-| GPTQ | 后训练权重量化，带误差补偿 | 追求低比特但尽量保精度 |
-| AWQ | 激活感知权重量化 | 更关注敏感通道的保护 |
-| FP8 | 8-bit 浮点表示 | 新硬件上的训练 / 推理低精度 |
-| KV cache quant | 推理缓存压缩 | 长上下文和高并发服务 |
-
-量化的核心不是“比特数更小”，而是“在可接受误差内压低存储、带宽或部署成本”。
-
-## Part00-02 在这条故事里的角色
-
-- `Part00`：提供误差、数值和调试直觉，负责解释“为什么压缩会引入问题”。
-- `Part01`：提供硬件、TensorCore、访存和精度背景，负责解释“为什么低比特能换来显存和带宽收益”。
-- `Part02`：提供 W8A16、QLoRA、GPTQ / AWQ、FP8 / KV cache quant 和部署项目，负责解释“怎么落地、怎么验证”。
-
-也就是说，专题不是替代原有路线，而是把原有路线重新组织成一条判断链。
-
-## 决策框架
-
-| 问题 | 优先看什么 | 典型结论 |
-|:---|:---|:---|
-| 想快速把模型变小 | PTQ / W8A16 | 先做权重量化，快速验证收益 |
-| PTQ 精度掉得太多 | QAT / LoRA / QLoRA | 把量化误差纳入训练或微调 |
-| 想保住低比特精度 | GPTQ / AWQ | 量化时做误差补偿或激活感知 |
-| 目标硬件支持 FP8 | FP8 路径 | 优先利用硬件原生低精度能力 |
-| 服务侧 cache 压力大 | KV cache quant | 先处理缓存存储和带宽 |
-
-## 典型案例
-
-### 案例 1：模型太大，先想快速落地
-
-最常见的需求是先把模型压小、让它跑起来。这时通常先看 `PTQ -> W8A16`，因为它成本最低，最适合建立第一版量化收益账本。
-
-判断时要同时看：
-
-- 峰值显存有没有下降
-- 速度有没有真正变快
-- 精度损失是否在目标范围内
-
-如果收益够，但精度损失仍可接受，就可以进入 `67` 做部署验证。
-
-### 案例 2：PTQ 之后效果掉得太明显
-
-这时不要先急着加大模型或换后端，先判断是不是量化误差本身太大。
-
-常见路径：
-
-- `GPTQ / AWQ`，看能不能通过后训练方法把误差压住
-- `QAT`，如果还有训练预算，就把量化误差带入训练
-- `LoRA / QLoRA`，如果问题本质上是适配能力不足，也可以走微调路径
-
-### 案例 3：硬件支持 FP8
-
-如果硬件已经原生支持 FP8，量化就不只是“压模型”，而是进入新的执行路径。
-
-这时要关注：
-
-- 低精度算力是否真正可用
-- 累加精度是否足够
-- 对吞吐、延迟和稳定性的综合影响
-
-### 案例 4：长上下文服务里 cache 太大
-
-如果问题出在推理 cache，而不是权重本身，那么重点不是 GPTQ / AWQ，而是 KV cache quant。
-
-这类问题通常要和 `41` 一起看，因为 cache 压缩和 cache 调度通常要一起做。
-
-## 关键取舍
-
-- 先做 PTQ 的收益是便宜、快，但代价是误差可能无法吸收。
-- 继续做 QAT / QLoRA 的收益是更稳，但代价是训练成本回来了。
-- GPTQ / AWQ 更像“后训练阶段里尽量保精度”的两种策略，而不是两个孤立名词。
-- FP8 和 KV cache quant 更像执行路径 / 服务预算问题，不应该简单并入传统 weight-only 讨论。
-
-## 常见误区
-
-- 量化只是把 dtype 改小。
-- 量化一定更快。
-- 所有层都应该用同样的量化粒度。
-- 只看显存下降，不看精度退化。
-- 只看离线 benchmark，不看部署复杂度和硬件支持。
-
-## 任务映射
-
-| Task | 关注点 |
-|:---|:---|
-| Task1 | 量化基本直觉、硬件支持和低比特表示 |
-| Task2 | PTQ / QAT 的介入时机 |
-| Task3 | GPTQ / AWQ 的保精度策略 |
-| Task4 | FP8 和 KV cache quant 的服务侧影响 |
-| Task5 | 部署和调度联动 |
-| Task6 | 用 `66` 的 benchmark 口径判断是否值得切换 |
-
-## 编号页对照
-
-- [01 Quantization Object and Error](./01_quantization_object_and_error.md)
-- [02 PTQ and QAT Timing](./02_ptq_and_qat_timing.md)
-- [03 Low-Bit Training Adaptation](./03_low_bit_training_adaptation.md)
-- [04 Weight-Only Compression](./04_weight_only_compression.md)
-- [05 FP8 and KV Cache Quantization](./05_fp8_and_kv_cache_quantization.md)
-- [06 Deployment and Benchmark Decision](./06_deployment_and_benchmark_decision.md)
-- [07 Visual Assets](./07_visual_assets.md)
-
-## 相关跳转
-
-- 想看完整路线，回到 [量化与压缩专题入口](./intro.md)。
-- 想看连续故事线，去 [量化与压缩深入阅读](./walkthrough.md)。
-- 想看服务侧收益，去 [推理优化专题](../inference_optimization/intro.md)。
-- 想看显存侧收益，去 [显存优化与性能调优专题](../memory_performance_tuning/intro.md)。
+| 量化对象 | 压的是权重、激活还是 KV cache | 量化就是统一改 dtype |
+| 介入时机 | 是 PTQ、QAT 还是低比特训练适配 | 先看流行度，不看约束 |
+| 后训练补偿 | GPTQ / AWQ 是否真在保精度 | 只看 bit 数，不看误差路径 |
+| 部署验证 | 省出来的显存或带宽值不值 | 显存降了就默认 adopt |
 
 ## 小结
 
-量化不是单一算法，而是一组围绕精度、显存、带宽和部署成本的决策方法。把它独立成专题，是为了让读者先学会怎么选，而不是先背名词。
+这页的职责不是再讲一遍量化术语，而是把量化选型里最常见的判断点压成一张表。路线入口留给 `intro`，连续故事留给 `walkthrough`。
