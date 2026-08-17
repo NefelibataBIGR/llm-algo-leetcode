@@ -1,5 +1,5 @@
 # 24. SGLang RadixAttention | SGLang 基数注意力
-**难度：** Hard | **环境：** GPU required | **标签：** `KV Cache`, `RadixAttention`, `推理优化` | **目标人群：** 推理系统与缓存工程
+**难度：** Hard | **环境：** CPU-first | **标签：** `推理优化`, `KV Cache`, `RadixAttention` | **目标人群：** 推理优化学习者
 
 > 🚀 **云端运行环境**
 >
@@ -22,18 +22,16 @@ RadixAttention 要解决的就是前缀复用问题：把已经算过的 prompt 
 ---
 ## 前置阅读
 
-**导语：** 先把 KV Cache、PagedAttention 和投机解码看清楚，再进入 RadixAttention：这一节关注的不是单次 attention 公式，而是多请求之间如何复用已经算过的前缀。
-- [22. vLLM PagedAttention | vLLM PagedAttention](../02_PyTorch_Algorithms/22_vLLM_PagedAttention.md)
-- [23. Speculative Decoding | 投机解码](../02_PyTorch_Algorithms/23_Speculative_Decoding.md)
-- [P0: 20. Profiling and Memory Ledger | 性能剖析与显存账本](../00_Prerequisites/20_Profiling_and_Memory_Ledger.md)
+- [22. vLLM PagedAttention | vLLM 分页注意力](./22_vLLM_PagedAttention.md)
+- [21. Decoding Strategies | 解码策略](./21_Decoding_Strategies.md)
+- [P1: 11. KV Cache and Memory Growth | KV Cache 与显存增长](../01_Hardware_Math_and_Systems/11_KV_Cache_and_Memory_Growth.md)
 
 ## 相关阅读
 
-**导语：** 学完 RadixAttention 后，可以继续看显存分析、调度和 profiling，判断前缀缓存是否真的降低了重算和首 token 延迟。
-- [P1: 13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
-- [P1: 14. FlashAttention Memory Model | FlashAttention 显存模型](../01_Hardware_Math_and_Systems/14_FlashAttention_Memory_Model.md)
-- [P1: 19. Operator Fusion Introduction | 算子融合导论](../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.md)
-  
+- [34. Prefix Caching and Chunked Prefill | 前缀缓存与分块预填充](./34_Prefix_Caching_and_Chunked_Prefill.md)
+- [37. KV Cache Scheduling | KV Cache 调度](./37_KV_Cache_Scheduling.md)
+- [69. Prefix Caching Benchmark | 前缀缓存基准项目](./69_Prefix_Caching_Benchmark.md)
+
 ---
 
 ### Step 1: 核心机制对比
@@ -57,6 +55,8 @@ RadixAttention 要解决的就是前缀复用问题：把已经算过的 prompt 
 > **为什么它适合多轮对话？**
 > 因为多轮对话里，不同请求往往共享很长的 System Prompt 或历史上下文。Radix Tree 会把这些公共前缀只存一份，所有请求都能沿着同一条前缀路径复用 KV Cache，而不是像按请求隔离的页表那样重复保存。
 
+![RadixAttention 前缀树图](/02_PyTorch_Algorithms/24_radix_attention_tree.svg)
+
 ### Step 2: 动手实战 —— 模拟 Radix Tree 前缀匹配
 
 为了让你深刻理解 SGLang 的调度思想，我们将用 Python 原生数据结构，亲手模拟一个非常简化的 Radix Tree 路由管理器。
@@ -64,6 +64,20 @@ RadixAttention 要解决的就是前缀复用问题：把已经算过的 prompt 
 这一步本质上不是在做“数值计算”，而是在做“前缀索引”：先找到能复用的最长公共前缀，再把后面的新 token 留给模型重新计算。**换句话说，代码返回的不是一个普通长度，而是“这段请求可以省掉多少 KV Cache 计算”；而 `split_prompt` 则把这段命中长度真正拆成“可复用前缀 + 待重算后缀”。**
 
 **要求**：完成 `match_prefix` 函数，在全局 KV 树中寻找当前请求的最长前缀，返回可以省去的重计算长度（Hit Length）。
+### Step 3: 机制边界
+
+RadixAttention 和 vLLM PagedAttention 的核心差异不在“有没有 cache”，而在“cache 的组织方式”。前者强调共享前缀和最长前缀匹配，后者强调分页块表和按块分配。把边界说清楚，后面的代码就不会把“前缀复用”误写成“分页管理”。
+### Step 4: 动手实战
+
+完成 `match_prefix`、`split_prompt` 和最长公共前缀匹配后，确认三件事：最长命中长度是否正确、可复用前缀是否正确拆出、没有命中的 prompt 是否能回退到完整重算。
+### 提示
+
+- `match_prefix` 只允许从 prompt 开头连续命中。
+- `split_prompt` 要把命中部分和未命中部分明确拆开。
+- Radix Tree 这里是教学简化版，重点看最长前缀匹配逻辑，不要被树结构本身带偏。
+### 测试
+
+运行下面的测试单元，确认最长前缀命中、拆分和回退逻辑都正确。
 
 ```python
 import torch

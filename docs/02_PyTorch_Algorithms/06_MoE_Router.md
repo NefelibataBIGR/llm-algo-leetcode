@@ -1,6 +1,6 @@
 # 06. MoE Router | MoE 路由器
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `模型架构`, `MoE`, `PyTorch` | **目标人群：** 模型微调与工程部署
+**难度：** Medium | **环境：** CPU-first | **标签：** `模型结构`, `MoE`, `Router` | **目标人群：** 模型结构学习者
 
 > 🚀 **云端运行环境**
 >
@@ -55,6 +55,38 @@ MoE 的核心就是把 MLP 拆成多个 expert，再用 Router 为每个 token �
 在门控网络中，首先计算输入对所有专家的打分矩阵（logits）。**关键陷阱**：必须先在全维度（num_experts）上进行 Softmax 将打分转为概率分布，然后再通过 `torch.topk` 获取最大的 K 个概率及其对应的专家索引。最后，为了保证加权和仍为 1，必须对截取出的 K 个概率值进行重归一化（Re-normalize）。
 
 因此实现顺序一定是 `router_logits -> 全局 softmax -> top-k -> 重归一化 -> sparse dispatch`；如果先截断再做 Softmax，就会丢掉全局相对置信度，路由结果也会变得不稳定。
+
+#### 图解：token 如何被 Router 分给专家
+
+MoE Router 不让每个 token 经过所有 MLP，而是为每个 token 选择少数专家。
+
+```text
+token hidden [D]
+      │
+      ▼
+router linear -> logits over experts [E]
+      │
+      ▼
+softmax over all experts
+      │
+      ▼
+top-k select experts
+      │
+      ├─ expert id:      [e2, e5]
+      └─ expert weights: [0.7, 0.3]
+```
+
+![MoE Router 路由图](/02_PyTorch_Algorithms/06_moe_router.svg)
+
+一个 batch 内可以这样理解：
+
+| token | Top-1 | Top-2 | 输出组合 |
+|:---:|:---:|:---:|:---|
+| token 0 | expert 2 | expert 5 | `0.7 * E2(x) + 0.3 * E5(x)` |
+| token 1 | expert 1 | expert 2 | `w1 * E1(x) + w2 * E2(x)` |
+| token 2 | expert 5 | expert 7 | `w5 * E5(x) + w7 * E7(x)` |
+
+本页只实现 Router 的 Top-K 选择；完整 MoE 还要负责 expert dispatch、combine 和负载均衡。
 
 ###  Step 3: 核心数学机制：Top-K Routing
 

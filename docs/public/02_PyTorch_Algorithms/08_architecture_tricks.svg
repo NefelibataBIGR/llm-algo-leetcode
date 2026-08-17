@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1540 760" role="img" aria-labelledby="title desc">
+  <title id="title">Architecture Tricks Diagram</title>
+  <desc id="desc">Compares common architecture tricks such as tied embeddings and Gemma-style RMSNorm scaling.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#f5f3ff"/>
+    </linearGradient>
+    <style>
+      .title { font: 700 30px "Inter", "Noto Sans SC", sans-serif; fill: #0f172a; }
+      .sub { font: 500 16px "Inter", "Noto Sans SC", sans-serif; fill: #475569; }
+      .box { fill: #ffffff; stroke-width: 3; rx: 18; ry: 18; }
+      .label { font: 700 18px "Inter", "Noto Sans SC", sans-serif; fill: #111827; }
+      .small { font: 500 13px "Inter", "Noto Sans SC", sans-serif; fill: #334155; }
+    </style>
+  </defs>
+  <rect width="1540" height="760" fill="url(#bg)"/>
+  <text x="64" y="66" class="title">Architecture tricks: small changes, large effects</text>
+  <text x="64" y="96" class="sub">Two common examples: tied word embeddings and Gemma-style RMSNorm scaling</text>
+
+  <rect x="80" y="150" width="620" height="180" class="box" fill="#fff7ed" stroke="#f59e0b"/>
+  <text x="390" y="192" text-anchor="middle" class="label">Tied word embeddings</text>
+  <text x="120" y="232" class="small">input embeddings and lm_head share parameters</text>
+  <text x="120" y="262" class="small">reduces parameter count and aligns input/output semantics</text>
+  <text x="120" y="292" class="small">often used in GPT / Qwen-style models</text>
+
+  <rect x="840" y="150" width="620" height="180" class="box" fill="#ecfccb" stroke="#65a30d"/>
+  <text x="1150" y="192" text-anchor="middle" class="label">Gemma-style RMSNorm</text>
+  <text x="880" y="232" class="small">scaling form changes from w to (1 + w)</text>
+  <text x="880" y="262" class="small">initially behaves like pure normalization</text>
+  <text x="880" y="292" class="small">gives a smoother early training path</text>
+
+  <rect x="160" y="390" width="1220" height="220" class="box" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="770" y="430" text-anchor="middle" class="label">How to read these tricks</text>
+  <text x="200" y="470" class="small">- they do not change the main block structure</text>
+  <text x="200" y="500" class="small">- they do change parameter flow and early optimization behavior</text>
+  <text x="200" y="530" class="small">- they are easy to miss if you only look at the high-level architecture</text>
+  <text x="200" y="560" class="small">- they matter when comparing code paths across model families</text>
+  <text x="800" y="470" class="small">This page is the place to collect these small but meaningful deviations</text>
+  <text x="800" y="500" class="small">It keeps the main model pages focused on core structure while preserving important implementation quirks</text>
+</svg>

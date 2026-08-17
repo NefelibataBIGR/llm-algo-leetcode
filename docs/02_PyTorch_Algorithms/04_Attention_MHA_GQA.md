@@ -1,6 +1,6 @@
 # 04. Attention MHA GQA | 多头注意力
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `基础架构`, `注意力机制`, `推理优化` | **目标人群：** 模型微调与工程部署
+**难度：** Medium | **环境：** CPU-first | **标签：** `基础实现`, `Attention`, `MHA/GQA` | **目标人群：** 基础实现学习者
 
 > 🚀 **云端运行环境**
 >
@@ -89,6 +89,42 @@ $$ \text{Attention}(Q, K, V) = \text{Softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right
 3. 注意力分数计算：`Q @ K^T -> [B, S, H, D] @ [B, H, D, S] -> [B, H, S, S]`（K 转置最后两维得到`[B, H, D, S]`）。注：Q 在 `[B, S, H, D] `下无法直接与 `K^T` 做矩阵乘，需将 Q 转置为 `[B, H, S, D]`（或使用 `torch.matmul` 的自动广播机制）后计算。
 4. 加权 Value：`Scores @ V` -> `[B, H, S, S] @ [B, H, S, D]` -> `[B, H, S, D]`
 5. 最后合并多头：转置回 `[B, S, H, D]` 并 `reshape` 成 `[B, S, H * D]`。
+
+#### 可视化：MHA 和 GQA 的 head 关系
+
+MHA、MQA、GQA 的主要差异是 Query head 和 KV head 的配比。Query 通常保持多头，KV 可以减少以节省 KV cache。
+
+```text
+MHA: n_q_heads = n_kv_heads
+Q0 ─ K0,V0
+Q1 ─ K1,V1
+Q2 ─ K2,V2
+Q3 ─ K3,V3
+
+GQA: n_q_heads > n_kv_heads
+Q0 ┐
+Q1 ┘─ K0,V0
+Q2 ┐
+Q3 ┘─ K1,V1
+
+MQA: n_kv_heads = 1
+Q0 ┐
+Q1 ┤
+Q2 ┤─ K0,V0
+Q3 ┘
+```
+
+![MHA / GQA / MQA / MLA 头关系](/02_PyTorch_Algorithms/04_attention_heads.svg)
+
+为什么这会影响推理显存：
+
+| 结构 | KV cache 规模 | 直觉 |
+|:---|:---|:---|
+| MHA | 最大 | 每个 Q head 都有独立 K/V |
+| GQA | 中等 | 多个 Q head 共享一组 K/V |
+| MQA | 最小 | 所有 Q head 共享一组 K/V |
+
+本页代码里的 `repeat_kv` 就是在计算时把较少的 KV head 临时扩展到 Query head 数量，便于复用同一套 attention 计算逻辑。
 
 ### Step 3: 工业界源码映射
 

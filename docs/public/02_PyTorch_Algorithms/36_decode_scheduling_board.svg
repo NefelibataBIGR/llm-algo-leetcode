@@ -1,0 +1,34 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="720" fill="#F7F4EC"/>
+  <rect x="56" y="48" width="1168" height="624" rx="28" fill="#FFFDF7" stroke="#1F2937" stroke-width="2"/>
+  <text x="88" y="100" fill="#111827" font-size="30" font-family="Arial, sans-serif" font-weight="700">Decode Scheduling Board</text>
+  <text x="88" y="132" fill="#4B5563" font-size="18" font-family="Arial, sans-serif">A scheduler ranks requests by phase, cache value, priority, and fairness instead of simple arrival order.</text>
+  <rect x="102" y="194" width="222" height="118" rx="20" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/>
+  <text x="150" y="236" fill="#1E3A8A" font-size="22" font-family="Arial, sans-serif" font-weight="700">Queue State</text>
+  <text x="128" y="270" fill="#1E3A8A" font-size="16" font-family="Arial, sans-serif">request A: prefill, cache hit</text>
+  <text x="128" y="292" fill="#1E3A8A" font-size="16" font-family="Arial, sans-serif">request B: decode, high priority</text>
+  <rect x="388" y="194" width="270" height="118" rx="20" fill="#FDE68A" stroke="#D97706" stroke-width="2"/>
+  <text x="458" y="236" fill="#92400E" font-size="22" font-family="Arial, sans-serif" font-weight="700">Sort Key</text>
+  <text x="420" y="270" fill="#92400E" font-size="16" font-family="Arial, sans-serif">phase, cache rank, priority,</text>
+  <text x="420" y="292" fill="#92400E" font-size="16" font-family="Arial, sans-serif">total length, stable id</text>
+  <rect x="722" y="194" width="186" height="118" rx="20" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+  <text x="772" y="236" fill="#166534" font-size="22" font-family="Arial, sans-serif" font-weight="700">Choose</text>
+  <text x="748" y="270" fill="#166534" font-size="16" font-family="Arial, sans-serif">one active request</text>
+  <text x="748" y="292" fill="#166534" font-size="16" font-family="Arial, sans-serif">for this step</text>
+  <rect x="972" y="194" width="174" height="118" rx="20" fill="#FCE7F3" stroke="#DB2777" stroke-width="2"/>
+  <text x="1014" y="236" fill="#9D174D" font-size="22" font-family="Arial, sans-serif" font-weight="700">Advance</text>
+  <text x="1000" y="270" fill="#9D174D" font-size="16" font-family="Arial, sans-serif">prefill to decode</text>
+  <text x="1000" y="292" fill="#9D174D" font-size="16" font-family="Arial, sans-serif">or decode one token</text>
+  <path d="M324 252H388" stroke="#374151" stroke-width="3"/>
+  <path d="M658 252H722" stroke="#374151" stroke-width="3"/>
+  <path d="M908 252H972" stroke="#374151" stroke-width="3"/>
+  <path d="M373 244L388 252L373 260" fill="#374151"/>
+  <path d="M707 244L722 252L707 260" fill="#374151"/>
+  <path d="M957 244L972 252L957 260" fill="#374151"/>
+  <rect x="102" y="380" width="1044" height="144" rx="22" fill="#F3F4F6" stroke="#6B7280" stroke-width="1.5"/>
+  <text x="132" y="420" fill="#111827" font-size="22" font-family="Arial, sans-serif" font-weight="700">What the scheduler is really balancing</text>
+  <text x="132" y="454" fill="#374151" font-size="18" font-family="Arial, sans-serif">Throughput prefers batching and cache reuse. Latency prefers letting short or urgent requests move earlier. Fairness prevents one long request from occupying the front forever.</text>
+  <text x="132" y="486" fill="#374151" font-size="18" font-family="Arial, sans-serif">That is why the key is a policy surface: change the ranking, and the whole service behavior changes.</text>
+  <rect x="102" y="558" width="1044" height="68" rx="18" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
+  <text x="132" y="590" fill="#075985" font-size="18" font-family="Arial, sans-serif">Page 36 should leave one scheduling picture: queue state is dynamic, so order must be recomputed from policy rather than taken from arrival time.</text>
+</svg>

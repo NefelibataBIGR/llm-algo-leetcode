@@ -1,5 +1,5 @@
 # 25. Quantization W8A16 | W8A16 量化
-**难度：** Medium | **环境：** CPU-first | **标签：** `量化`, `推理优化`, `Linear` | **目标人群：** 推理优化与模型压缩
+**难度：** Medium | **环境：** CPU-first | **标签：** `量化压缩`, `W8A16`, `Linear` | **目标人群：** 量化压缩学习者
 
 > 🚀 **云端运行环境**
 >
@@ -23,21 +23,15 @@
 
 ## 前置阅读
 
-**导语：** 先补齐精度格式、硬件吞吐和基本量化直觉，再看本节会更顺：这里关注的不是把整条推理链路都改成低精度，而是先解决权重太大、读取太贵的问题。
-
 - [P1: 01. Data Types and Precision | 大模型的数据格式与混合精度](../01_Hardware_Math_and_Systems/01_Data_Types_and_Precision.md)
 - [P1: 12. TensorCore and Mixed Precision | Tensor Core 与混合精度](../01_Hardware_Math_and_Systems/12_TensorCore_and_Mixed_Precision.md)
 - [P1: 21. Quantization Theory and INT4/INT8 | 量化理论与 INT4/INT8](../01_Hardware_Math_and_Systems/21_Quantization_Theory_and_INT4_INT8.md)
 
-
 ## 相关阅读
 
-**导语：** 完成 W8A16 后，可以继续看两件事：一是用 profiling 验证瓶颈有没有变化，二是进入更激进的 4-bit 和部署级量化方案。
-
 - [26. QLoRA and 4bit Quantization | QLoRA 与 4-bit 量化](./26_QLoRA_and_4bit_Quantization.md)
-- [P1: 13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
-- [P1: 06. VRAM Calculation and ZeRO | 显存计算与 ZeRO 优化](../01_Hardware_Math_and_Systems/06_VRAM_Calculation_and_ZeRO.md)
-- [P1: 24. SRAM Optimization Techniques | SRAM 优化技术](../01_Hardware_Math_and_Systems/24_SRAM_Optimization_Techniques.md)
+- [40. GPTQ and AWQ Weight Quantization | GPTQ 与 AWQ 权重量化](./40_GPTQ_and_AWQ_Weight_Quantization.md)
+- [67. Quantized Inference and Deployment | 量化推理与部署](./67_Quantized_Inference_and_Deployment.md)
 
 ---
 
@@ -52,6 +46,8 @@
 > **PTQ 与 QAT 的区别：**
 > - **PTQ (Post-Training Quantization，训练后量化)**：模型已经训练好了。对 Weight-only Quantization 而言，权重的数值范围是确定的，直接对权重计算绝对最大值即可算出缩放因子（Scale），不需要额外的校准数据。若涉及激活值量化，才需要校准数据来统计激活值分布以确定其动态范围。
 > - **QAT (Quantization-Aware Training，量化感知训练)**：在训练时，正向传播模拟量化的误差，反向传播用“直通估计器 (STE)”更新原始的高精度权重。成本极高，但精度损失最小。
+
+![W8A16 量化流程图](/02_PyTorch_Algorithms/25_quantization_pipeline.svg)
 
 ### Step 2: 代码实现框架
 

@@ -1,5 +1,5 @@
 # 22. vLLM PagedAttention | vLLM 分页注意力
-**难度：** Hard | **环境：** GPU required | **标签：** `KV Cache`, `PagedAttention`, `推理优化` | **目标人群：** 推理系统与内核工程
+**难度：** Hard | **环境：** CPU-first | **标签：** `推理优化`, `KV Cache`, `PagedAttention` | **目标人群：** 推理优化学习者
 
 > 🚀 **云端运行环境**
 >
@@ -23,22 +23,15 @@ PagedAttention 的思路是把 KV Cache 像分页内存一样管理：物理显�
 
 ## 前置阅读
 
-**导语：** 先理解解码策略、KV Cache 增长和显存账本，再看 PagedAttention 会更清楚：本节关注的不是 attention 公式本身，而是在线服务里如何管理不断增长的缓存。
-
-- [20. FlashAttention Sim | FlashAttention 模拟](../02_PyTorch_Algorithms/20_FlashAttention_Sim.md)
-- [21. Decoding Strategies | 解码策略](../02_PyTorch_Algorithms/21_Decoding_Strategies.md)
+- [21. Decoding Strategies | 解码策略](./21_Decoding_Strategies.md)
 - [P1: 11. KV Cache and Memory Growth | KV Cache 与显存增长](../01_Hardware_Math_and_Systems/11_KV_Cache_and_Memory_Growth.md)
-- [P0: 20. Profiling and Memory Ledger | 性能剖析与显存账本](../00_Prerequisites/20_Profiling_and_Memory_Ledger.md)
-
+- [20. FlashAttention Sim | FlashAttention 模拟](./20_FlashAttention_Sim.md)
 
 ## 相关阅读
 
-**导语：** PagedAttention 解决 KV Cache 的按块管理问题，后面可以继续看投机解码、前缀复用和 profiling，理解推理系统如何继续减少等待和重算。
-
-- [23. Speculative Decoding | 投机解码](./23_Speculative_Decoding.md)
 - [24. SGLang RadixAttention | SGLang 基数注意力](./24_SGLang_RadixAttention.md)
-- [P1: 13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
-- [P1: 14. FlashAttention Memory Model | FlashAttention 显存模型](../01_Hardware_Math_and_Systems/14_FlashAttention_Memory_Model.md)
+- [34. Prefix Caching and Chunked Prefill | 前缀缓存与分块预填充](./34_Prefix_Caching_and_Chunked_Prefill.md)
+- [37. KV Cache Scheduling | KV Cache 调度](./37_KV_Cache_Scheduling.md)
 
 ---
 
@@ -59,7 +52,7 @@ PagedAttention 的思路是把 KV Cache 像分页内存一样管理：物理显�
 ### Step 2: 代码实现框架
 系统需要维护一个 `BlockTable`，它本质上就是“逻辑块编号 → 物理块 ID”的映射表。prefill 阶段先按序列长度向上取整，申请足够的物理 Block；decode 阶段只在跨过 block 边界时额外申请 1 个 Block；真正做 attention 时，再按 block_table 把离散的物理块重新拼回逻辑序列。下面的代码会把这条链路拆成 5 个小动作：初始化缓存池、计算所需 block 数、分配 prefill block、判断 decode 是否跨块、按块表恢复缓存。
 
-###  Step 3: PagedAttention 模拟机制
+### Step 3: PagedAttention 模拟机制
 
 为了让你在不写几千行 C++ 的情况下弄懂 PagedAttention，我们将用纯 Python 模拟它的核心数据结构：
 
@@ -67,7 +60,9 @@ PagedAttention 的思路是把 KV Cache 像分页内存一样管理：物理显�
 2. **Block Table (块表)**：每个 Request 都有一个专属的块表，它是一个整数列表（`List[int]`），记录了这个 Request 的第 $i$ 个逻辑块存在物理池的哪个索引里。
 3. **KV Cache Manager**：负责在 Token 生成时，“按需”分配新的物理块索引。
 
-###  Step 4: 动手实战
+![PagedAttention 块表图](/02_PyTorch_Algorithms/22_paged_attention_blocks.svg)
+
+### Step 4: 动手实战
 
 **要求**：请补全下方 `KVCacheManager`，实现一个极简版的 vLLM 内存管理器。
 
@@ -151,6 +146,15 @@ class KVCacheManager:
 
 ```
 
+### 提示
+
+- `block_table` 是逻辑块到物理块的映射，不要把它和真实张量位置混淆。
+- `allocate_for_prefill` 先按需分配整段 prompt。
+- `allocate_for_decode` 只有在跨块边界时才追加新 block。
+- `get_physical_cache` 的作用是把离散物理块恢复成逻辑连续序列。
+### 测试
+
+运行下面的测试单元，确认 prefill / decode / cache 拼装三段链路都正确。
 
 ```python
 # 运行此单元格以测试你的实现

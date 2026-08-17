@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1660 780" role="img" aria-labelledby="title desc">
+  <title id="title">FlashAttention tiling and online softmax</title>
+  <desc id="desc">Shows Q, K, V blocks iterating through tiled attention with online softmax statistics m and l being updated incrementally.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#fff7ed"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+    </marker>
+    <style>
+      .title { font: 700 30px "Inter", "Noto Sans SC", sans-serif; fill: #0f172a; }
+      .sub { font: 500 16px "Inter", "Noto Sans SC", sans-serif; fill: #475569; }
+      .label { font: 700 18px "Inter", "Noto Sans SC", sans-serif; fill: #111827; }
+      .small { font: 500 14px "Inter", "Noto Sans SC", sans-serif; fill: #334155; }
+      .box { fill: #ffffff; stroke-width: 3; rx: 16; ry: 16; }
+      .arrow { stroke: #475569; stroke-width: 4; fill: none; marker-end: url(#arrow); }
+      .grid { stroke: #cbd5e1; stroke-width: 1.5; }
+    </style>
+  </defs>
+  <rect width="1660" height="780" fill="url(#bg)"/>
+  <text x="64" y="66" class="title">FlashAttention: tiled QKV + online softmax</text>
+  <text x="64" y="96" class="sub">Keep running softmax stats m and l instead of the full score matrix.</text>
+
+  <rect x="90" y="150" width="320" height="110" class="box" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="250" y="186" text-anchor="middle" class="label">Q block</text>
+  <text x="250" y="214" text-anchor="middle" class="small">query tile</text>
+  <text x="250" y="238" text-anchor="middle" class="small">outer loop</text>
+
+  <rect x="470" y="150" width="320" height="110" class="box" fill="#ecfccb" stroke="#65a30d"/>
+  <text x="630" y="186" text-anchor="middle" class="label">K / V block</text>
+  <text x="630" y="214" text-anchor="middle" class="small">key/value tile</text>
+  <text x="630" y="238" text-anchor="middle" class="small">inner loop</text>
+
+  <rect x="850" y="150" width="320" height="110" class="box" fill="#f5f3ff" stroke="#8b5cf6"/>
+  <text x="1010" y="186" text-anchor="middle" class="label">Score tile</text>
+  <text x="1010" y="214" text-anchor="middle" class="small">S_block = QK^T</text>
+  <text x="1010" y="238" text-anchor="middle" class="small">compute on chip</text>
+
+  <rect x="1230" y="150" width="340" height="110" class="box" fill="#fff1f2" stroke="#db2777"/>
+  <text x="1400" y="186" text-anchor="middle" class="label">Online softmax state</text>
+  <text x="1400" y="214" text-anchor="middle" class="small">m_old -> m_new</text>
+  <text x="1400" y="238" text-anchor="middle" class="small">l_old -> l_new</text>
+
+  <path d="M 410 205 L 470 205" class="arrow"/>
+  <path d="M 790 205 L 850 205" class="arrow"/>
+  <path d="M 1170 205 L 1230 205" class="arrow"/>
+
+  <rect x="90" y="320" width="690" height="170" class="box" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="120" y="358" class="label">Per tile</text>
+  <text x="120" y="396" class="small">1. compute a local score tile</text>
+  <text x="120" y="426" class="small">2. update running max m</text>
+  <text x="120" y="456" class="small">3. rescale normalizer l</text>
+  <text x="120" y="486" class="small">4. accumulate output without storing full S</text>
+
+  <rect x="840" y="320" width="730" height="170" class="box" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="870" y="358" class="label">Memory effect</text>
+  <text x="870" y="394" class="small">• standard attention stores full S</text>
+  <text x="870" y="424" class="small">• FlashAttention keeps one tile at a time</text>
+  <text x="870" y="454" class="small">• memory stays near-linear in sequence length</text>
+
+  <rect x="90" y="540" width="1480" height="140" class="box" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="120" y="580" class="label">Reading rule</text>
+  <text x="120" y="620" class="small">Read it as a streaming reduction: Q tiles sweep across K/V tiles while m and l carry exact softmax state forward.</text>
+</svg>

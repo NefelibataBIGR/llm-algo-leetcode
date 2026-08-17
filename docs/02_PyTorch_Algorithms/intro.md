@@ -4,13 +4,137 @@
 
 本部分聚焦 PyTorch 级别的大模型实现，位于 Part 0 / Part 1 之后、Part 3 之前，目标是把基础算子、模型组装、训练与对齐、显存优化、推理优化、并行策略和项目实战串成一条可运行的工程链。正文默认 notebook-first，组页负责组级资产与阅读路径，Part 级导学只管组间关系和阅读顺序，不下沉到具体节号。
 
-`2.7` 已拆成两条子线入口：`2.7A` 负责高级推理策略，`2.7B` 负责模型压缩与量化；总入口页负责说明两条子线如何衔接到 `2.8` 并行通信和 `2.9` 项目验证。
+`2.7-2.10` 当前按四个平级组组织：`2.7` 负责高级推理策略，`2.8` 负责模型压缩与量化，`2.9` 负责并行通信，`2.10` 负责项目验证与工程收口。
+
+Part 02 现在还配套了两条基础横向机制线和两条方法横向线：
+- `反向传播与训练机制`：串起 `00 / 17 / 18 / 12 / 19 / 42 / 74`
+- `后训练与对齐`：串起 `14-16 / 50 / 84-85`
+- `大模型结构和原理`：承接 `01-08`
+- `训练微调闭环`：承接 `09-13 + 60`
 
 Part 2 更像一张多入口学习地图：不同基础和目标的读者可以从不同组切入，最后都汇到项目实战，再按需要回补前面的训练、推理和并行内容。
 
+## 实际演进到的定位（基于 00-89）
+
+```text
+Part 02 实际定位：
+  大模型算法工程师的 "算法实现底座"
+  ├── 组件层（00-08）：PyTorch 实现的核心算子与结构
+  ├── 训练层（09-16）：SFT、LoRA、DPO、GRPO 的完整训练链路
+  ├── 优化层（17-29）：显存优化、推理加速、并行策略的 PyTorch 实现
+  ├── 进阶层（30-59）：训练、推理、显存、通信、对齐方法与预留位
+  └── 项目层（60-89）：训练、推理、显存、通信、对齐项目与预留位
+```
+
+关键变化：Part 02 不再是 "PyTorch 入门"，而是 "所有能用 PyTorch / Triton 表达的算法，都在这里实现"。
+
+## Part 02、Part 03、Part 04 的分工
+
+这是理解 89 个文件是否合理的核心框架。
+
+| Part | 名称 | 核心问题 | 抽象层级 | 受众 |
+|:---|:---|:---|:---|:---|
+| Part 00 | Prerequisites | "Python/PyTorch 怎么用？" | 语言/框架基础 | 所有人 |
+| Part 01 | Hardware, Math & Systems | "硬件上发生了什么？" | 硬件/系统原理 | 系统工程师 |
+| Part 02 | PyTorch Algorithms | "算法怎么用代码表达？" | 算法实现 | 算法/工程开发 |
+| Part 03 | Triton Kernels | "算子怎么写得更快？" | 高性能算子 | 系统/性能工程师 |
+| Part 04 | CUDA & System Optimization | "系统怎么极致优化？" | 极致系统优化 | 系统工程师 |
+
+### 关键边界
+
+```text
+Part 02（算法实现）：回答 "这个算法在 PyTorch 里怎么写？"
+    ↓ 当 PyTorch 不够快时
+Part 03（Triton 算子）：回答 "这个算子怎么用 Triton 写得更快？"
+    ↓ 当 Triton 不够底层 / 需要极致优化时
+Part 04（CUDA / 系统）：回答 "这个系统怎么在 CUDA 层面做极致优化？"
+```
+
+## Part 02 编号索引
+
+编号到 89 本身不是问题，但需要让学习者在进入 Part 02 时不被编号淹没。
+
+| 编号区间 | 主题 | 对应路线 |
+|:---|:---|:---|
+| `00-08` | PyTorch 基础 + 模型组件 | 训练基础 |
+| `09-16` | 训练闭环 + 对齐理论 | 训练基础 + 对齐 |
+| `17-29` | 显存优化 + 推理加速 + 并行 | 推理 + 显存 + 分布式 |
+| `30-59` | 非项目理论 / 方法页 | 训练、推理、显存、通信、对齐进阶 |
+| `60-89` | 项目实战 / 收口页 | 训练、推理、显存、通信、对齐项目收口 |
+
+### Non-Project Placeholder Map | 非项目占位图
+
+| 编号 | 归属路线 | 预留标题 | 状态 |
+|:---|:---|:---|:---|
+| `30` | 训练微调 | `Long_Context_Fine_Tuning` | 占位 |
+| `31` | 训练微调 | `LoRA_Variants_Theory` | 占位 |
+| `32` | 训练微调 | `Data_Engineering_for_SFT` | 占位 |
+| `33` | 训练微调 | 预留 | 占位 |
+| `34` | 推理优化 | `Prefix_Caching_and_Chunked_Prefill` | 已落盘 |
+| `35` | 推理优化 | `Multi_Token_Decoding` | 已落盘 |
+| `36` | 推理优化 | `Decode_Scheduling` | 已落盘 |
+| `37` | 推理优化 | `KV_Cache_Scheduling` | 已落盘 |
+| `38` | 推理优化 | `Prefill_Decode_Disaggregation` | 占位 |
+| `39` | 推理优化 | 预留 | 占位 |
+| `40` | 显存优化 | `GPTQ_and_AWQ_Weight_Quantization` | 已落盘 |
+| `41` | 显存优化 | `FP8_and_KV_Cache_Quantization` | 已落盘 |
+| `42` | 显存优化 | `Activation_Offload` | 已落盘 |
+| `43` | 显存优化 | `Unified_Memory_Management` | 占位 |
+| `44` | 显存优化 | `Auto_Tuning_Framework` | 占位 |
+| `45` | 显存优化 | 预留 | 占位 |
+| `46` | 通信与并行 | `Communication_Profiling_with_NCCL` | 已落盘 |
+| `47` | 通信与并行 | `MoE_Expert_Parallel` | 已落盘 |
+| `48` | 通信与并行 | `Communication_Reserved` | 占位 |
+| `49` | 通信与并行 | `Parallelism_Reserved` | 占位 |
+| `50` | 后训练对齐 | `Preference_Data_and_Evaluation` | 已落盘 |
+| `51` | 后训练对齐 | `Online_DPO` | 占位 |
+| `52` | 后训练对齐 | `Alignment_Reserved` | 占位 |
+| `53` | 通用预留 | `Reserved_53` | 占位 |
+| `54` | 通用预留 | `Reserved_54` | 占位 |
+| `55` | 通用预留 | `Reserved_55` | 占位 |
+| `56` | 通用预留 | `Reserved_56` | 占位 |
+| `57` | 通用预留 | `Reserved_57` | 占位 |
+| `58` | 通用预留 | `Reserved_58` | 占位 |
+| `59` | 通用预留 | `Reserved_59` | 占位 |
+
+### Project Placeholder Map | 项目占位图
+
+| 编号 | 归属路线 | 预留标题 | 状态 |
+|:---|:---|:---|:---|
+| `60` | 训练微调 | `LoRA_Full_Project` | 已落盘 |
+| `61` | 训练微调 | `Model_Architecture_Exploration` | 已按项目交付模板收口 |
+| `62` | 训练微调 | `Instruction_Fine_Tuning_Project` | 已按项目交付模板收口 |
+| `63` | 训练微调 | `LoRA_Variants_Benchmark` | 已按项目交付模板收口 |
+| `64` | 训练微调 | `SFT_Data_Quality_Project` | 已落盘 |
+| `65` | 训练微调 | `QLoRA_Selection_Project` | 已落盘 |
+| `66` | 推理优化 | `Inference_Performance_Comparison` | 已落盘 |
+| `67` | 推理优化 | `Quantized_Inference_and_Deployment` | 已落盘 |
+| `68` | 推理优化 | `Speculative_Decoding_Benchmark` | 已按项目交付模板收口 |
+| `69` | 推理优化 | `Prefix_Caching_Benchmark` | 已按项目交付模板收口 |
+| `70` | 推理优化 | `Serving_Scheduler_Benchmark` | 已按项目交付模板收口 |
+| `71` | 推理优化 | `Reserved_71` | 占位 |
+| `72` | 推理优化 | `Reserved_72` | 占位 |
+| `73` | 显存优化 | `Training_Performance_Analysis` | 已落盘 |
+| `74` | 显存优化 | `Profiling_Driven_Optimization` | 已落盘 |
+| `75` | 显存优化 | `Memory_Budget_Compression_Project` | 已落盘 |
+| `76` | 显存优化 | `Activation_Checkpoint_Offload_Benchmark` | 已落盘 |
+| `77` | 显存优化 | `Reserved_77` | 占位 |
+| `78` | 显存优化 | `Reserved_78` | 占位 |
+| `79` | 通信与并行 | `Distributed_Parallel_Benchmark` | 已落盘 |
+| `80` | 通信与并行 | `MoE_Expert_Parallel_Benchmark` | 已按项目交付模板收口 |
+| `81` | 通信与并行 | `Distributed_Inference_Project` | 已落盘 |
+| `82` | 通信与并行 | `Reserved_82` | 占位 |
+| `83` | 通信与并行 | `Reserved_83` | 占位 |
+| `84` | 后训练对齐 | `DPO_Preference_Project` | 已落盘 |
+| `85` | 后训练对齐 | `GRPO_Groupwise_Alignment_Project` | 已落盘 |
+| `86` | 后训练对齐 | `DPO_Online_Benchmark` | 已按项目交付模板收口 |
+| `87` | 通用预留 | 预留 | 占位 |
+| `88` | 通用预留 | 预留 | 占位 |
+| `89` | 通用预留 | 预留 | 占位 |
+
 ## Part Asset Overview | Part 资产总览
 
-本章内容按 9 个主题组组织，后续页面也沿该结构继续扩展。
+本章内容按 10 个主题组组织，后续页面也沿该结构继续扩展。
 
 > 导航说明：先看总览，再进入具体组页。
 > 组页负责组内阅读顺序与资产收口，不需要一次性读完全部页面。
@@ -20,13 +144,14 @@ Part 2 更像一张多入口学习地图：不同基础和目标的读者可以�
 |:---|:---|:---|:---|
 | [2.1](./2_1.md) | 建立基础算子和组件直觉 | [00](./00_PyTorch_Warmup.md)、[01](./01_RMSNorm_Tutorial.md)、[02](./02_SwiGLU_Activation.md)、[03](./03_RoPE_Tutorial.md)、[04](./04_Attention_MHA_GQA.md) | 5 |
 | [2.2](./2_2.md) | 组装模型结构并理解 MoE 组件 | [05](./05_LLaMA3_Block_Tutorial.md)、[06](./06_MoE_Router.md)、[07](./07_MoE_Load_Balancing_Loss.md)、[08](./08_Architecture_Tricks.md) | 4 |
-| [2.3](./2_3.md) | 搭起微调、调度器和训练闭环 | [09](./09_SFT_Training_Loop.md)、[10](./10_LoRA_Tutorial.md)、[11](./11_LR_Schedulers_WSD_Cosine.md)、[12](./12_Gradient_Accumulation.md)、[13](./13_End_to_End_Fine_Tuning_Experiment.md) | 5 |
+| [2.3](./2_3.md) | 立住 SFT、LoRA 和训练更新闭环 | [09](./09_SFT_Training_Loop.md)、[10](./10_LoRA_Tutorial.md)、[11](./11_LR_Schedulers_WSD_Cosine.md)、[12](./12_Gradient_Accumulation.md)、[13](./13_End_to_End_Fine_Tuning_Experiment.md) | 5 |
 | [2.4](./2_4.md) | 理解偏好优化与对齐链路 | [14](./14_RLHF_PPO_Memory.md)、[15](./15_DPO_Loss_Tutorial.md)、[16](./16_GRPO_Loss_Tutorial.md) | 3 |
-| [2.5](./2_5.md) | 追踪反向传播和显存优化 | [17](./17_Autograd_Basics.md)、[18](./18_Activation_and_Loss_Backward.md)、[19](./19_Activation_Checkpointing_and_Activation_Offload.md) | 3 |
+| [2.5](./2_5.md) | 理解反向传播与训练侧显存优化 | [17](./17_Autograd_Basics.md)、[18](./18_Activation_and_Loss_Backward.md)、[19](./19_Activation_Checkpointing_and_Activation_Offload.md) | 3 |
 | [2.6](./2_6.md) | 建立推理加速和缓存直觉 | [20](./20_FlashAttention_Sim.md)、[21](./21_Decoding_Strategies.md)、[22](./22_vLLM_PagedAttention.md) | 3 |
-| [2.7](./2_7.md) | 2.7A 高级推理 / 2.7B 压缩量化双轨入口，继续向 serving、cache 和量化家族扩展 | 核心：[23](./23_Speculative_Decoding.md)、[24](./24_SGLang_RadixAttention.md)、[25](./25_Quantization_W8A16.md)、[26](./26_QLoRA_and_4bit_Quantization.md)；扩展：[36](./36_Prefix_Caching_and_Chunked_Prefill.md)、[37](./37_Multi_Token_Decoding.md)、[38](./38_Decode_Scheduling.md)、[39](./39_GPTQ_and_AWQ_Weight_Quantization.md)、[40](./40_FP8_and_KV_Cache_Quantization.md)、[41](./41_KV_Cache_Scheduling.md) | 核心 4 + 扩展 6 |
-| [2.8](./2_8.md) | 形成并行策略和通信边界判断，并延伸到通信 profiling | 核心：[27](./27_ZeRO_Optimizer_Sim.md)、[28](./28_Pipeline_Parallelism_MicroBatch.md)、[29](./29_Tensor_Parallelism_Sim.md)；扩展：[42](./42_Communication_Profiling_with_NCCL.md) | 核心 3 + 扩展 1 |
-| [2.9](./2_9.md) | 汇总项目验证和工程闭环，承接训练 / 推理 / 系统 / 部署项目 | 核心：[30](./30_LoRA_Fine_Tuning_Project.md)、[31](./31_Inference_Performance_Comparison.md)、[32](./32_Training_Performance_Analysis.md)；扩展：[33](./33_Profiling_Driven_End_to_End_Optimization.md)、[34](./34_Distributed_Parallel_Benchmark.md)、[35](./35_Quantized_Inference_and_Deployment.md) | 核心 3 + 扩展 3 |
+| [2.7](./2_7.md) | 高级推理策略，继续向 serving、cache 和调度边界扩展 | 已落盘映射：核心 [23](./23_Speculative_Decoding.md)、[24](./24_SGLang_RadixAttention.md)；扩展 [34](./34_Prefix_Caching_and_Chunked_Prefill.md)、[35](./35_Multi_Token_Decoding.md)、[36](./36_Decode_Scheduling.md)、[37](./37_KV_Cache_Scheduling.md)；补页 [38](./38_Prefill_Decode_Disaggregation.md)、[39](./39_Inference_Fallback_and_Tiers.md) | 核心 2 + 扩展 4 + 补页 2 |
+| [2.8](./2_8.md) | 模型压缩与量化，继续向低比特训练、部署和量化家族扩展 | 已落盘映射：核心 [25](./25_Quantization_W8A16.md)、[26](./26_QLoRA_and_4bit_Quantization.md)；扩展 [40](./40_GPTQ_and_AWQ_Weight_Quantization.md)、[41](./41_FP8_and_KV_Cache_Quantization.md) | 核心 2 + 扩展 2 |
+| [2.9](./2_9.md) | 形成并行策略和通信边界判断，并延伸到通信 profiling 与项目桥接 | 已落盘映射：核心 [27](./27_ZeRO_Optimizer_Sim.md)、[28](./28_Pipeline_Parallelism_MicroBatch.md)、[29](./29_Tensor_Parallelism_Sim.md)；扩展 [46](./46_Communication_Profiling_with_NCCL.md)、[47](./47_MoE_Expert_Parallel.md)；补页 [48](./48_Communication_Hotspots_and_Mitigation.md)、[49](./49_Parallelism_Strategy_Selection.md) | 核心 3 + 扩展 2 + 补页 2 |
+| [2.10](./2_10.md) | 汇总项目验证和工程闭环，承接训练 / 推理 / 系统 / 部署项目 | 核心：[60](./60_LoRA_Fine_Tuning_Project.md)、[61](./61_Model_Architecture_Exploration.md)、[62](./62_Instruction_Fine_Tuning_Project.md)、[63](./63_LoRA_Variants_Benchmark.md)、[66](./66_Inference_Performance_Comparison.md)、[73](./73_Training_Performance_Analysis.md)；扩展：[64](./64_SFT_Data_Quality_Project.md)、[65](./65_QLoRA_Selection_Project.md)、[67](./67_Quantized_Inference_and_Deployment.md)、[68](./68_Speculative_Decoding_Benchmark.md)、[69](./69_Prefix_Caching_Benchmark.md)、[70](./70_Serving_Scheduler_Benchmark.md)、[74](./74_Profiling_Driven_End_to_End_Optimization.md)、[75](./75_Memory_Budget_Compression_Project.md)、[76](./76_Activation_Checkpoint_Offload_Benchmark.md)、[79](./79_Distributed_Parallel_Benchmark.md)、[80](./80_MoE_Expert_Parallel_Benchmark.md)、[81](./81_Distributed_Inference_Project.md)、[84](./84_DPO_Preference_Project.md)、[85](./85_GRPO_Groupwise_Alignment_Project.md)、[86](./86_DPO_Online_Benchmark.md) | 核心 6 + 扩展 15 |
 
 ## Learning Path | 学习路径
 
@@ -34,21 +159,22 @@ Part 2 可以按多条入口理解：零基础入口先把算子、组装、训�
 
 ### Recommended Order | 推荐顺序
 
-- 零基础入口：先看 [2.1](./2_1.md) -> [2.2](./2_2.md) -> [2.3](./2_3.md) -> [2.5](./2_5.md) -> [2.9](./2_9.md)
-- 训练优先入口：先看 [2.3](./2_3.md) -> [2.4](./2_4.md) -> [2.5](./2_5.md) -> [2.9](./2_9.md)
-- 推理优先入口：先看 [2.6](./2_6.md) -> [2.7](./2_7.md) -> [2.9](./2_9.md)
-- 并行优先入口：先看 [2.8](./2_8.md) -> [2.9](./2_9.md)
-- 系统学习：按 [2.1](./2_1.md) -> [2.2](./2_2.md) -> [2.3](./2_3.md) -> [2.4](./2_4.md) -> [2.5](./2_5.md) -> [2.6](./2_6.md) -> [2.7](./2_7.md) -> [2.8](./2_8.md) -> [2.9](./2_9.md) 顺序推进
+- 零基础入口：先看 [2.1](./2_1.md) -> [2.2](./2_2.md) -> [2.3](./2_3.md) -> [2.5](./2_5.md) -> [2.10](./2_10.md)
+- 训练优先入口：先看 [2.3](./2_3.md) -> [2.4](./2_4.md) -> [2.5](./2_5.md) -> [2.10](./2_10.md)
+- 对齐优先入口：先看 [2.3](./2_3.md) -> [2.4](./2_4.md) -> [2.10](./2_10.md)
+- 推理优先入口：先看 [2.6](./2_6.md) -> [2.7](./2_7.md) -> [2.8](./2_8.md)；如果继续走系统与分布式链路，再进入 [2.9](./2_9.md) -> [2.10](./2_10.md)
+- 并行优先入口：先看 [2.9](./2_9.md) -> [2.10](./2_10.md)
+- 系统学习：按 [2.1](./2_1.md) -> [2.2](./2_2.md) -> [2.3](./2_3.md) -> [2.4](./2_4.md) -> [2.5](./2_5.md) -> [2.6](./2_6.md) -> [2.7](./2_7.md) -> [2.8](./2_8.md) -> [2.9](./2_9.md) -> [2.10](./2_10.md) 顺序推进
 
 ### Next Steps | 后续衔接
 
 - 基础认知层：先看 [2.1](./2_1.md)、[2.2](./2_2.md)，把基础算子和模型组装先立住，再按需要进入 [2.5](./2_5.md)。
 - 训练与对齐层：先看 [2.3](./2_3.md)、[2.4](./2_4.md)、[2.5](./2_5.md)，把训练、对齐和显存优化的链路理顺，主要衔接后续实现页和项目页。
-- 推理与并行层：先看 [2.6](./2_6.md)、[2.7](./2_7.md)、[2.8](./2_8.md)，把推理、压缩和并行策略串起来，主要衔接项目实战与后续实现页。
-- 项目收口：最后看 [2.9](./2_9.md)，把前面的知识点放回真实项目里验证和收束。
+- 推理与并行层：先看 [2.6](./2_6.md)、[2.7](./2_7.md)、[2.8](./2_8.md)、[2.9](./2_9.md)，把推理、压缩和并行策略串起来，主要衔接项目实战与后续实现页。
+- 项目收口：最后看 [2.10](./2_10.md)，把前面的知识点放回真实项目里验证和收束。
 
 ## Environment Notes | 环境说明
 
-- 默认按 `CPU-first` 设计
-- 这里只写 Part 级统一前提，不点到具体节号
-- 少数 notebook 如需 `GPU optional`、`GPU required` 或多卡/完整工具链，以单页说明为准，不在导学页重复展开
+- 整体学习路径默认按 `CPU-first` 组织，优先保证概念理解、逻辑验证和最小 correctness。
+- 这里只写 Part 级统一前提，不点到具体节号。
+- 少数进阶 notebook 会把 GPU、多卡或完整工具链作为扩展验证条件；若存在这类要求，以单页说明为准，不在导学页重复展开。

@@ -1,6 +1,6 @@
 # 14. FlashAttention Memory Model | FlashAttention 显存模型
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `Attention`, `FlashAttention`, `Memory Model` | **目标人群：** Attention 优化入门者
+**难度：** Medium | **环境：** CPU-first | **标签：** `推理优化`, `FlashAttention`, `显存模型` | **目标人群：** 系统性能入门者
 
 > 🚀 **云端运行环境**
 >
@@ -10,24 +10,32 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-这一页把 Attention 的显存压力推进到 FlashAttention 的分块、在线归约和 SRAM 利用上，重点解释为什么这种改法能把访存瓶颈压下去。
+---
+
+## 本节导读
+
+标准 attention 在长序列下的问题，往往不是公式本身，而是中间结果和反复搬运把 HBM 很快压成瓶颈。只要 `QK^T`、softmax 和后续乘法之间需要频繁落到显存，attention 就会从“矩阵乘法问题”变成“访存组织问题”。
+
+这一页在整个教程的纵向主线里属于 `Part 01` 的 attention 访存基础页，优先服务 `推理优化路线`，也给后续 kernel 实现页建立 SRAM 复用视角。学完这里，后面再看 `20 / 34 / 66` 以及相关 kernel 实现时，你会更容易把“长序列 attention 为什么慢”改写成“哪一段数据搬运最贵”；如果这里没学明白，后面很容易把 prefill 慢误看成单纯算力问题，而忽略中间结果落地和 HBM 往返才是主瓶颈。按专题归类，这一页主要属于 `推理优化专题`，也和 `编译与图优化专题` 共享一部分访存优化视角。
 
 **关键词：** `FlashAttention`, `tiling`, `SRAM`
+
+---
 ## 前置阅读
 
-**导语：** 先确认显存模型和 Attention 访存直觉，再看 FlashAttention 的分块改法会更顺。
+**导语：** 先确认显存模型和 Attention 访存直觉，再看 FlashAttention 的分块改法会更顺；如果你正在走 `推理优化路线`，这一页会直接承接 `20 / 34 / 66`，因为后面 prefill 为什么会慢、chunked prefill 为什么有意义，本质上都要先回到这里的搬运模型。
 
 - [Group 1B: Single-GPU Hardware and Memory Optimization | 1B: 单卡硬件与访存优化](./1B.md)
 - [Group 1C: Distributed Communication and Memory Sharing | 1C: 多卡通信与显存共享](./1C.md)
 
 ## 相关阅读
 
-**导语：** 把 FlashAttention 放到 Triton kernel 实现里看，能更好理解分块与在线归约。
+**导语：** 如果想把 FlashAttention 的显存模型继续接到实现和推理验证上，可以沿这三页往下看。
 
 - [20. FlashAttention Sim | FlashAttention 模拟](../02_PyTorch_Algorithms/20_FlashAttention_Sim.md)
-- [06. Triton 进阶：跨线程归约与数值稳定 (Safe Softmax)](../03_Triton_Kernels/06_Triton_Fused_Softmax.md)
 - [08. Triton Flash Attention | 真正的 Flash Attention 前向算子](../03_Triton_Kernels/08_Triton_Flash_Attention.md)
-
+- [34. Prefix Caching and Chunked Prefill | 前缀缓存与分块预填充](../02_PyTorch_Algorithms/34_Prefix_Caching_and_Chunked_Prefill.md)
+---
 ## Q1：为什么标准 Attention 会在长序列下迅速变成显存瓶颈？
 
 <details>

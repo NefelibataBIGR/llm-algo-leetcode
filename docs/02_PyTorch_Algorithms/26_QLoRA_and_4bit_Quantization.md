@@ -1,6 +1,6 @@
 # 26. QLoRA and 4bit Quantization | QLoRA 与 4-bit 量化
 
-**难度：** Hard | **环境：** GPU required | **标签：** `微调`, `QLoRA`, `量化` | **目标人群：** 模型微调与工程部署
+**难度：** Hard | **环境：** CPU-first | **标签：** `量化压缩`, `QLoRA`, `4-bit` | **目标人群：** 量化压缩学习者
 
 > 🚀 **云端运行环境**
 >
@@ -35,8 +35,8 @@
 ## 相关阅读
 
 **导语：** 学完 QLoRA 后，可以继续沿项目线看 LoRA 微调如何交付，也可以沿部署线看量化后如何真正用于推理。
-- [30. LoRA Fine-Tuning Project | LoRA 微调项目](./30_LoRA_Fine_Tuning_Project.md)
-- [35. Quantized Inference and Deployment | 量化推理与部署](./35_Quantized_Inference_and_Deployment.md)
+- [60. LoRA Fine-Tuning Project | LoRA 微调项目](./60_LoRA_Fine_Tuning_Project.md)
+- [67. Quantized Inference and Deployment | 量化推理与部署](./67_Quantized_Inference_and_Deployment.md)
 - [P1: 13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
 - [P1: 24. SRAM Optimization Techniques | SRAM 优化技术](../01_Hardware_Math_and_Systems/24_SRAM_Optimization_Techniques.md)
 
@@ -59,6 +59,8 @@
 > 4. 反向传播时，梯度主要更新 LoRA 旁路参数；底座权重保持冻结，只负责提供稳定的量化存储。**一句话总结** QLoRA 的核心就是：底座权重用 NF4 压缩显存，LoRA 旁路保持高精度以保证微调效果。两者分工明确，互不干扰。
 
 理解了 NF4 在 QLoRA 中的角色之后，下一步我们来看 NF4 的码点具体是怎么算出来的。
+
+![QLoRA 流程图](/02_PyTorch_Algorithms/26_qlora_flow.svg)
 
 ### Step 2: 4-bit NormalFloat (NF4) 原理
 NF4 的核心是一个预计算的 16 码点 lookup table。它基于标准正态分布的 CDF / 分位数函数（quantile function）构造，使码点在 0 附近更密集、在尾部更稀疏，因此比均匀 4-bit 更贴合神经网络权重的统计特性。

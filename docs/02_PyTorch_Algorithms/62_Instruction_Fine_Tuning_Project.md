@@ -1,0 +1,311 @@
+# 62. Instruction Fine Tuning Project | 指令微调项目
+**难度：** Hard | **环境：** CPU-first | **标签：** `训练微调`, `指令微调`, `数据工程` | **目标人群：** 项目决策练习者
+
+> 🚀 **云端运行环境**
+>
+> 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
+>
+> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/62_Instruction_Fine_Tuning_Project.ipynb)
+> [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
+
+
+---
+
+## 本节导读
+
+这一节对应的真实项目问题不是“把 instruction tuning 跑起来”，而是“在既定数据模板、训练预算和评测口径下，这一轮指令微调是否真的值得进入交付阶段”。真实工程里，问题往往不在训练循环本身，而在 instruction、input、response 的结构是否稳定，数据是否重复或失衡，训练输出是否满足格式约束与任务目标。
+
+本节的核心矛盾是数据与格式可靠性和训练结果之间的权衡：训练指标可能变好，但如果模板漂移、字段缺失、回答格式不稳定，结果仍然不能交付。做完这一节，你应该能输出一份指令微调项目结论，而不只是拿到一组 train / val 指标。
+
+因此，这一页把指令微调收成一个最小项目交付入口：训练前做数据审计和格式抽检，训练中固定模板、步数、评测集和资源预算，训练后把指标、样例抽检和 `accept / tune / reject` 结论收成统一报告。它直接承接 `09 / 10 / 11 / 13` 的训练闭环，并继续通向 `63` 的 LoRA 变体对比和 `84` 的偏好优化项目。
+
+**关键词：** `instruction tuning`, `data audit`, `evaluation`, `delivery`
+
+---
+## 前置阅读
+
+**导语：** 先把 SFT 训练闭环、LoRA 适配和训练调度理顺，再进入这个项目；本节默认你已经知道训练怎么跑，重点转向数据模板、格式稳定性和交付判断。
+
+- [09. SFT Training Loop | SFT 训练循环](./09_SFT_Training_Loop.md)
+- [10. LoRA Tutorial | LoRA 教程](./10_LoRA_Tutorial.md)
+- [11. LR Schedulers WSD Cosine | WSD 余弦学习率调度器](./11_LR_Schedulers_WSD_Cosine.md)
+- [13. End-to-End Fine-Tuning Experiment | 端到端微调实验](./13_End_to_End_Fine_Tuning_Experiment.md)
+
+## 相关阅读
+
+**导语：** 做完指令微调项目后，最自然的下一步是继续比较参数高效微调方案，或把这一轮训练结果推进到偏好优化与对齐项目。
+
+- [63. LoRA Variants Benchmark | LoRA 变体对比项目](./63_LoRA_Variants_Benchmark.md)
+- [84. DPO Preference Project | DPO 偏好优化项目](./84_DPO_Preference_Project.md)
+
+### Step 1: 定义指令微调目标
+
+- 固定底座模型、训练数据、prompt 模板、batch size、seq len 和训练步数。
+- 明确 evaluation set 的构成，保证训练集和验证集的分工清晰。
+- 记录 instruction、input、response 的字段约定，避免样本格式漂移。
+- baseline 至少要回答两个问题：不用微调时格式是否稳定，已有微调方案是否已经能满足任务。
+
+### Step 2: 先做数据与格式合法性检查
+
+指令微调必须先确认数据和格式口径可信，训练结论才有交付意义。
+- 训练前先做数据审计：样本数、空 response、重复样本、超长 prompt。
+- 再做格式抽检：是否存在缺字段、空 instruction、空 response 或模板拼接异常。
+- 如果数据和格式检查不通过，这一轮实验最多只能产出 blocker，而不是有效训练结论。
+
+### Step 3: 用统一口径收训练与评测结果
+
+训练和评测结果必须放在统一口径下比较，不能把指标改善和格式稳定性割裂开看。
+- 统一记录 train / val 指标、step time、资源消耗和最小样例抽检结果。
+- 输出至少一个“训练后回答样例”，验证格式、语气和任务完成度。
+- 如果训练指标变好，但格式抽检仍然失败，这一轮仍然不能直接 adopt。
+
+### Step 4: 输出项目交付结论
+
+- 最终结论不只回答“能不能训”，而要回答“能不能交付”。
+- 项目结论建议统一成 `accept / tune / reject` 三档。
+- 若进入 `tune`，下一轮应优先回到数据模板、评测样本或训练配置，而不是盲目继续加步数。 
+#### 图解：09-13 如何收束到 62 指令微调项目
+
+`62` 把 SFT 数据工程和训练闭环组合成一个项目交付模板。
+
+```text
+09 SFT data       instruction / input / response / labels
+      │
+10 LoRA           optional adapter tuning for instruction task
+      │
+11 Scheduler      lr schedule counted by optimizer update
+      │
+13 E2E report     train loss / val loss / instruction quality
+      │
+      ▼
+62 Instruction    data audit + format check + sample review + delivery decision
+```
+
+项目页最小产物：
+
+| 模块 | 必须记录 | 用途 |
+|:---|:---|:---|
+| 数据 | 样本数、空 response、重复样本、超长样本 | 判断数据是否值得训 |
+| 格式 | 缺字段、空字段、模板拼接问题 | 判断输入是否稳定 |
+| 训练 | train / val 指标、step time | 判断训练是否可信 |
+| 样例 | 训练后最小回答抽检 | 判断输出是否可交付 |
+| 决策 | accept / tune / reject | 输出项目结论 |
+
+
+```python
+from typing import Dict, List
+
+```
+
+
+```python
+# 4 个核心 TODO：数据审计、格式检查、样例抽检、项目总结
+# 目标：把 instruction / input / response 数据整理成统一项目报告，而不是只看训练指标
+
+# TODO 1: 统计指令数据集摘要
+def summarize_instruction_dataset(records: List[Dict[str, str]], max_prompt_chars: int) -> Dict[str, float]:
+    raise NotImplementedError("请先完成 TODO 代码！")
+
+# TODO 2: 检查格式是否合法
+def check_instruction_format(batch: List[Dict[str, str]]) -> Dict[str, int]:
+    raise NotImplementedError("请先完成 TODO 代码！")
+
+# TODO 3: 汇总训练后样例抽检结果
+def review_instruction_outputs(outputs: List[Dict[str, object]]) -> Dict[str, object]:
+    raise NotImplementedError("请先完成 TODO 代码！")
+
+# TODO 4: 输出项目交付结论
+def build_instruction_project_report(summary: Dict[str, float], format_check: Dict[str, int], output_review: Dict[str, object]) -> Dict[str, object]:
+    raise NotImplementedError("请先完成 TODO 代码！")
+
+```
+
+
+```python
+# 测试你的实现
+def test_instruction_project_template():
+    records = [
+        {'instruction': '解释 LoRA。', 'input': '', 'response': 'LoRA 是低秩适配。'},
+        {'instruction': '解释 LoRA。', 'input': '', 'response': 'LoRA 是低秩适配。'},
+        {'instruction': '给出答案。', 'input': '', 'response': ''},
+        {'instruction': '   ', 'input': '', 'response': '有回答但没有指令'},
+    ]
+    summary = summarize_instruction_dataset(records, max_prompt_chars=20)
+    assert summary['total_samples'] == 4
+    assert summary['empty_response_count'] == 1
+    assert summary['duplicate_count'] == 1
+
+    format_check = check_instruction_format(records)
+    assert format_check['valid_count'] == 2
+    assert format_check['format_issue_count'] == 2
+
+    output_review = review_instruction_outputs([
+        {'format_ok': True, 'task_ok': True},
+        {'format_ok': True, 'task_ok': False},
+    ])
+    assert output_review['format_pass_count'] == 2
+    assert output_review['task_pass_count'] == 1
+
+    report = build_instruction_project_report(summary, format_check, output_review)
+    assert report['decision'] == 'reject'
+    assert report['project_ready'] is False
+    assert report['next_action'] == 'fix_data_or_format'
+
+    clean_records = [
+        {'instruction': '总结 LoRA。', 'input': '一句话', 'response': 'LoRA 是一种参数高效微调方法。'},
+        {'instruction': '解释 QLoRA。', 'input': '', 'response': 'QLoRA 在量化底座上进行低秩适配。'},
+    ]
+    clean_summary = summarize_instruction_dataset(clean_records, max_prompt_chars=40)
+    clean_format = check_instruction_format(clean_records)
+    clean_review = review_instruction_outputs([
+        {'format_ok': True, 'task_ok': True},
+        {'format_ok': True, 'task_ok': True},
+    ])
+    accept_report = build_instruction_project_report(clean_summary, clean_format, clean_review)
+    assert accept_report['decision'] == 'accept'
+    assert accept_report['project_ready'] is True
+    assert accept_report['next_action'] == 'promote_to_delivery'
+
+    tune_review = review_instruction_outputs([
+        {'format_ok': True, 'task_ok': True},
+        {'format_ok': True, 'task_ok': False},
+    ])
+    tune_report = build_instruction_project_report(clean_summary, clean_format, tune_review)
+    assert tune_report['decision'] == 'tune'
+    assert tune_report['project_ready'] is False
+    assert tune_report['next_action'] == 'refine_eval_or_training'
+
+
+test_instruction_project_template()
+print('测试通过：指令微调项目模板可以工作。')
+
+```
+
+---
+
+🛑 **STOP HERE** 🛑
+<br><br><br><br><br><br><br><br><br><br>
+> 请先尝试自己完成代码并跑通测试。<br>
+> 如果你正在 Colab 中运行，并且遇到困难没有思路，可以向下滚动查看参考答案。
+<br><br><br><br><br><br><br><br><br><br>
+
+---
+
+## 参考代码与解析
+
+### 代码
+
+
+```python
+def summarize_instruction_dataset(records: List[Dict[str, str]], max_prompt_chars: int) -> Dict[str, float]:
+    seen = set()
+    empty_response_count = 0
+    duplicate_count = 0
+    over_length_count = 0
+    total_prompt_chars = 0
+    for record in records:
+        instruction = str(record.get('instruction', ''))
+        input_text = str(record.get('input', ''))
+        response = str(record.get('response', ''))
+        prompt = instruction + input_text
+        total_prompt_chars += len(prompt)
+        key = (instruction, input_text, response)
+        if not response.strip():
+            empty_response_count += 1
+        if key in seen:
+            duplicate_count += 1
+        else:
+            seen.add(key)
+        if len(prompt) > max_prompt_chars:
+            over_length_count += 1
+    total_samples = len(records)
+    return {
+        'total_samples': total_samples,
+        'empty_response_count': empty_response_count,
+        'duplicate_count': duplicate_count,
+        'over_length_count': over_length_count,
+        'avg_prompt_chars': total_prompt_chars / total_samples if total_samples else 0.0,
+    }
+
+
+def check_instruction_format(batch: List[Dict[str, str]]) -> Dict[str, int]:
+    valid_count = 0
+    missing_field_count = 0
+    format_issue_count = 0
+    for record in batch:
+        if 'instruction' not in record or 'response' not in record:
+            missing_field_count += 1
+            continue
+        if not str(record.get('instruction', '')).strip() or not str(record.get('response', '')).strip():
+            format_issue_count += 1
+            continue
+        valid_count += 1
+    return {'valid_count': valid_count, 'missing_field_count': missing_field_count, 'format_issue_count': format_issue_count}
+
+
+def review_instruction_outputs(outputs: List[Dict[str, object]]) -> Dict[str, object]:
+    format_pass_count = sum(1 for item in outputs if item.get('format_ok', False))
+    task_pass_count = sum(1 for item in outputs if item.get('task_ok', False))
+    return {
+        'format_pass_count': format_pass_count,
+        'task_pass_count': task_pass_count,
+        'sample_ready': bool(outputs) and format_pass_count == len(outputs),
+    }
+
+
+def build_instruction_project_report(summary: Dict[str, float], format_check: Dict[str, int], output_review: Dict[str, object]) -> Dict[str, object]:
+    blockers = []
+    soft_issues = []
+    if summary['empty_response_count'] > 0:
+        blockers.append('存在空 response 样本')
+    if summary['over_length_count'] > 0:
+        blockers.append('存在超长 prompt 样本')
+    if format_check['missing_field_count'] > 0:
+        blockers.append('存在字段缺失样本')
+    if format_check['format_issue_count'] > 0:
+        blockers.append('存在格式不稳定样本')
+    if output_review['task_pass_count'] < output_review['format_pass_count']:
+        soft_issues.append('训练后样例任务完成度不足')
+
+    if not blockers and output_review['sample_ready'] and not soft_issues:
+        decision = 'accept'
+        next_action = 'promote_to_delivery'
+    elif not blockers and (output_review['sample_ready'] or output_review['format_pass_count'] > 0):
+        decision = 'tune'
+        next_action = 'refine_eval_or_training'
+    else:
+        decision = 'reject'
+        next_action = 'fix_data_or_format'
+
+    return {
+        'decision': decision,
+        'blockers': blockers + soft_issues,
+        'next_action': next_action,
+        'project_ready': decision == 'accept',
+    }
+
+```
+
+### 解析
+
+这一页保留 `4` 个核心 TODO：数据审计、格式检查、样例抽检和项目总结。它不要求把训练循环重写一遍，而是要求把“这一轮指令微调能不能交付”补成完整判断链。
+
+**1. TODO 1: 统计指令数据集摘要**
+- **实现方式**：遍历 `instruction / input / response` 记录，统计总样本数、空 response、重复样本、超长 prompt 和平均 prompt 长度。
+- **关键点**：`prompt` 长度按 `instruction + input` 口径处理；空 response、重复样本和超长样本都应该在训练前被发现。
+- **项目意义**：这一步先回答“数据值不值得训”，而不是先跑训练再看结果。
+
+**2. TODO 2: 检查格式是否合法**
+- **实现方式**：区分 `valid_count`、`missing_field_count` 和 `format_issue_count`，把缺字段和空 instruction / response 分开统计。
+- **关键点**：格式检查不是在找模型效果问题，而是在找模板和样本结构问题；这类问题属于训练前 blocker。
+- **项目意义**：如果模板拼接不稳，后面的 train / val 指标再漂亮也没有交付意义。
+
+**3. TODO 3: 汇总训练后样例抽检结果**
+- **实现方式**：统计 `format_pass_count`、`task_pass_count`，并用 `sample_ready` 表示样例是否足够进入交付判断。
+- **关键点**：`sample_ready` 只表示样例格式层面可继续看，不等于项目已经可以 `accept`。
+- **项目意义**：这一步把训练结果从纯指标表推进到可读样例验证，避免“loss 变好但输出不可用”。
+
+**4. TODO 4: 输出项目交付结论**
+- **实现方式**：把数据摘要、格式检查和样例抽检统一收成 `accept / tune / reject`，同时给出 `next_action`。
+- **关键点**：数据或格式硬问题走 `reject`；数据和格式过关但样例任务完成度不稳时走 `tune`；只有样例格式和任务完成度都稳定时才 `accept`。
+- **项目意义**：这一步让页面真正回答“这一轮指令微调能不能交付”，而不是只回答“训练有没有跑通”。

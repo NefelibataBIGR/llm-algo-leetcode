@@ -1,6 +1,6 @@
 # 12. Gradient Accumulation | 梯度累积
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `训练技巧`, `显存优化`, `PyTorch` | **目标人群：** 模型微调与工程部署
+**难度：** Medium | **环境：** CPU-first | **标签：** `训练微调`, `梯度累积`, `显存优化` | **目标人群：** 训练机制学习者
 
 > 🚀 **云端运行环境**
 >
@@ -16,7 +16,7 @@
 
 训练时我们常常希望 batch 更大，因为梯度会更稳定、更新方向更平滑。但大模型微调里，batch size 往往最先把显存吃满；如果为了省显存把 batch 降得太小，训练又可能变得抖动、不稳定。
 
-梯度累积的做法是把一个大 batch 拆成多个 micro-batch，分多次 backward，最后只执行一次 optimizer step。本节会实现完整 batch 更新和累积更新的对照，验证只要 loss 缩放和 step 时机正确，两种方式的参数更新可以近似一致。完成后，你应该能把它放进后面的端到端微调实验里，用更小峰值显存模拟更大的有效 batch。
+梯度累积的做法是把一个大 batch 拆成多个 micro-batch，分多次 backward，最后只执行一次 optimizer step。这一节在训练微调路线里和 `11` 一起组成 `13` 的直接前置：`11` 控制学习率节奏，`12` 控制有效 batch 怎样落地。学完这里，后面再看 `13`、`26` 和 `60` 时，你会更容易把 micro-batch、effective batch、step 时机和显存峰值放进同一张训练账本里；如果这里没学明白，后面很容易只会机械打开 accumulation，却判断不清 loss 缩放、optimizer step 时机和训练稳定性为什么会一起变化。
 
 **关键词：** `gradient accumulation`, `micro-batch`, `effective batch`
 
@@ -30,11 +30,11 @@
 
 ## 相关阅读
 
-**导语：** 理解梯度累积后，可以继续把它放进端到端微调闭环，并结合显存账本和 profiling 分析收益。
+**导语：** 理解梯度累积后，下一步最自然的是把它放进端到端微调闭环、LoRA 项目和训练性能分析里，看它怎样在显存与吞吐之间做权衡。
 - [13. End-to-End Fine-Tuning Experiment | 端到端微调实验](../02_PyTorch_Algorithms/13_End_to_End_Fine_Tuning_Experiment.md)
-- [P1: 06. VRAM Calculation and ZeRO | 显存估算与 ZeRO](../01_Hardware_Math_and_Systems/06_VRAM_Calculation_and_ZeRO.md)
-- [P1: 13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
-- [P1: 20. NCCL and AllReduce Basics | NCCL 与 AllReduce 基础](../01_Hardware_Math_and_Systems/20_NCCL_and_AllReduce_Basics.md)
+- [60. LoRA Fine-Tuning Project | LoRA 微调项目](../02_PyTorch_Algorithms/60_LoRA_Fine_Tuning_Project.md)
+- [73. Training Performance Analysis | 训练性能分析](../02_PyTorch_Algorithms/73_Training_Performance_Analysis.md)
+- [76. Activation Checkpoint Offload Benchmark | Checkpoint 与 Offload 对比项目](../02_PyTorch_Algorithms/76_Activation_Checkpoint_Offload_Benchmark.md)
 
 ---
 ### Step 1: 为什么需要梯度累积
@@ -47,6 +47,14 @@
 > - 梯度累积通过“多次反传、一次更新”保留大 batch 的优化效果。
 > - 只要每个 micro-batch 的 loss 按 `accum_steps` 做缩放，最终效果就和一次性喂入大 batch 非常接近。
 
+在 SFT / LoRA 微调里，实际关注的是有效 batch：
+
+```python
+effective_batch_size = micro_batch_size * accum_steps
+```
+
+梯度累积降低的是单次 forward/backward 的 activation 峰值，不会减少模型参数、LoRA 参数或优化器状态本身的显存占用。因此它经常和 LoRA、checkpointing、量化一起使用。
+
 ### Step 2: 数学等价性
 重点不只是 loss 缩放公式，而是先缩放再反传，最后按累积步数统一更新。
 
@@ -56,19 +64,48 @@ $$
 \nabla L = \frac{1}{K} \sum_{i=1}^{K} \nabla L_i
 $$
 
-工程上最关键的细节只有两个：
+工程上最关键的细节只有三个：
 1. 每次 `backward()` 前把 loss 除以 `accum_steps`。
-2. 只在最后一个 micro-batch 后执行 `optimizer.step()` 和 `optimizer.zero_grad()`。
-这也是为什么 `train_step_with_accumulation` 的实现要先缩放再反传。
+2. 只在最后一个 micro-batch 后执行 `optimizer.step()`。
+3. `input_ids / attention_mask / labels` 这类 batch 字典必须一起切，不能只切输入不切标签。
 
-### Step 3: 代码实现框架
+如果忘了除以 `accum_steps`，等价于把学习率悄悄放大了 `accum_steps` 倍；如果 batch size 不能被 `accum_steps` 整除，要么 `drop_last`，要么做动态累积，本节先用显式报错保持逻辑简单。
+### Step 3: 代码实现框架与任务拆解
 代码框架把完整 batch 和累积 batch 的更新路径并排对齐。
 
 下面我们实现两个更新步骤：
 - `train_step_full_batch`：一次性使用完整 batch 更新。
 - `train_step_with_accumulation`：把 batch 拆成多个 micro-batch，累积梯度后再更新。
 
-这两种方式在等价条件下，参数更新应该几乎一致。
+同时保留一个 `slice_micro_batch` 辅助函数，用来演示 SFT 场景里的 batch 字典如何整体切分。它不改变本题的回归 toy model，只负责把本节和后面的端到端微调实验接起来。
+
+核心判断只有一句：在等价条件下，累积 batch 的参数更新应该和完整 batch 几乎一致。
+#### 图解：micro-batch 如何合成 effective batch
+
+梯度累积的关键是“多次 backward，一次 step”。
+
+```text
+full batch:       [ sample 0 1 2 3 4 5 6 7 ] ──► loss ──► backward ──► step
+
+accumulation:     [0 1] ─► loss / K ─► backward ┐
+                  [2 3] ─► loss / K ─► backward ├─ accumulated grad ─► step
+                  [4 5] ─► loss / K ─► backward ┤
+                  [6 7] ─► loss / K ─► backward ┘
+```
+
+SFT batch 字典切分时，三件套必须同步：
+
+```python
+mb = {
+    "input_ids": input_ids[start:end],
+    "attention_mask": attention_mask[start:end],
+    "labels": labels[start:end],
+}
+```
+
+`effective_batch_size = micro_batch_size * accum_steps`。它降低的是单次 activation 峰值，不会减少参数和优化器状态占用。
+
+![梯度累积图](/02_PyTorch_Algorithms/12_gradient_accumulation.svg)
 
 
 ```python
@@ -91,6 +128,17 @@ class TinyRegressor(nn.Module):
 
     def forward(self, x):
         return self.net(x)
+
+
+def slice_micro_batch(batch: dict[str, torch.Tensor], idx: int, accum_steps: int):
+    """按 micro-batch 同步切分 SFT batch 字典。"""
+    batch_size = next(iter(batch.values())).size(0)
+    if batch_size % accum_steps != 0:
+        raise ValueError("batch size 必须能被 accum_steps 整除")
+    micro_size = batch_size // accum_steps
+    start = idx * micro_size
+    end = (idx + 1) * micro_size
+    return {key: value[start:end] for key, value in batch.items()}
 
 
 def train_step_full_batch(model, optimizer, x, y):
@@ -167,6 +215,16 @@ def test_gradient_accumulation():
         print(f"Full batch loss: {loss_full:.6f}")
         print(f"Accumulated loss: {loss_accum:.6f}")
 
+
+        sft_batch = {
+            "input_ids": torch.arange(24).view(8, 3),
+            "attention_mask": torch.ones(8, 3, dtype=torch.long),
+            "labels": torch.arange(24).view(8, 3),
+        }
+        mb = slice_micro_batch(sft_batch, idx=1, accum_steps=4)
+        assert mb["input_ids"].shape == (2, 3), "SFT micro-batch 切分 shape 错误"
+        assert torch.equal(mb["input_ids"], sft_batch["input_ids"][2:4]), "SFT micro-batch 切分范围错误"
+
         for p_full, p_accum in zip(model_full.parameters(), model_accum.parameters()):
             assert torch.allclose(p_full, p_accum, atol=1e-6), "梯度累积与 full batch 更新不一致！"
 
@@ -217,6 +275,17 @@ class TinyRegressor(nn.Module):
 
     def forward(self, x):
         return self.net(x)
+
+
+def slice_micro_batch(batch: dict[str, torch.Tensor], idx: int, accum_steps: int):
+    """按 micro-batch 同步切分 SFT batch 字典。"""
+    batch_size = next(iter(batch.values())).size(0)
+    if batch_size % accum_steps != 0:
+        raise ValueError("batch size 必须能被 accum_steps 整除")
+    micro_size = batch_size // accum_steps
+    start = idx * micro_size
+    end = (idx + 1) * micro_size
+    return {key: value[start:end] for key, value in batch.items()}
 
 
 def train_step_full_batch(model, optimizer, x, y):
@@ -290,3 +359,9 @@ def train_step_with_accumulation(model, optimizer, x, y, accum_steps=4):
 - **一致性检查：** 通过重复样本验证，可以确认梯度累积是否真的等价于完整 batch。
 - **工程价值：** 只要这套链路对齐，后续再切换更复杂的数据和更大的 batch 也更稳。
 - **实践意义：** 这条链路把 `SFT Loss`、`梯度累积`、`参数更新` 连接成一个可运行的小闭环。
+
+**5. SFT batch 字典怎么切**
+
+- **同步切分**：`input_ids`、`attention_mask`、`labels` 必须按同一个 `[start:end]` 范围切分。
+- **有效 batch**：`effective_batch_size = micro_batch_size * accum_steps`，scheduler 和日志通常按 `optimizer.step()` 后的一次有效更新计数。
+- **显存边界**：梯度累积减少的是每个 micro-batch 的 activation 峰值，不会减少参数、梯度和优化器状态的长期占用。

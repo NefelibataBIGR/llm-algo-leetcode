@@ -1,6 +1,6 @@
 # 07. MoE Load Balancing Loss | MoE 负载均衡损失
 
-**难度：** Hard | **环境：** CPU-first | **标签：** `MoE`, `损失函数`, `PyTorch` | **目标人群：** 核心 Infra 与算子开发
+**难度：** Hard | **环境：** CPU-first | **标签：** `模型结构`, `MoE`, `负载均衡` | **目标人群：** 模型结构学习者
 
 > 🚀 **云端运行环境**
 >
@@ -70,6 +70,35 @@ $$
 
 **为什么这个公式有效？**
 根据均值不等式，给定总和为 $1$ 的 $f$ 和 $P$，当且仅当所有的 $f_i = 1/E$ 且 $P_i = 1/E$ 时（即绝对均匀分配），它们的内积（点积）之和最小。优化器为了降低这个 Loss，会拼命把 Token 往不同的专家那里赶！
+
+#### 图解：为什么 MoE 需要负载均衡
+
+如果 Router 总把 token 分给少数专家，MoE 会退化成“少数专家过载、多数专家闲置”。
+
+```text
+bad routing:
+expert 0: ████████████████████  80%
+expert 1: ████                  15%
+expert 2: █                     5%
+expert 3:                       0%
+
+better routing:
+expert 0: █████                 25%
+expert 1: █████                 25%
+expert 2: █████                 25%
+expert 3: █████                 25%
+```
+
+![MoE 负载均衡示意图](/02_PyTorch_Algorithms/07_moe_balance.svg)
+
+负载均衡损失同时看两件事：
+
+| 符号 | 含义 | 来自哪里 |
+|:---|:---|:---|
+| $P_i$ | expert `i` 的平均路由概率 | router softmax 概率 |
+| $f_i$ | expert `i` 实际接到的 token 占比 | top-k 选择结果 |
+
+直觉：如果某个 expert 概率高、实际分配也高，`P_i * f_i` 会变大，auxiliary loss 会推动 Router 不要长期挤向同一批专家。
 
 ### Step 2: 代码实现框架
 

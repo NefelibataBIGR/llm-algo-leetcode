@@ -1,6 +1,6 @@
 # 21. Quantization Theory and INT4 INT8 | 量化理论与 INT4/INT8
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `量化`, `推理优化` | **目标人群：** 量化学习者
+**难度：** Medium | **环境：** CPU-first | **标签：** `量化压缩`, `INT4/INT8`, `量化理论` | **目标人群：** 系统性能入门者
 
 > 🚀 **云端运行环境**
 >
@@ -10,13 +10,20 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-这一页不是要把量化算法讲成论文综述，而是要回答一个更实际的问题：为什么把权重从 FP16 压到 INT8 / INT4 后，模型能明显变小、推理也可能更快，但效果又不会“简单地等比例下降”。
+---
+
+## 本节导读
+
+量化难点不在于把数值位宽机械地降下来，而在于理解低比特为什么会同时影响存储成本、带宽压力、算子吞吐和精度稳定性。模型变小了，不代表一定自动更快；真正的收益要看它减掉的是显存、访存，还是只是参数文件体积。
+
+这一页在整个教程的纵向主线里属于 `Part 01` 的量化基础页，优先服务 `推理优化路线`，也给 `显存优化路线` 和后续 `量化与压缩专题` 建立低比特判断前置。学完这里，后面再看 `25 / 40 / 41 / 65 / 67` 时，你会更容易把“更低位宽”翻译成更具体的系统判断：它到底是在减参数体积、减显存压力，还是在真正改善访存与吞吐；如果这里没学明白，后面很容易把量化当成统一收益按钮，而说不清 scale、离散化误差和执行路径为什么会一起决定结果。按专题归类，这一页主要属于 `量化与压缩专题`，并同时支撑推理与显存两条路线。
 
 **关键词：** `INT8`, `INT4`, `scale`
 
+---
 ## 前置阅读
 
-**导语：** 这一页先接上参数量、显存和 GPU 内存层级的判断，方便理解低比特量化为什么会同时影响存储、带宽和推理吞吐。
+**导语：** 这一页先接上数据格式、参数量和 GPU 内存层级的判断，方便理解低比特量化为什么会同时影响存储、带宽和推理吞吐。
 
 - [01. Data Types and Precision | 大模型的数据格式与混合精度](./01_Data_Types_and_Precision.md)
 - [02. LLM Params and FLOPs | 大模型参数量与算力推导](./02_LLM_Params_and_FLOPs.md)
@@ -24,12 +31,12 @@
 
 ## 相关阅读
 
-**导语：** 如果还想继续看量化和工程决策的关系，可以再看显存计算、硬件选型和成本模型这几页。
+**导语：** 如果想把量化继续接到权重量化、KV cache 量化和部署决策上，可以沿这三页往下看。
 
-- [06. VRAM Calculation and ZeRO | 显存计算与 ZeRO 优化](./06_VRAM_Calculation_and_ZeRO.md)
-- [10. AI Chips Overview and Alternatives | 算力现状与替代方案](./10_Domestic_AI_Chips_Overview.md)
-- [33. TCO and Cost Model | 算力评估与 TCO 模型](./33_TCO_and_Cost_Model.md)
-
+- [25. Quantization W8A16 | W8A16 量化](../02_PyTorch_Algorithms/25_Quantization_W8A16.md)
+- [41. FP8 and KV Cache Quantization | FP8 与 KV Cache 量化](../02_PyTorch_Algorithms/41_FP8_and_KV_Cache_Quantization.md)
+- [67. Quantized Inference and Deployment | 量化推理与部署](../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.md)
+---
 ## Q1：为什么量化能显著减少显存和带宽压力？
 
 <details>
