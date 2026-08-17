@@ -1,6 +1,6 @@
 # 79. Distributed Parallel Benchmark | 分布式并行基准
 
-**难度：** Hard | **环境：** CPU-first | **标签：** `项目实战`, `distributed`, `benchmark` | **目标人群：** 分布式训练工程与性能分析
+**难度：** Hard | **环境：** CPU-first | **标签：** `并行通信`, `分布式`, `基准对比` | **目标人群：** 项目决策练习者
 
 > 🚀 **云端运行环境**
 >
@@ -16,7 +16,9 @@
 
 分布式训练里最常见的误区是先选方案再找理由：模型放不下就上 ZeRO，吞吐不够就加 Pipeline，单层太大就开 Tensor Parallelism。但不同并行策略切分的对象不同，带来的通信、显存和调度代价也不同，不能只凭直觉选型。
 
-本节把 ZeRO、Pipeline 和 Tensor Parallelism 放进同一套 benchmark 项目模板：先固定 workload 和评测口径，再记录 peak memory、throughput、latency 和 communication overhead，最后输出并行策略选型结论。代码区只实现最小 benchmark、指标汇总和选型报告，真实项目中的多卡运行和 profiler 证据需要基于这份模板继续补充。
+本节的核心矛盾是显存收益、吞吐变化与通信代价之间的权衡：并行策略可以让模型放得下、吞吐变高，也可能因为 All-Reduce、All-Gather、pipeline bubble 或调度复杂度把收益抵消掉。做完这一节，你应该能输出一份 baseline vs parallel strategy 的选型结论，而不只是列出若干并行方案的理论优缺点。
+
+因此，这一页把 ZeRO、Pipeline 和 Tensor Parallelism 收成一个最小项目交付入口：先定义 distributed benchmark 目标，再确认 workload 与评测口径合法，用统一口径比较显存、吞吐、延迟和通信代价，并把结论收成可执行的并行选型报告。它直接承接 `27 / 28 / 29` 和 `P1:05` 的并行与通信直觉，并继续通向 `80` 的 MoE 专家并行和 `81` 的分布式推理逻辑验证。
 
 **关键词：** `distributed training`, `benchmark`, `parallelism`
 
@@ -24,22 +26,20 @@
 
 ## 前置阅读
 
-**导语：** 先把三类并行策略和 profiling 方法看过，再进入并行 benchmark 项目会更容易把显存、吞吐和通信代价区分开。
-- [27. ZeRO Optimizer Sim | ZeRO 优化器模拟](../02_PyTorch_Algorithms/27_ZeRO_Optimizer_Sim.md)
-- [28. Pipeline Parallelism MicroBatch | Pipeline 并行微批次](../02_PyTorch_Algorithms/28_Pipeline_Parallelism_MicroBatch.md)
-- [29. Tensor Parallelism Sim | Tensor 并行模拟](../02_PyTorch_Algorithms/29_Tensor_Parallelism_Sim.md)
-- [P1: 13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
+**导语：** 先把三类并行策略和通信 / profiling 的最小口径理顺，再进入并行 benchmark 项目会更容易把显存、吞吐和通信代价区分开。
+- [27. ZeRO Optimizer Sim | ZeRO 优化器模拟](./27_ZeRO_Optimizer_Sim.md)
+- [28. Pipeline Parallelism MicroBatch | Pipeline 并行微批次](./28_Pipeline_Parallelism_MicroBatch.md)
+- [29. Tensor Parallelism Sim | Tensor 并行模拟](./29_Tensor_Parallelism_Sim.md)
 - [P1: 05. Communication Topologies | 通信拓扑与分布式基石](../01_Hardware_Math_and_Systems/05_Communication_Topologies.md)
 
 ## 相关阅读
 
-**导语：** 完成并行 benchmark 后，可以继续看通信调度、并行策略决策和多卡策略项目。
-- [P1: 26. Parallel Strategy Decision Framework | 并行策略决策框架](../01_Hardware_Math_and_Systems/26_Parallel_Strategy_Decision_Framework.md)
-- [P1: 27. Communication Scheduling Optimization | 通信调度优化](../01_Hardware_Math_and_Systems/27_Communication_Scheduling_Optimization.md)
-- [74. Profiling Driven End-to-End Optimization | 端到端 profiling 优化](../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.md)
+**导语：** 做完并行策略 benchmark 后，最自然的下一步是继续看 MoE 专家并行，或回到端到端优化闭环验证策略是否真的成立。
+- [80. MoE Expert Parallel Benchmark | MoE 专家并行基准](./80_MoE_Expert_Parallel_Benchmark.md)
+- [74. Profiling-Driven End-to-End Optimization | 端到端 profiling 优化](./74_Profiling_Driven_End_to_End_Optimization.md)
 
 ---
-### Step 1: 统一 workload 与评测口径
+### Step 1: 定义 distributed benchmark 目标
 先回答一个问题：在同一模型、同一输入和同一硬件条件下，哪种并行策略更适合当前瓶颈？
 
 - 固定模型结构、参数量、输入长度、global batch size、micro-batch 数和训练 step 数。
@@ -48,19 +48,18 @@
 - 先写清约束条件，例如单卡显存上限、最低吞吐要求、最大可接受延迟或通信占比。
 - 这一步的目标是保证 ZeRO、Pipeline、Tensor Parallelism 能在同一口径下比较。
 
-### Step 2: 运行并行策略对比
+### Step 2: 先确认 workload 和评测口径合法
 
-把不同并行策略放到同一套指标表里，观察它们分别改善了什么，又引入了什么代价。
+分布式并行 benchmark 必须先确认 workload、硬件环境和通信条件可复现，不能直接把不同 GPU 数、不同拓扑或不同 batch 的结果放在一起比较。
 
-- ZeRO 主要观察训练状态切分后的单卡显存下降，以及 Reduce-Scatter / All-Gather 的通信代价。
-- Pipeline 主要观察模型按层切分后的显存下降、吞吐变化和 bubble ratio。
-- Tensor Parallelism 主要观察单层矩阵切分后的显存 / 计算分摊，以及 All-Gather / All-Reduce 开销。
-- 每种策略至少跑 baseline 和 candidate 两组结果，避免只描述理论收益。
-- 重点不是证明某个策略永远最好，而是看它在当前 workload 下是否解决了主要瓶颈。
+- 固定模型结构、参数量、输入长度、global batch size、micro-batch 数、训练 step 数和硬件环境，保证 baseline 与 candidate 的改动边界清晰。
+- ZeRO、Pipeline 和 Tensor Parallelism 的指标必须来自同一套评测字段，避免把不同实验口径拼成一张表。
+- 每种策略至少都要有 baseline 与 candidate 两组结果，避免只描述理论收益。
+- 如果 baseline 自身波动很大，后面的并行收益与通信结论就没有解释空间。
 
-### Step 3: 归因收益与代价
+### Step 3: 用统一口径比较收益与代价
 
-把指标差异转成可解释的工程判断。
+分布式并行项目必须同时看 peak memory、throughput、latency 和 communication overhead，不能只挑显存或单项吞吐收益下结论。
 
 - 如果 peak memory 降了但 throughput 也下降，要判断通信或调度开销是否抵消了显存收益。
 - 如果 throughput 提升但 latency 变差，要说明这个策略更适合离线训练还是在线服务。
@@ -68,9 +67,9 @@
 - 如果某个策略只在大 batch 或特定模型规模下有效，要写清适用条件。
 - 这一阶段的产物应该是“收益 + 代价 + 适用条件”，而不是只输出排行榜。
 
-### Step 4: 输出选型报告
+### Step 4: 输出选型结论
 
-最后把实验结果收成并行策略决策建议。
+并行策略最终不是输出“哪个方案更高级”，而是输出它在当前 workload 和通信条件下是否值得继续保留、微调或采用。
 
 - 输出 ZeRO / Pipeline / Tensor Parallelism 的对比表，至少包含 peak memory、throughput、latency 和 communication overhead。
 - 写清楚每种策略适合什么模型规模、显存瓶颈和通信条件。
