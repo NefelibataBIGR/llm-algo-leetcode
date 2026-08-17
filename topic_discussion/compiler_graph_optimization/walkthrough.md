@@ -1,55 +1,21 @@
 # 编译与图优化深入阅读
 
-## 主故事线
+假设你手里有一张“逻辑上完全正确”的计算图，但它在不同 backend 上跑出来的性能差很多。接下来你会开始怀疑：问题是图结构本身，还是 lowering、schedule、layout、kernel 组织把结果改坏了。
 
-这条专题最适合按下面这条顺序来读：
+这条线最重要的是按暴露顺序判断：先看图级问题，再看执行级问题，最后看 benchmark 结论是不是站得住。
 
-`graph looks clean -> cost still high -> lowering changes form -> backend constraints appear -> benchmark decides whether the compiler story was actually useful`
+## 第一段：先分清图对和跑得好不是一回事
 
-重点不是记住某个编译名词，而是理解：为什么一张“语义正确”的图，离“执行高效”的系统还隔着很多层。
+故事通常从“图没错，但性能不对”开始。第一步要先分清：这是图结构、fusion 和依赖本身的问题，还是执行模型的问题。
 
-## 1. 先承认图和执行不是一回事
+## 第二段：一旦进入 lowering，问题就不再只是语义等价
 
-很多误解都从这里开始：
+lowering、legalization 和 schedule 看起来像“把图翻译下去”，但真正改变结果的，往往是 tile、layout、kernel 组织和执行顺序。
 
-- 图结构很规整
-- 算子数量看起来不多
-- 依赖图也没有明显异常
+## 第三段：backend 差异不是噪声，而是主问题
 
-但 benchmark 仍然可能很差。  
-这意味着“图级合理”并不自动推出“执行级高效”。
+同一张图在不同 backend 上差很多，通常不是偶然误差，而是成本模型、执行模型和实现边界不同。也就是说，backend 差异本身就是判断对象。
 
-## 2. 先看图级，再看 lowering
+## 第四段：最后必须回到 benchmark
 
-进入 `02` 后，先判断：
-
-- 哪些中间张量真的在拖成本
-- 哪些 fuse 看起来合理但实际上会引入别的约束
-
-然后进入 `03`，再看：
-
-- lowering 后的形式是否真的更适合执行
-- schedule 是否把原来的图级判断贯彻下去
-
-## 3. 再看 backend 约束
-
-进入 `04` 和 `05` 时，要把注意力放到：
-
-- execution model 是否允许这种 fuse / layout / schedule
-- 不同 backend 为什么会把同一张图导向不同方案
-- 成本模型为什么会让“同样正确”的 lowering 产生不同收益
-
-## 4. 最后回到 benchmark
-
-进入 `06` 后，要回答：
-
-- backend 假设是否真的改善了最终系统指标
-- benchmark 结论能否支撑项目里的 adopt / keep / switch
-
-如果不能，这条编译故事还没有闭环。
-
-## 阅读建议
-
-1. 第一次读，按 `01 -> 02 -> 03 -> 04 -> 05 -> 06`。
-2. 已经懂 graph optimization，但不懂 backend 差异，先读 `04 -> 05`。
-3. 已经有 benchmark 结果，但说不清为什么，先读 `06` 再回查前面几页。
+真正的收口不在“这个图优化听起来更先进”，而在 benchmark 是否证明这条 lowering / schedule / backend 路线更适合当前 workload。把这条故事走完以后，一个更像真实结论的说法通常不是“我们做了 fusion”，而是：图级判断成立，执行级代价也站得住，最终 backend 选择在同一 workload 下更优。

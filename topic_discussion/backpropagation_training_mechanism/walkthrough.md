@@ -1,58 +1,25 @@
 # 反向传播与训练机制深入阅读
 
-## 主故事线
+假设你接手的是一条新的训练链路：forward 能跑，loss 也有数，但你解释不清梯度到底怎么回去，为什么某些张量必须保留，为什么加了 checkpointing 以后显存下来了、训练节奏却变了。
 
-这条专题的阅读顺序可以理解为：
+这条线最重要的是按暴露顺序判断：先看梯度路径，再看保存点，再看显存和训练节奏怎样一起被 backward 改写。
 
-`graph -> autograd -> attention backward -> loss / memory ledger -> checkpointing / offload -> accumulation -> profiling`
+## 第一段：先把计算图看清
 
-核心不是把公式背完，而是把“梯度怎么回去、哪些状态要留、为什么 backward 会变慢、怎么把这些问题放回训练闭环”讲清楚。
+故事通常从最基础的问题开始：forward 看起来没问题，但一到 backward 就只剩 API 名字。第一步要先把计算图和梯度路径画清，知道梯度沿什么链路回传，哪些节点只是算子，哪些节点会决定后面必须保存什么状态。
 
-## 01 反向传播总览与计算图
+## 第二段：再把 autograd 和 attention backward 对上
 
-先把问题框住：
+一旦进入 attention，问题就不再只是“梯度能不能回去”，而是“回去时到底保存了什么、重算了什么”。这时要去看 `grad_fn`、`saved_tensors` 和 attention 的 `dV -> dP -> dS -> dQ/dK` 链路。很多人真正卡住的不是公式，而是公式和执行路径没对上。
 
-- backward 为什么会影响训练能不能跑起来
-- 计算图如何决定梯度路径
-- 为什么有些状态必须留，有些可以重算
+## 第三段：loss 对齐以后，显存账本才有意义
 
-## 02 Autograd 与 Attention Backward
+如果 `labels / mask / shift / ignore_index` 没对齐，后面的 loss 曲线本身就不可信。只有监督口径成立了，activation、参数、梯度和 optimizer state 的显存账本才值得继续分析。
 
-先把实现层的关键接口和 attention 链路看懂：
+## 第四段：checkpointing 与 offload 改的不是同一类代价
 
-- `grad_fn` 和 `saved_tensors` 是什么
-- `autograd.Function` 为什么是最小的 backward 入口
-- attention 的 `dV -> dP -> dS -> dQ / dK` 怎么走
+训练侧显存一高，最容易想到的就是 checkpointing 和 offload。但这两条线改的不是同一种东西：checkpointing 是重算换空间，offload 是搬运换空间。它们都能压显存，但会把训练节奏改成不同的样子。
 
-## 03 Loss Backward、标签对齐与显存账本
+## 第五段：最后回到训练节奏
 
-再把监督口径和显存代价放在一起看：
-
-- `mask / shift / ignore_index` 如何工作
-- prompt / response 为什么不能一视同仁
-- activation、参数、梯度和 optimizer state 各占什么位置
-
-## 04 Checkpointing 与 Offload
-
-再看两类最重要的显存优化：
-
-- checkpointing 是重算
-- offload 是搬运
-- 两者分别在优化什么、代价是什么
-
-## 05 梯度累积、训练闭环与 Profiling
-
-最后把 backward 放回训练节奏里：
-
-- micro-batch 如何合成 effective batch
-- backward / step / profiling 怎么配合
-- 怎么判断某个优化是真的有效
-
-## 阅读建议
-
-1. 先从 `01` 开始，建立 backward 的基本框架。
-2. 再看 `02`，把实现接口和 attention 反向链路对上。
-3. 再看 `03`，把监督口径和显存代价对齐。
-4. 再看 `04`，理解 backward 的两类核心省显存方法。
-5. 最后看 `05`，把这些机制放回优化决策和 profiling 闭环。
-6. 最后看 `06`，用图册把整条链路复盘一遍。
+真正的闭环结束点不是“显存降了”，而是 accumulation、optimizer step、effective batch 和 profiling 口径都统一了。把这条故事走完以后，一个更像真实结论的说法通常不是“我们用了 checkpointing”，而是：梯度路径清楚、监督口径正确、activation 保存点明确，最终训练节奏和显存代价都能被解释。

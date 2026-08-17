@@ -1,48 +1,27 @@
 # 编译与图优化正文
 
-## 页面目标
+这页只做图优化问题的判断框架：不重复 `intro` 的路线入口，也不写 `walkthrough` 的连续故事。
 
-这页负责把 `01-06` 的正文页组织成一份“从图到 backend”的判断地图。重点不是罗列编译术语，而是帮助学习者快速定位问题发生在哪一层。
+## 判断表
 
-## 核心问题
+先分清问题在图结构、fusion、lowering、schedule、layout 还是 backend 成本模型，再判断 benchmark 差异是不是来自执行级约束。
 
-编译与图优化最容易出现的误解有三个：
+| 现象 | 优先判断 | 先看哪条线 | 常见动作 |
+|:---|:---|:---|:---|
+| 图没问题，但性能明显不对 | `graph vs execution mismatch` | [01](./01_why_compiler_and_graph_optimization_matters.md) | 先分清图级问题和执行级问题 |
+| 看起来能 fusion，但收益不稳定 | `fusion boundary mismatch` | [02](./02_graph_structure_and_fusion_decisions.md) | 看依赖、layout、读写代价 |
+| lowering 以后结果变差 | `lowering / schedule mismatch` | [03](./03_lowering_legalization_and_scheduling.md) | 看 legalize、schedule、kernel 组织 |
+| 不同 backend 结果差很多 | `backend cost mismatch` | [04](./04_execution_model_and_backend_constraints.md), [05](./05_backend_cost_models_and_divergent_optima.md) | 看 layout、执行模型、成本模型 |
+| benchmark 结论站不住 | `validation gap` | [06](./06_benchmark_and_project_validation.md) | 回到 workload 和 backend 约束一起验证 |
 
-- 以为 graph optimization 解决了结构问题，就一定会变快。
-- 以为 lowering / codegen 只是翻译，不需要单独理解约束。
-- 以为 backend 差异只是实现细节，不会反过来决定图优化是否值得。
-
-## 01-06 的职责
-
-| 章节 | 关注问题 | 该页不负责什么 |
+| 检查项 | 主要回答什么 | 常见误判 |
 |:---|:---|:---|
-| `01` | 为什么图优化值得单独看 | 不替代具体编译器教程 |
-| `02` | 哪些节点、依赖和中间张量真的贵 | 不直接给出 kernel 级实现 |
-| `03` | lowering / legalization / schedule 如何改变执行形态 | 不替代 backend 级 profiling |
-| `04` | backend 约束如何塑造最终执行 | 不替代多卡并行切分 |
-| `05` | 为什么不同 backend 的最优解会分化 | 不替代成本采购决策本身 |
-| `06` | 如何把 backend 结论放回 benchmark 和项目验证 | 不替代项目实验正文 |
-
-## 常见阅读路线
-
-### 路线 1：图看起来没问题，但 benchmark 还是慢
-
-从 `02 -> 03 -> 04` 进入，先把图级、lowering 和执行模型拆开。
-
-### 路线 2：已经有 backend 假设，但说不清为什么
-
-从 `05 -> 06` 进入，再回查 `03 / 04` 看约束从哪里来。
-
-### 路线 3：想先知道这个专题和 profiling 的关系
-
-先看 `01`，再去 [Profiling 专题](../profiling/intro.md) 对照“证据链”和“优化链”的边界。
-
-## 与其他专题的连接
-
-- 如果你卡在“到底哪里慢”，先去 [Profiling 专题](../profiling/intro.md) 建立证据链。
-- 如果你卡在“推理路径为什么受 backend 影响”，去 [推理优化专题](../inference_optimization/intro.md)。
-- 如果你卡在“多卡切分和执行模型一起变形”，去 [通信并行专题](../communication_parallel/intro.md)。
+| 图结构 | 依赖和 fusion 候选是否成立 | 图对就一定快 |
+| lowering | 图到 kernel 的转换是不是合理 | lowering 只是翻译 |
+| schedule | 执行顺序和 tile 组织是不是合适 | 只要 legal 就够了 |
+| backend 成本模型 | 不同后端为什么会给出不同最优解 | backend 只是实现细节 |
+| benchmark | 差异是不是在同一 workload 下成立 | 只看单次结果，不看约束一致性 |
 
 ## 小结
 
-这条专题的任务不是把编译器名词再讲一遍，而是把“图结构、执行模型和 backend 约束为什么会共同决定最终效率”讲清楚。
+这页的职责不是再讲一遍编译术语，而是把图优化里最常见的判断点压成一张表。路线入口留给 `intro`，连续故事留给 `walkthrough`。

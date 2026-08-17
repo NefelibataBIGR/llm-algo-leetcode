@@ -28,6 +28,30 @@ gradient accumulation 里最容易混淆的是三个概念：
 
 所以，梯度累积不是“把 batch 变大”这么简单，而是把 `forward/backward` 的执行次数和 `optimizer.step()` 的执行频率拆开。
 
+### AMP / BF16 / GradScaler / gradient clipping
+
+真实训练里，梯度累积几乎不会单独出现，它通常和数值精度与稳定化策略绑在一起：
+
+- `AMP / BF16`：改变的是前向、反向和参数更新所处的数值精度环境
+- `GradScaler`：主要服务于 FP16 训练，避免小梯度在反向传播里直接下溢
+- `gradient clipping`：负责在梯度已经算出来之后，限制极端更新步长
+
+这几者和 accumulation 的关系要先分清：
+
+- accumulation 改的是“多久 step 一次”
+- mixed precision 改的是“这些张量用什么精度参与计算”
+- GradScaler 改的是“loss 和梯度在反向阶段是否先做缩放”
+- gradient clipping 改的是“step 之前是否限制梯度范数”
+
+所以现代训练闭环更接近下面这条链：
+
+`autocast forward -> scaled loss backward -> accumulation -> unscale(if needed) -> gradient clipping -> optimizer.step() -> profiler validate`
+
+如果这一层没理顺，就很容易出现两类问题：
+
+- loss 看起来正常，但梯度早就在低精度里下溢或爆掉
+- accumulation 和 clipping / scaler 的调用时机错位，导致训练节奏和数值行为一起失真
+
 ## 训练闭环
 
 当你把前面的机制合起来看，训练闭环就变成：
@@ -43,6 +67,8 @@ gradient accumulation 里最容易混淆的是三个概念：
 - 梯度累积不会改变模型结构，它改变的是训练调度。
 - `backward` 次数和 `step` 次数不是一回事，很多训练 bug 就出在这里。
 - profiling 不是优化本身，它只是把瓶颈说清楚。
+- `BF16` 通常不依赖 `GradScaler`，`FP16` 才更依赖缩放保护。
+- `gradient clipping` 应该发生在真正 `step` 之前，而不是每个 micro-batch 后都盲目执行。
 
 ## 对应来源
 
@@ -64,9 +90,12 @@ gradient accumulation 里最容易混淆的是三个概念：
 | 资料 | 读它的理由 |
 |:---|:---|
 | [torch.profiler](https://docs.pytorch.org/docs/main/profiler) | 训练闭环里最直接的验证工具，帮助把“感觉慢”变成“哪里慢”。 |
+| [torch.amp](https://docs.pytorch.org/docs/stable/amp.html) | 直接看 autocast、GradScaler 和 mixed precision 的官方接口。 |
+| [clip_grad_norm_](https://docs.pytorch.org/docs/stable/generated/torch.nn.utils.clip_grad_norm_.html) | 看 gradient clipping 在 step 前应该如何调用。 |
 
 ## 阅读建议
 
 - 先把 accumulation 和 step 区分开。
-- 再把训练闭环放回 profiling。
+- 再把 `AMP / BF16 / GradScaler / clipping` 放回 step 之前的调用顺序里。
+- 最后把训练闭环放回 profiling。
 - 如果你已经知道 batch / update cadence 的关系，就重点看验证方法。

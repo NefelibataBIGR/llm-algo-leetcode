@@ -63,6 +63,7 @@ Qwen 更适合用来观察：
 - tokenizer 和 embedding 的覆盖面
 - 长上下文和工程部署策略
 - 结构设计如何服务多语言任务
+- dense 和 MoE 双路线如何并存
 
 Qwen 的意义在于，它提醒我们模型结构不是孤立的：
 
@@ -71,6 +72,27 @@ Qwen 的意义在于，它提醒我们模型结构不是孤立的：
 - 长上下文与工程部署策略会一起塑造最终体验
 
 所以看 Qwen 时，不只是看参数量，而是看它如何把结构设计和实际使用场景绑在一起。
+
+#### Qwen2.5 -> Qwen3：从工程稳态到双路线展开
+
+如果把 `Qwen` 当成国产基础模型代表，当前最值得补的不是把所有新型号堆进来，而是先看 `Qwen2.5 -> Qwen3` 这条最稳定的代际线。
+
+这条线的价值在于：
+
+- `Qwen2.5` 更像工程稳态样本，强调多语言、长上下文和部署可用性
+- `Qwen3` 则把路线进一步拆成 `dense` 和 `MoE` 两条可并行观察的结构代际
+
+从结构角度看，`Qwen3` 最值得注意的不是“参数更大”，而是它给出了更清晰的对照面：
+
+- dense 模型和 MoE 模型同时公开，便于横向比较
+- 小模型和中大模型在 `tie embedding`、`Q/KV heads`、上下文长度上有明确分档
+- `Qwen3-30B-A3B`、`Qwen3-235B-A22B` 这类模型让 `Qwen` 不再只是 dense 样本
+
+因此，在这个专题里，`Qwen3` 应该被当成：
+
+- 一条 `Qwen` 基础模型代际升级线
+- 一组 `dense vs MoE` 的结构对照样本
+- 一个把多语言、长上下文和部署需求继续往前推的工程代表
 
 ### Gemma：紧凑而稳定的现代结构样本
 
@@ -145,15 +167,32 @@ DeepSeek-V3.2 把这条线推进到 `DSA`（DeepSeek Sparse Attention）。
 
 这也是为什么 DeepSeek 特别适合作为 attention 前沿样本：它不是局部修补，而是沿着“缓存、路由、稀疏、硬件”四个方向连续推进。
 
+#### 4. 版本线要分开看：V 系列 vs R 系列
+
+这里最容易混淆的是：`DeepSeek-V2 / V3 / V4` 和 `DeepSeek-R1` 不应放在同一条“结构代际”里直接并排比较。
+
+- `V` 系列更适合作为**基础模型 / 架构代际**来看，重点看 block、attention、MoE、长上下文和系统效率如何演化。
+- `R` 系列更适合作为**后训练 / 推理强化分支**来看，重点看 reasoning 能力、思维链长度、后训练方式和评测收益。
+
+因此，在这个专题里更合理的读法是：
+
+- `DeepSeek-V2`：看 `MLA` 如何改写 KV 表示
+- `DeepSeek-V3 / V3.2`：看 sparse attention、MoE 与长上下文如何继续推进
+- `DeepSeek-V4`：看它是否已经成为新的结构代际分界点
+- `DeepSeek-R1`：不要当成新的 block 架构代际，而应当放到“后训练 / 推理模式”这一层去理解
+
+换句话说，`R1` 更像“在 DeepSeek 基座上强化 reasoning 的路线”，而不是“替代 V 系列的下一代结构总称”。
+
 ## 代表模型对照
 
 | 模型 | 你应该关注什么 |
 |:---|:---|
 | LLaMA | 现代标准 block 是怎么收敛出来的 |
 | Mistral | attention 和长上下文怎么结合 |
-| Qwen | tokenizer、embedding 和工程可用性 |
+| Qwen | tokenizer、embedding、多语言覆盖，以及 `dense / MoE` 双路线怎么展开 |
 | Gemma | norm、MLP、block 的稳定性 |
-| DeepSeek | attention / KV cache / sparse routing 还能怎么重构 |
+| DeepSeek V-series | attention / KV cache / sparse routing 还能怎么重构 |
+| DeepSeek R-series | 后训练如何把 reasoning 能力继续往上推 |
 
 ## 横向对照
 
@@ -191,14 +230,17 @@ DeepSeek-V3.2 把这条线推进到 `DSA`（DeepSeek Sparse Attention）。
 #### Qwen
 
 - 更适合看 `02_tokenization_embedding`
+- 也适合看 `05_rope_position_encoding`
 - 也适合看 `08_representative_models`
 - 强调工程可用性和多语言覆盖
+- `Qwen3` 之后还可以进一步看 `dense` 和 `MoE` 两条结构路线
 
 #### DeepSeek
 
 - 更适合看 `04_attention_evolution`
 - 也适合看 `09_moe_sparsity_evolution`
-- 体现结构重构、稀疏化和效率优化的前沿方向
+- `V` 系列体现结构重构、稀疏化和效率优化的前沿方向
+- `R` 系列体现后训练和 reasoning 强化路线，但不应和 `V` 系列混成同一条结构代际
 
 ### 读法建议
 
@@ -215,9 +257,42 @@ DeepSeek-V3.2 把这条线推进到 `DSA`（DeepSeek Sparse Attention）。
 |:---|:---|
 | [LLaMA: Open and Efficient Foundation Language Models](https://arxiv.org/abs/2302.13971) | 现代 block 的基准模型。 |
 | [Mistral 7B](https://arxiv.org/abs/2310.06825) | 长上下文和效率优化的重要样本。 |
-| [Qwen Technical Report](https://arxiv.org/abs/2309.16609) | 多语言和工程实践的重要样本。 |
+| [Qwen Technical Report](https://arxiv.org/abs/2309.16609) | Qwen 初代路线的代表入口。 |
+| [Qwen2.5 Technical Report](https://arxiv.org/abs/2412.15115) | 看 Qwen 在多语言、长上下文和工程可用性上的稳态收敛。 |
 
 ## 前沿论文
+
+| 文献 | 读它的理由 |
+|:---|:---|
+| [Gemma: Open Models Based on Gemini Research and Technology](https://storage.googleapis.com/deepmind-media/gemma/gemma-report.pdf) | 现代紧凑模型的参考样本。 |
+| [Qwen3 Technical Report](https://arxiv.org/abs/2505.09388) | 看 Qwen3 如何把 dense / MoE 两条结构路线一起公开出来。 |
+| [DeepSeek-V2](https://arxiv.org/abs/2405.04434) | 看 MLA 如何把 attention 缓存压缩到 latent 空间。 |
+| [DeepSeek-V3 Technical Report](https://arxiv.org/abs/2412.19437) | 更前沿的系统化结构演化样本。 |
+| [DeepSeek-V3.2: Pushing the Frontier of Open Large Language Models](https://arxiv.org/abs/2512.02556) | 看 DSA 如何把 sparse attention 推到新的阶段。 |
+
+当前这页的 `DeepSeek` 结构正文覆盖主要到 `V2 / V3 / V3.2`。`V4` 已经可以作为新的结构代际入口纳入，`R1` 则更适合作为后训练 / reasoning 分支补进对照表，而不是直接并入结构演化主线。
+
+## 国产模型版本对照
+
+如果只在文字里分别讲 `Qwen` 和 `DeepSeek`，读者还是容易把“基础模型代际”和“后训练推理分支”混在一起。更稳的做法是先把它们放到同一张版本表里看。
+
+| 系列 | 当前更适合怎么看 | 本专题里最该关注什么 | 更适合落在哪一页 |
+|:---|:---|:---|:---|
+| `Qwen2.5` | 工程稳态样本 | 多语言、长上下文、工程可用性 | `02`、`05`、`08` |
+| `Qwen3 Dense` | 基础模型代际升级 | tokenizer 覆盖、RoPE 长上下文分档、dense block 稳态 | `02`、`05`、`08` |
+| `Qwen3 MoE` | 稀疏结构分支 | `dense vs MoE` 双路线、专家化与系统代价 | `08`、`09` |
+| `DeepSeek-V2` | 结构前沿起点 | `MLA`、KV cache 压缩 | `04`、`08` |
+| `DeepSeek-V3 / V3.2` | 稀疏 attention 深化 | `DSA`、长上下文、硬件友好稀疏执行 | `04`、`08`、`09` |
+| `DeepSeek-V4` | 新的结构代际入口 | 是否形成新的 attention / MoE / 系统组合样式 | `08` |
+| `DeepSeek-R1` | 后训练 / reasoning 分支 | reasoning 强化、后训练与推理模式，而非 block 主线 | `08`，后续更适合衔接 `post_training_alignment` |
+
+这张表的核心作用不是追型号，而是先把问题分清楚：
+
+- `Qwen` 更适合当“国产基础模型工程样本”来看
+- `DeepSeek V-series` 更适合当“结构重构样本”来看
+- `DeepSeek R-series` 更适合当“后训练 / reasoning 分支”来看
+
+这样后续你再补型号时，不会把不同层级的变化硬塞进同一条结构主线。
 
 ## 可视化提示
 
@@ -229,12 +304,18 @@ DeepSeek-V3.2 把这条线推进到 `DSA`（DeepSeek Sparse Attention）。
 
 第一张图负责快速看清 LLaMA、Mistral、Qwen、Gemma、DeepSeek 各自的结构选择；第二张图负责把 01-09 页串成一张知识导航图。
 
-| 文献 | 读它的理由 |
-|:---|:---|
-| [Gemma: Open Models Based on Gemini Research and Technology](https://storage.googleapis.com/deepmind-media/gemma/gemma-report.pdf) | 现代紧凑模型的参考样本。 |
-| [DeepSeek-V2](https://arxiv.org/abs/2405.04434) | 看 MLA 如何把 attention 缓存压缩到 latent 空间。 |
-| [DeepSeek-V3.2: Pushing the Frontier of Open Large Language Models](https://arxiv.org/abs/2512.02556) | 看 DSA 如何把 sparse attention 推到新的阶段。 |
-| [DeepSeek-V3 Technical Report](https://arxiv.org/abs/2412.19437) | 更前沿的系统化结构演化样本。 |
+如果后续继续加图，最值得补的是一张 `DeepSeek V-series vs R-series` 的版本分层图：
+
+- 一条线画 `V2 -> V3 -> V3.2 -> V4`
+- 另一条线从对应基座分叉到 `R1`
+
+这样可以避免把“结构代际”和“后训练 reasoning 分支”混成同一条线。
+
+另一张高优先图是 `Qwen2.5 -> Qwen3 Dense / Qwen3 MoE` 的分叉图，重点标出：
+
+- 多语言 / tokenizer 覆盖
+- `32K / 128K` 长上下文分档
+- `dense` 和 `MoE` 两条结构路线
 
 ## 与 Part 02 的对应关系
 
@@ -242,15 +323,6 @@ DeepSeek-V3.2 把这条线推进到 `DSA`（DeepSeek Sparse Attention）。
 - `05` 直接对应 decoder block 的核心样式
 - `04`、`03`、`02`、`01` 决定这些模型 block 具体怎么搭
 - `06 / 07 / 09` 对应 MoE 或稀疏结构扩展
-
-## 可视化提示
-
-建议做一张“代表模型结构矩阵”：
-
-- 行：LLaMA / Mistral / Qwen / Gemma / DeepSeek
-- 列：norm、attention、RoPE、MLP、decoder-only、长上下文、系统优化
-
-这样读者能快速看出不同模型的结构选择差异。
 
 ## 阅读建议
 

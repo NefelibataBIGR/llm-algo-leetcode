@@ -41,11 +41,70 @@ attention backward 里最容易混淆的，不是公式本身，而是中间状�
 - 再穿过 softmax 的耦合关系
 - 最后回到 query 和 key 的投影路径
 
+### 现代实现差异：FlashAttention backward / fused backward / recompute
+
+如果只停在手推 `dV -> dP -> dS -> dQ / dK`，你理解的是“数学链路”；真正到现代训练系统里，还要再看三件事：
+
+#### 1. FlashAttention backward 在改什么
+
+FlashAttention 不是只优化前向，它同样会重写 backward 的执行路径。
+
+它的关键不是改梯度公式，而是改这些中间状态怎么被访问：
+
+- 尽量不把完整 attention score / probability 矩阵落回高带宽显存
+- 把 forward / backward 都改写成更适合 tile 化和在线归约的形式
+- 用更小的中间状态，换更低的 IO 成本
+
+因此，FlashAttention backward 的核心直觉是：
+
+- 梯度公式没变
+- 保存点和访问路径变了
+- 真正省下来的通常是 `saved_tensors` 的驻留成本和 IO 开销
+
+#### 2. fused backward 在改什么
+
+现代实现里，很多 backward 不再按“一个逻辑步骤一个 kernel”拆开执行，而是尽量做 `fused backward`。
+
+它的目标通常是：
+
+- 减少中间张量写回和再次读取
+- 让一段连续的梯度计算在更少的 kernel 边界里完成
+- 降低 launch 开销和全局显存往返
+
+所以 fused backward 解决的不是“公式太慢”，而是“实现太碎”。
+
+最典型的收益是：
+
+- 本来需要单独 materialize 的中间量，不再显式写回
+- 多个小 kernel 之间的同步和搬运成本下降
+- backward 更接近“以算换存，以融合换 IO”
+
+#### 3. recompute 在 attention backward 里为什么常见
+
+重算并不只属于 checkpointing 页，它在 attention backward 里本身就很常见。
+
+原因很直接：
+
+- 保存完整中间 attention 状态太贵
+- 某些中间量可以在 backward 时按 tile 或按块重新算出来
+- 与其长期保留，不如临时重算
+
+所以在现代 attention backward 里，常见的不是“全存”或“全不存”，而是更细的权衡：
+
+- 哪些状态值得保
+- 哪些状态按块重算更划算
+- 哪些状态通过 fused kernel 顺手带过去
+
+这也是为什么 `saved_tensors`、`FlashAttention` 和 `recompute` 应该放在同一页里看，而不是完全拆开。
+
 ## 典型误区
 
 - `grad_fn` 不是梯度本身，它只是记录这个张量的生成路径。
 - `saved_tensors` 不是白送的，保存越多，显存压力越大。
 - attention backward 的代价不只在公式，还在中间状态和 softmax 的稳定性处理。
+- `FlashAttention backward` 不是“新公式”，而是“新执行路径”。
+- `fused backward` 不是单一算法名，它更像是一类减少中间写回的实现策略。
+- `recompute` 不只出现在通用 checkpointing，也会直接出现在 attention backward 的局部实现里。
 
 ## 对应来源
 
@@ -57,6 +116,7 @@ attention backward 里最容易混淆的，不是公式本身，而是中间状�
 |:---|:---|
 | [Attention Is All You Need](https://arxiv.org/abs/1706.03762) | attention 结构和 causal mask 的共同起点。 |
 | [FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness](https://arxiv.org/abs/2205.14135) | 看 attention 的 backward 代价如何被重新组织成更省 IO 的执行路径。 |
+| [FlashAttention-2: Faster Attention with Better Parallelism and Work Partitioning](https://arxiv.org/abs/2307.08691) | 看更现代的 work partitioning 如何继续影响 forward / backward 的 kernel 组织。 |
 | [Automatic differentiation in machine learning: a survey](https://arxiv.org/abs/1502.05767) | 把 attention backward 放回 autodiff 的统一语境里看。 |
 
 ## 工程资料
@@ -70,4 +130,4 @@ attention backward 里最容易混淆的，不是公式本身，而是中间状�
 
 - 先把 `dV -> dP -> dS -> dQ / dK` 这条链背顺。
 - 再回头看 `grad_fn` 和 `saved_tensors`。
-- 如果你关心工程层面，顺手看 `FlashAttention`。
+- 如果你关心工程层面，重点看 `FlashAttention backward / fused backward / recompute` 这三件事是怎么一起出现的。

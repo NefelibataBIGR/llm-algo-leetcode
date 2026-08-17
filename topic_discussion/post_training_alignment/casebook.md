@@ -1,65 +1,26 @@
 # 后训练与对齐正文
 
-## 页面目标
+这页只做对齐问题的判断框架：不重复 `intro` 的路线入口，也不写 `walkthrough` 的连续故事。
 
-这页负责把 `01-06` 的正文页组织成一份可执行的判断地图。重点不是重复 notebook 标题，而是帮助学习者在“方法、数据、评测、项目”四条线之间快速定位问题。
+## 判断表
 
-## 核心问题
+先分清问题在方法选择、偏好数据、评测口径还是项目交付，再判断它是不是已经退化成训练或系统代价问题。
 
-后训练与对齐最容易出现的误解有三个：
-
-- 把“对齐”理解成一个单独 loss，而不是一条从偏好目标到项目决策的完整流程。
-- 把 PPO、DPO、GRPO 当成名字不同但本质一样的方法，忽略它们的系统对象和数据形态差异。
-- 只关注训练是否能跑，却不判断偏好数据、评测口径和最终项目建议是否一致。
-
-## 01-06 的职责
-
-| 章节 | 关注问题 | 该页不负责什么 |
-|:---|:---|:---|
-| `01` | 为什么 SFT 之后仍然需要继续对齐 | 不讲某个具体 loss 的推导细节 |
-| `02` | RLHF / PPO 为什么完整但重 | 不替代显存或并行专题 |
-| `03` | DPO 为什么更轻、更直接 | 不等于“所有对齐都该用 DPO” |
-| `04` | GRPO 为什么适合 group-wise 比较 | 不替代偏好数据页 |
-| `05` | 数据和评测怎样决定结果是否可信 | 不替代方法页 |
-| `06` | 怎样把方法放回项目页做决策 | 不替代 `84 / 85` 的实验正文 |
-
-## 方法对照表
-
-| 方法 | 核心对象 | 代价焦点 | 常见误区 |
+| 现象 | 优先判断 | 先看哪条线 | 常见动作 |
 |:---|:---|:---|:---|
-| RLHF / PPO | policy、reference、reward、rollout | 系统链路长、训练代价高 | 只记“PPO 很重”，却说不清重在哪里 |
-| DPO | chosen / rejected preference pair | 依赖数据质量和 reference 口径 | 把 DPO 当成“更简单的 SFT” |
-| GRPO | candidate group、relative comparison | 候选组质量和评测口径 | 只看组内排序，不看生成结果是否稳定 |
+| SFT 后结果仍然偏离偏好 | `alignment gap` | [01](./01_why_post_training_alignment.md) | 先确认是不是对齐问题而不是 SFT 基础问题 |
+| 方法很强，但系统代价太重 | `ppo system cost` | [02](./02_rlhf_and_ppo_system_cost.md) | 看 rollout、reward、显存和多卡代价 |
+| 偏好数据有了，但结论不稳 | `dpo / data mismatch` | [03](./03_dpo_and_preference_optimization.md), [05](./05_preference_data_and_evaluation.md) | 看 chosen / rejected 和评测口径 |
+| group-wise 路线不稳定 | `grpo mismatch` | [04](./04_grpo_and_groupwise_alignment.md) | 看候选组构造和比较口径 |
+| 项目页能跑，但采用建议站不住 | `delivery gap` | [06](./06_project_decision_and_delivery.md) | 回到方法、数据、评测一起收口 |
 
-## 数据与评测检查项
-
-| 检查项 | 你要确认什么 | 常见失败模式 |
+| 检查项 | 主要回答什么 | 常见误判 |
 |:---|:---|:---|
-| 偏好对质量 | chosen / rejected 是否真的可比 | 数据表面可跑，实际偏好噪声大 |
-| group 构造 | 同一 prompt 下候选是否同源、同任务 | 组内样本来源杂，GRPO 结论不稳 |
-| 评测口径 | win-rate、pairwise accuracy、judge score 是否一致 | 训练目标与评测指标各说各话 |
-| 项目结论 | 最后能否输出 adopt / tune / reject | 指标很多，但没有决策 |
-
-## 常见阅读路线
-
-### 路线 1：先理解为什么还要对齐
-
-从 `01 -> 02 -> 03 -> 04` 进入，先把方法谱系和训练代价搞清楚，再回到 `05 / 06`。
-
-### 路线 2：先理解数据和评测
-
-从 `05` 进入，再倒回 `03 / 04` 看数据形态如何决定方法适配性。
-
-### 路线 3：先看项目落地
-
-从 `06` 进入，看项目页需要什么样的结论，再回查 `03 / 04 / 05`。
-
-## 与其他专题的连接
-
-- 如果你卡在 `loss / backward / memory`，去 [反向传播与训练机制专题](../backpropagation_training_mechanism/intro.md)。
-- 如果你卡在 `SFT / LoRA` 前置，去 [监督微调（SFT）闭环专题](../fine_tuning_training/intro.md)。
-- 如果你卡在 `PPO rollout / 多卡资源`，去 [显存优化与性能调优专题](../memory_performance_tuning/intro.md) 和 [通信并行专题](../communication_parallel/intro.md)。
+| 方法选择 | 当前是 PPO、DPO 还是 GRPO 问题 | 只按流行度选方法 |
+| 偏好数据 | chosen / rejected 或 group 数据是否可信 | 只要有 pair 就能训练 |
+| 评测口径 | 结果是不是和目标行为一致 | 只看 loss，不看偏好评测 |
+| 项目收口 | 是否能落成 adopt / tune / reject | 能跑就等于值得上 |
 
 ## 小结
 
-这个专题的任务不是替 notebook 做目录，而是把“为什么还要继续对齐、该选哪种方法、怎样判断结果可信”组织成一条连续判断链。
+这页的职责不是再讲一遍对齐方法名，而是把后训练里最常见的判断点压成一张表。路线入口留给 `intro`，连续故事留给 `walkthrough`。

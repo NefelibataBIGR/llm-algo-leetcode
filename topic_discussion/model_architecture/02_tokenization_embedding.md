@@ -61,10 +61,26 @@ Embedding 则把离散 token 变成可训练的连续表示，是大模型结构
 
 前沿路线虽然在探索 byte-level、character-level 或动态 tokenization，但主流 LLM 仍然更依赖成熟的 subword 入口，因为它在可训练性和工程稳定性之间更平衡。
 
+### 多语言工程样本：Qwen 路线
+
+如果要找一条最适合放在这里的现代工程样本，`Qwen` 系列很合适。
+
+它的价值不只在于“也是 subword tokenizer”，而在于它把 tokenizer 的几个现实问题放得更明显：
+
+- 多语言覆盖面是否稳定
+- 词表设计会不会直接影响不同语言的切分质量
+- 长上下文和部署场景下，token 长度分布是否仍然可控
+
+这也是为什么 `Qwen` 适合作为 tokenization 页里的代表：
+
+- 它提醒读者 tokenizer 不是前处理小问题，而是多语言模型体验的一部分
+- `Qwen3` 这类新代际继续保留了工程可用性导向，而不是只追求结构炫技
+- 后面的长上下文、推理和部署判断，都会反过来受 tokenizer 选择影响
+
 ## 代表模型
 
 - `LLaMA`：使用统一的 subword tokenization 作为模型入口
-- `Qwen`：强调多语言和工程可用性，tokenizer 设计会直接影响输入覆盖面
+- `Qwen`：强调多语言和工程可用性，tokenizer 设计会直接影响输入覆盖面；`Qwen3` 继续延续这条路线
 - `DeepSeek`：更关注整体结构效率，但同样依赖稳定的 token 表示入口
 
 ## 经典论文

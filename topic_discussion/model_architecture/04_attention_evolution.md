@@ -63,6 +63,33 @@ MLA 可以理解为一种更激进的 KV 压缩路线：
 
 所以，MLA 不是简单的“再少几个 head”，而是把 attention 的缓存表示重新设计了一遍。
 
+### Linear Attention：改写 softmax 路径
+
+除了压缩 KV 或做稀疏选择，另一条长期存在的路线是直接改写 attention 的计算形式，也就是常说的 `linear attention`。
+
+它的核心想法不是“少看一些 token”，而是把原本显式构造 `L x L` 注意力矩阵的方式，改写成更接近线性复杂度的累计或核化计算。
+
+这条路线通常想解决三个问题：
+
+- 长上下文下 `O(L^2)` 的注意力成本太高
+- 显式保存完整注意力矩阵会带来很高的显存压力
+- 某些场景里更希望用流式、递推式或状态式方式处理上下文
+
+因此，`linear attention` 更像是在改写“attention 是怎么被算出来的”，而不是只改 head 数或缓存布局。
+
+但它没有像 `MQA / GQA / MLA` 那样直接成为当前主流开源 LLM 的默认答案，原因也很现实：
+
+- softmax attention 的表达与训练行为更稳定，生态也更成熟
+- linear attention 往往需要改写相似度定义或归一化方式
+- 在很多真实系统里，瓶颈不只来自公式复杂度，还来自 cache、调度和硬件执行路径
+
+所以可以把它理解成 attention 演化中的一条重要分支：
+
+- `MQA / GQA`：主要压 KV cache 和带宽
+- `MLA`：进一步压 KV 表示本身
+- `linear attention`：直接改写注意力计算路径
+- `sparse attention`：重写“哪些 token 需要互相看见”
+
 ### 稀疏 / 长上下文 attention
 
 - 一部分方法通过局部窗口、分块或路由减少计算
@@ -133,6 +160,7 @@ FlashAttention 这类工作不是重新定义 attention 语义，而是重新定
 | [Attention Is All You Need](https://arxiv.org/abs/1706.03762) | attention 的总起点，理解所有后续变体必须先看它。 |
 | [Fast Transformer Decoding: One Write-Head is All You Need](https://arxiv.org/abs/1911.02150) | MQA 的经典入口，解释为什么推理时可以减少 KV 头。 |
 | [GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints](https://arxiv.org/abs/2305.13245) | 理解 GQA 如何在表达能力和推理成本之间折中。 |
+| [Transformers are RNNs: Fast Autoregressive Transformers with Linear Attention](https://arxiv.org/abs/2006.16236) | linear attention 的经典入口，适合看“怎样把注意力改写成线性路径”。 |
 
 ## 前沿论文
 
@@ -152,12 +180,22 @@ FlashAttention 这类工作不是重新定义 attention 语义，而是重新定
 - `22`、`24`、`67` 等页面和这里形成系统侧衔接
 - `09` 里会看到稀疏化和路由在更大结构中的位置
 
+## 一张最小对照表
+
+| 路线 | 主要改什么 | 更偏哪类问题 |
+|:---|:---|:---|
+| `MHA` | 标准 full attention | 表达能力基线 |
+| `MQA / GQA` | 减少 K/V 头或共享 K/V | 推理 cache、带宽、吞吐 |
+| `MLA` | 压缩 KV 的表示空间 | KV cache 常驻成本 |
+| `linear attention` | 改写注意力计算路径 | 长上下文复杂度、流式计算 |
+| `sparse attention` | 只让部分 token 互相看见 | 长上下文选择性计算 |
+
 ## 可视化提示
 
 建议画两张图：
 
 - 一张 `MHA -> MQA -> GQA` 的 head 关系图
-- 一张 `MHA -> GQA -> MLA -> sparse attention` 的演化图
+- 一张 `MHA -> GQA -> MLA / linear attention / sparse attention` 的演化图
 - 一张 attention 成本图，标出训练计算、推理 KV cache 和系统吞吐之间的关系
 
 ## 阅读建议

@@ -70,10 +70,27 @@ RoPE 的强项不只是“效果不错”，而是它把位置信息嵌进了 at
 
 所以长上下文扩展不是“把窗口拉大”这么简单，而是要重新校准 RoPE 的位置几何。
 
+### 工程样本：Qwen3 的分档上下文
+
+如果要找一条现代工程样本来看 RoPE 和长上下文是怎样一起落地的，`Qwen3` 很适合。
+
+它的价值不在于“又支持更长上下文”，而在于它把上下文长度做成了明确分档：
+
+- 一部分较小 dense 模型维持在 `32K`
+- 一部分更高档的 dense / MoE 模型直接走到 `128K`
+
+这说明长上下文不只是“统一拉满窗口”，而是会和模型规模、部署目标、KV cache 成本一起联动。
+
+从这个角度看，`Qwen3` 适合放在这里作为一个工程判断样本：
+
+- RoPE 是否需要继续外推，不只取决于数学可行性
+- 还取决于模型档位、cache 常驻成本和部署场景
+- 同一家模型系列内部，也可能按规模和用途做不同上下文长度决策
+
 ## 代表模型
 
 - `LLaMA`：RoPE 是其标准位置编码选择之一
-- `Qwen`：会结合长上下文和工程需求看位置编码策略
+- `Qwen`：会结合长上下文和工程需求看位置编码策略；`Qwen3` 是一个明确的分档样本
 - `DeepSeek`：在更复杂的结构里继续使用或改造 RoPE 相关机制
 
 ## 经典论文
@@ -91,6 +108,7 @@ RoPE 的强项不只是“效果不错”，而是它把位置信息嵌进了 at
 | [Position Interpolation](https://arxiv.org/abs/2306.15595) | 代表长上下文扩展中的插值思路。 |
 | [YaRN: Efficient Context Window Extension of Large Language Models](https://arxiv.org/abs/2309.00071) | 代表 RoPE 伸缩与长上下文扩展的工程路线。 |
 | [LongRoPE: Extending LLM Context Window Beyond 2 Million Tokens](https://arxiv.org/abs/2402.13753) | 代表更激进的长上下文扩展方法。 |
+| [Qwen3 Technical Report](https://arxiv.org/abs/2505.09388) | 看同一家模型系列如何在 `32K / 128K` 间做上下文长度分档。 |
 
 ## 与 Part 02 的对应关系
 

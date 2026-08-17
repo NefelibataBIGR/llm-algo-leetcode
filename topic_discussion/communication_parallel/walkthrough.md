@@ -1,30 +1,21 @@
 # 通信与并行深入阅读
 
-## 主故事线
+假设你把训练从单卡扩到多卡：显存确实回来了，但速度没有按预期提升，甚至有时还更慢。接下来你会开始怀疑是同步太重、切分不对，还是 benchmark 本身就没说明白。
 
-如果把这条线写完整，通常会经历这样的过程：先是“单卡不够装了”，于是考虑加卡；一加卡之后显存确实下来了，但 step time 没按预期缩短，于是先沿着 `05 -> 20` 看同步原语和拓扑关系，再沿着 `06 -> 27 -> 28 -> 29` 判断到底该切状态、切层还是切算子；当训练还是没快时，再用 `46 -> 79 -> 66` 看通信等待、bubble 和 benchmark 结果，确认并行策略到底是把收益做出来了，还是只是把瓶颈从显存转成了通信；最后回到 `2.8`，把策略和训练目标一起重新选一遍。
+这条线最重要的是按暴露顺序判断：系统先为什么走向并行，切分以后代价从哪里回来，最后哪些策略真的值得保留。
 
-这条故事本身也是从已有主线长出来的：
+## 第一段：并行的起点不是“想上多卡”，而是单卡先碰到了边界
 
-- `Part01` 先把拓扑、NCCL、AllReduce 和显存共享立住；
-- `Part02` 再把 ZeRO、Pipeline、Tensor Parallel、MoE 和 benchmark 落成实现；
-- 横向专题负责把它们串成“为什么切、怎么切、代价去哪了”的连续叙事。
+故事通常从单卡显存或吞吐先顶到边界开始。系统先从最朴素的 DDP 出发，但一旦跨卡，通信就开始回来索取代价。
 
-## 端到端案例
+## 第二段：先分清是同步问题还是状态问题
 
-一个更完整的并行选型过程，通常是从“单卡放不下、加卡又没快多少”开始的。先沿着 `05 -> 20` 看通信原语和拓扑，确认多卡同步的基本语义；再沿着 `06 -> 27 -> 28 -> 29` 看到底是状态切分、层切分还是算子切分更合适；当 step time 还是没有明显下降时，再用 `46 -> 79 -> 66` 检查通信等待、bubble 和 benchmark 结果，确认问题是不是被从显存转移到了通信；最后回到 `2.8`，把并行策略和训练目标重新对齐。
+如果卡数加了、速度却没明显上去，第一步不是继续切更多层，而是先分清：问题在 AllReduce 和同步等待，还是在参数、梯度、优化器状态的驻留方式。也就是先区分 DDP，还是已经需要 FSDP / ZeRO。
 
-如果你已经知道自己的问题落在哪一层，可以直接跳到对应编号页：
+## 第三段：状态分摊之后，才轮到层切分和算子切分
 
-- [01 Why Parallel and Communication](./01_why_parallel_and_communication.md)
-- [02 Data Parallel and Synchronization](./02_data_parallel_and_synchronization.md)
-- [03 State Sharding and ZeRO](./03_state_sharding_and_zero.md)
-- [04 Pipeline and Tensor Parallel](./04_pipeline_and_tensor_parallel.md)
-- [05 Expert Parallel and Communication Hotspots](./05_expert_parallel_and_communication_hotspots.md)
-- [06 Benchmark and Parallel Decision](./06_benchmark_and_parallel_decision.md)
+如果状态分摊已经不能解决问题，才会继续进入 Pipeline 或 Tensor Parallel。这里真正要看的不是“有没有切”，而是切了以后气泡、同步和通信频率有没有把收益重新吞掉。
 
-## 阅读建议
+## 第四段：最后必须回到热点和 benchmark
 
-- 先把长故事线读完，再去看正文里的案例和清单。
-- 如果你要做并行选型，建议把这里和 [通信与并行正文](./casebook.md) 一起看。
-- 如果你要先看诊断方法，可以先转到 [Profiling 专题](../profiling/intro.md)。
+真正的收口不在“用了哪种并行方法”，而在通信热点、等待时间和 benchmark 是否证明它值得保留。把这条故事走完以后，一个更像真实结论的说法通常不是“我们做了并行”，而是：瓶颈先在同步，再到状态分摊，再到层切分，最终被接受的是那组在通信代价上真正站得住的切分组合。

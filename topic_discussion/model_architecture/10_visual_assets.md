@@ -57,6 +57,20 @@
 
 ![代表模型结构矩阵](/topic_discussion/model_architecture/representative_models_matrix.svg)
 
+### 3.1 国产模型版本分层图
+
+除了总矩阵，后续最值得单独补的是一张“国产模型版本分层图”：
+
+- `Qwen2.5 -> Qwen3 Dense / Qwen3 MoE`
+- `DeepSeek-V2 -> V3 -> V3.2 -> V4`
+- `DeepSeek-R1` 从结构基座分叉出去
+
+这张图的目标不是做产品罗列，而是帮助读者区分：
+
+- 哪些是基础模型代际
+- 哪些是 `dense / MoE` 结构分化
+- 哪些是后训练 / reasoning 分支
+
 ### 4. 跨模块关系图
 
 建议画一张关系图，把这些页面之间的依赖连起来：
@@ -83,6 +97,7 @@
 3. `DeepSeek Attention 演进图`、`MoE / Sparsity 路由图`
 4. `MoE / Sparsity 演进图`
 5. `代表模型结构矩阵`、`跨模块知识地图`
+6. `Qwen 版本分层图`、`DeepSeek 版本分层图`
 
 - [专题总导航图](/topic_discussion/model_architecture/overview_map.svg)
 - [模块演进时间线](/topic_discussion/model_architecture/timeline.png)
@@ -92,6 +107,8 @@
 - [MoE / Sparsity 演进图](/02_PyTorch_Algorithms/09_moe_sparsity_evolution.svg)
 - [代表模型结构矩阵](/topic_discussion/model_architecture/representative_models_matrix.svg)
 - [跨模块知识地图](/topic_discussion/model_architecture/cross_module_map.svg)
+- [Qwen 版本分层图](/topic_discussion/model_architecture/qwen_version_split.svg)
+- [DeepSeek 版本分层图](/topic_discussion/model_architecture/deepseek_version_split.svg)
 
 ## 设计原则
 
