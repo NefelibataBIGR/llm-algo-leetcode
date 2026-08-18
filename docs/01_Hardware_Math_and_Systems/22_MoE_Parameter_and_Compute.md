@@ -1,6 +1,6 @@
 # 22. MoE Parameter and Compute | MoE 模型参数量计算
 
-**难度：** Medium-Hard | **环境：** CPU-first | **标签：** `MoE`, `路由` | **目标人群：** MoE 学习者
+**难度：** Medium-Hard | **环境：** CPU-first | **标签：** `模型结构`, `MoE`, `参数与计算` | **目标人群：** 硬件约束学习者
 
 > 🚀 **云端运行环境**
 >
@@ -10,13 +10,20 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-MoE 的核心不是“参数越多越好”，而是把模型容量和每次推理/训练时真正激活的计算量分开。它是一个非常典型的“总参数大，但激活参数不一定大”的设计。
+---
+
+## 本节导读
+
+MoE 容易让人误判的地方，是“总参数很多”不等于“每一步真的算很多”。它把模型容量和实际激活计算拆开了：参数可以变大，但每个 token 真正经过的专家数仍然有限。真正要算清楚的，是总容量、活跃参数、通信代价和路由开销分别落在哪一层。
+
+这一页在整个教程的纵向主线里属于 `Part 01` 的模型容量与部署成本判断页，优先服务后续 `大模型架构专题`，也给 `通信与并行专题` 和 `推理优化路线` 补一层 MoE 成本前置。学完这里，后面再看 `47 / 80` 以及和 router、负载均衡、expert parallel 相关的页时，你会更容易先区分“容量变大”和“单步成本变大”；如果这里没学明白，后面很容易只看到 MoE 总参数更大这个表象，却判断不清活跃参数、路由开销和通信代价分别落在哪一层。按专题归类，这一页主要属于 `大模型架构专题`，并和 `通信与并行专题` 共享一部分成本判断视角。
 
 **关键词：** `experts`, `router`, `load balancing`
 
+---
 ## 前置阅读
 
-**导语：** 这一页先接上参数量、显存和分布式通信的基础判断，这样才更容易看清 MoE 为什么会出现“总参数大、活跃计算量没那么大”的现象。
+**导语：** 这一页先接上参数量、显存和分布式通信的基础判断，这样更容易看清 MoE 为什么会出现“总参数大、活跃计算量没那么大”的现象。
 
 - [01. Data Types and Precision | 大模型的数据格式与混合精度](./01_Data_Types_and_Precision.md)
 - [02. LLM Params and FLOPs | 大模型参数量与算力推导](./02_LLM_Params_and_FLOPs.md)
@@ -24,13 +31,12 @@ MoE 的核心不是“参数越多越好”，而是把模型容量和每次推�
 
 ## 相关阅读
 
-**导语：** 如果还想继续看 MoE 和工程决策、通信成本的关系，可以接着看显存计算、并行策略和成本模型这几页。
+**导语：** 把 MoE 的参数与计算账本继续接到显存、通信和并行策略，会更容易判断它什么时候值得放大。
 
 - [06. VRAM Calculation and ZeRO | 显存计算与 ZeRO 优化](./06_VRAM_Calculation_and_ZeRO.md)
 - [20. NCCL and AllReduce Basics | NCCL 与 AllReduce 基础](./20_NCCL_and_AllReduce_Basics.md)
 - [26. Parallel Strategy Decision Framework | 并行策略决策框架](./26_Parallel_Strategy_Decision_Framework.md)
-- [33. TCO and Cost Model | 算力评估与 TCO 模型](./33_TCO_and_Cost_Model.md)
-
+---
 ## Q1：MoE 和普通 dense Transformer 的参数量差别在哪里？
 
 <details>

@@ -1,6 +1,6 @@
 # 11. KV Cache and Memory Growth | KV Cache 与显存增长
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `推理显存`, `Attention`, `KV Cache` | **目标人群：** 长上下文推理入门者
+**难度：** Medium | **环境：** CPU-first | **标签：** `推理优化`, `KV Cache`, `显存增长` | **目标人群：** 系统性能入门者
 
 > 🚀 **云端运行环境**
 >
@@ -10,22 +10,29 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-先把 KV cache 为什么会随上下文增长、为什么多头机制会放大显存压力、以及 PagedAttention / MLA 分别在解决什么问题讲清楚，再去看后面的 Attention 优化和推理系统实现，直觉会更稳。
+---
+
+## 本节导读
+
+长上下文推理里，最先失控的往往不是 FLOPs，而是历史 token 被长期保存后的缓存成本。每多生成一个 token，模型都要在每层继续追加一份 K/V；上下文一长、batch 一大，显存压力就会沿着层数和序列长度一起放大。
+
+这一页在整个教程的纵向主线里属于 `Part 01` 的推理显存基础页，优先服务 `推理优化路线`，也给 `显存优化路线` 补一层 cache 预算视角。学完这里，后面再看 `22 / 24 / 37 / 69 / 70` 时，你会更容易把它们都放回“cache 预算、prefix reuse 和并发边界”这条主线上理解；如果这里没学明白，后面很容易只看到分页、复用和调度技巧，却判断不清问题究竟出在 cache 本身太大，还是 cache 的组织与访问方式不合适。按专题归类，这一页同时属于 `推理优化专题`，并和 `显存优化专题` 共享一部分问题入口。
 
 **关键词：** `KV cache`, `sequence length`, `memory growth`
 
 ## 前置阅读
 
-**导语：** 先把数据格式和显存账本对齐，再看 KV cache 的增长规律会更顺。
+**导语：** 先把数据格式和显存账本对齐，再看 KV cache 的增长规律会更顺；如果你正在走 `推理优化路线`，这一页会直接服务后面的分页、复用和调度章节，因为 `22 / 24 / 37 / 69 / 70` 的很多判断，本质上都在围绕 cache 预算、prefix reuse 和并发边界展开。
 - [Group 1A: Numerical Foundations and Scale Estimation | 1A: 数值基础与算力估算](./1A.md)
 - [Group 1B: Single-GPU Hardware and Memory Optimization | 1B: 单卡硬件与访存优化](./1B.md)
 
 ## 相关阅读
 
-**导语：** 把 KV cache 和 FlashAttention、PagedAttention、MLA 放在一起看，能更快理解不同优化点。
+**导语：** 把 KV cache 的增长规律先接到 attention 显存模型、分页管理和前缀复用三条线，会更容易分清哪些方法是在缩 cache，哪些是在改 cache 的组织方式。
+
 - [14. FlashAttention Memory Model | FlashAttention 显存模型](./14_FlashAttention_Memory_Model.md)
-- [20. FlashAttention Sim | FlashAttention 模拟](../02_PyTorch_Algorithms/20_FlashAttention_Sim.md)
 - [22. vLLM PagedAttention | vLLM 分页注意力](../02_PyTorch_Algorithms/22_vLLM_PagedAttention.md)
+- [24. SGLang RadixAttention | SGLang RadixAttention](../02_PyTorch_Algorithms/24_SGLang_RadixAttention.md)
 
 ## Q1：为什么 KV cache 会随着上下文长度增长？
 

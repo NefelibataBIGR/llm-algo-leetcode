@@ -1,5 +1,5 @@
 # 20. FlashAttention Sim | FlashAttention 模拟
-**难度：** Hard | **环境：** GPU required | **标签：** `推理优化`, `FlashAttention`, `Attention` | **目标人群：** 推理优化与系统开发
+**难度：** Hard | **环境：** CPU-first | **标签：** `推理优化`, `Attention`, `FlashAttention` | **目标人群：** 推理优化学习者
 
 > 🚀 **云端运行环境**
 >
@@ -23,19 +23,15 @@ FlashAttention 的思路是不要把完整 score 矩阵落到显存里，而是�
 
 ## 前置阅读
 
-**导语：** 先理解 Attention 的显存增长、GPU 内存层级和 profiling 视角，再看 FlashAttention 会更顺：本节关注的是如何避免把巨大的中间 score 矩阵反复写入和读出显存。
 - [P1: 03. GPU Architecture and Memory | GPU 物理架构与内存层级](../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.md)
-- [P1: 12. TensorCore and Mixed Precision | Tensor Core 与混合精度](../01_Hardware_Math_and_Systems/12_TensorCore_and_Mixed_Precision.md)
-- [13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
 - [P1: 14. FlashAttention Memory Model | FlashAttention 显存模型](../01_Hardware_Math_and_Systems/14_FlashAttention_Memory_Model.md)
+- [P1: 24. SRAM Optimization Techniques | SRAM 优化技术](../01_Hardware_Math_and_Systems/24_SRAM_Optimization_Techniques.md)
 
 ## 相关阅读
 
-**导语：** FlashAttention 解决的是单次 attention 计算中的显存读写问题；后面可以继续看 KV Cache、PagedAttention 和算子融合，理解长上下文推理的缓存和系统瓶颈。
-- [P1: 04. Attention Variants and Memory Optimization | 注意力机制变体与显存优化](../01_Hardware_Math_and_Systems/04_Attention_Memory_Optimization.md)
-- [P1: 11. KV Cache and Memory Growth | KV Cache 与显存增长](../01_Hardware_Math_and_Systems/11_KV_Cache_and_Memory_Growth.md)
 - [22. vLLM PagedAttention | vLLM 分页注意力](./22_vLLM_PagedAttention.md)
-- [P1: 19. Operator Fusion Introduction | 算子融合导论](../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.md)
+- [34. Prefix Caching and Chunked Prefill | 前缀缓存与分块预填充](./34_Prefix_Caching_and_Chunked_Prefill.md)
+- [66. Inference Performance Comparison | 推理性能对比项目](./66_Inference_Performance_Comparison.md)
 
 ---
 
@@ -58,6 +54,8 @@ FlashAttention 的思路是不要把完整 score 矩阵落到显存里，而是�
 
 ### Step 2: Flash Attention 分块机制原理
 由于标准的 Attention 需要 $O(N^2)$ 的显存来存储巨大的 Attention Score 矩阵 $S = QK^T$，当上下文变长时必定 OOM。Flash Attention 巧妙地在序列维度上对 Q, K, V 进行分块（Tiling）。通过外层循环遍历 Q 块，内层循环遍历 K 和 V 块，我们可以在保持数学上完全等价的前提下，将显存消耗降到 $O(N)$。
+
+![FlashAttention 分块图](/02_PyTorch_Algorithms/20_flashattention_tiling.svg)
 
 ### Step 3: 代码实现框架
 核心是三层嵌套的循环（或者是二维 Grid）。对于当前处理的一小块 $Q_{block}$，在内层遍历所有 $K_{block}$ 时，动态地更新局部最大值 $m$ 和局部指数和 $l$。这是在纯 PyTorch 中使用 `for` 循环来模拟底层 C++ 内存块调度的绝佳方式。

@@ -1,6 +1,6 @@
 # 01. RMSNorm Tutorial | RMSNorm 教程
 
-**难度：** Easy | **环境：** CPU-first | **标签：** `基础架构`, `PyTorch`, `归一化` | **目标人群：** 模型微调与工程部署
+**难度：** Easy | **环境：** CPU-first | **标签：** `基础实现`, `归一化`, `RMSNorm` | **目标人群：** 基础实现学习者
 
 > 🚀 **云端运行环境**
 >
@@ -61,6 +61,31 @@ RMSNorm 的核心洞察很朴素：既然大模型的中间层均值通常已接
 2. **归一化并缩放 (Scale)：**
    $$ y = \frac{x}{\text{RMS}(x)} \odot \gamma $$
    其中 $\gamma \in \mathbb{R}^d$ 是可学习的权重参数（Weight）。**RMSNorm 没有偏置项 (Bias)**。
+
+#### 图解：RMSNorm 在 Block 里归一化什么
+
+RMSNorm 作用在每个 token 的 hidden dimension 上，输入输出形状不变。
+
+```text
+x [B, T, D]
+│
+├─ token 0: [d0 d1 d2 ... dD] ──► RMS over D ──► scale by weight
+├─ token 1: [d0 d1 d2 ... dD] ──► RMS over D ──► scale by weight
+└─ token T: [d0 d1 d2 ... dD] ──► RMS over D ──► scale by weight
+
+output [B, T, D]
+```
+
+![RMSNorm 在 Block 里的位置](/02_PyTorch_Algorithms/01_rmsnorm_diagram.svg)
+
+放回 LLaMA block 里看，RMSNorm 是 attention / MLP 前的稳定器：
+
+```text
+x ─► RMSNorm ─► Attention ─► residual add
+h ─► RMSNorm ─► MLP       ─► residual add
+```
+
+它不改变 token 数，也不混合 token 之间的信息；它只让每个 token 自己的 hidden 向量尺度更稳定。
 
 ### Step 3: 代码实现与混合精度 (AMP) 陷阱
 

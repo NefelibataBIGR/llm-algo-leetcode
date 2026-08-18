@@ -1,39 +1,53 @@
 # 专题讨论轴
 
-## 总览
-`topic_discussion` 是横向专题讨论轴，用于承接跨 Part 的专题页面与案例串联。
+`topic_discussion` 是跨 `Part00-04` 的知识组织层。它不替代纵向 notebook 主线，只负责三件事：
 
-## 为什么先做这五个主题
+- 把 `Part02` 的主学习路线收成更清楚的入口
+- 给跨路线反复出现的方法轴补判断框架
+- 给基础机制补解释层，避免读者只记结论、不懂来源
 
-这五个主题不是随意挑出来的，而是优先覆盖了当前 `Part 1 / Part 2` 里最容易形成横切阅读闭环的内容。
+## 主学习路线
 
-- `Profiling` 是方法论主轴，负责把“怎么测、怎么定位、怎么证明”统一起来。
-- `推理优化` 最容易从 `Part 2.6 / 2.7A / 2.9` 抽出完整链路，适合先做成可串读专题。
-- `通信与并行` 直接承接 `Part 1C / Part 2.8`，能把多卡通信、显存分摊和并行策略串成一条线。
-- `显存优化与性能调优` 能横切训练、推理和 benchmark，是最适合沉淀资源压力与收益验证的专题之一。
-- `编译与图优化` 边界更抽象，但它能把图、融合、lowering、执行模型接成一条后端视角链路，所以先保留入口、再逐步扩展。
+这三条专题直接承接 `Part02` 的主任务带和项目收口带：
 
-## 当前内容
-- [Profiling 专题](./profiling/intro.md)
-- [编译与图优化专题](./compiler_graph_optimization/intro.md)
-- [推理优化专题](./inference_optimization/intro.md)
-- [通信与并行专题](./communication_parallel/intro.md)
-- [显存优化与性能调优专题](./memory_performance_tuning/intro.md)
+| 路线 | 主入口 | 适合什么时候进入 |
+|:---|:---|:---|
+| 训练微调方向 | [监督微调专题](./fine_tuning_training/intro.md) | 当你要从结构前置、SFT、LoRA 一路走到项目交付时 |
+| 推理优化方向 | [推理优化专题](./inference_optimization/intro.md) | 当你要系统理解 prefill、decode、KV cache、服务和 benchmark 时 |
+| 显存优化方向 | [显存优化专题](./memory_performance_tuning/intro.md) | 当你要把训练显存、推理 cache、量化预算和 trade-off 串起来时 |
 
-## 建设优先级
+## 横切支撑专题
 
-1. `Profiling`：方法论主轴，优先保留并继续补案例。
-2. `推理优化`：最容易从 `Part 02` 形成完整横切链路，优先建设。
-3. `通信与并行`：和 `2.8`、`Part 1C`、分布式基线强相关，优先建设。
-4. `显存优化与性能调优`：和 `2.5`、`2.6`、训练/推理调优都能联动，随后建设。
-5. `编译与图优化`：先收窄边界，等内容更稳定后再扩展。
+这些专题不替代主路线，而是把跨路线反复出现的方法轴单独拉出来：
 
-## 后续主题规划
+| 专题 | 主入口 | 更适合什么时候进入 |
+|:---|:---|:---|
+| 量化与压缩 | [quantization](./quantization/intro.md) | 当你同时要看精度、显存、带宽和部署取舍时 |
+| 通信与并行 | [communication_parallel](./communication_parallel/intro.md) | 当你开始进入多卡训练、并行切分和通信瓶颈时 |
+| Profiling | [profiling](./profiling/intro.md) | 当你需要拿证据，而不是只靠经验猜测时 |
+| 后训练与对齐 | [post_training_alignment](./post_training_alignment/intro.md) | 当你完成 SFT 主线后，准备进入对齐与偏好优化时 |
 
-- `训练专题`：先暂缓，不单列。当前训练相关内容已经在 `Part 2` 主线里形成了完整闭环，横切价值还不如 `Profiling`、`推理优化`、`通信与并行` 和 `显存优化` 这几条线稳定。
-- `对齐专题`：先暂缓，不单列。现阶段体量还不够大，更适合继续留在 `Part 2.4` 和项目页里。
-- `Triton / Kernel 开发专题`：以后有必要可以单开，用来横切 `Part 3` 的 Triton 和算子开发内容。
-- `分布式训练专题`：如果后续内容继续膨胀，可以从 `通信与并行` 里再细分出来，但当前优先放在同一专题下更稳。
+## 基础支撑专题
 
-## 说明
-专题讨论轴不属于 `Part 0-5` 的纵向主线，而是用于补充跨 Part 的方法论、案例和系统化视角。
+这些专题更偏机制解释和背景支撑，常作为主路线的前置桥：
+
+| 专题 | 主入口 | 更常服务哪条路线 |
+|:---|:---|:---|
+| 反向传播与训练机制 | [backpropagation_training_mechanism](./backpropagation_training_mechanism/intro.md) | 训练微调、显存优化 |
+| 大模型架构 | [model_architecture](./model_architecture/intro.md) | 训练微调、推理优化 |
+| 编译与图优化 | [compiler_graph_optimization](./compiler_graph_optimization/intro.md) | 推理优化、系统优化 |
+
+## 怎么选入口
+
+- 如果你要完整走 `Part02` 主线，先从三条主学习路线里选一条。
+- 如果你已经在做项目，只是遇到瓶颈，再按问题进入横切支撑专题。
+- 如果你需要补机制背景，再回看基础支撑专题。
+
+常见跳转：
+
+- `结构前置 / SFT / LoRA / 实验收口` -> [监督微调专题](./fine_tuning_training/intro.md)
+- `prefill / decode / PagedAttention / benchmark` -> [推理优化专题](./inference_optimization/intro.md)
+- `VRAM / checkpoint / offload / memory trade-off` -> [显存优化专题](./memory_performance_tuning/intro.md)
+- `量化是否值得做` -> [量化与压缩专题](./quantization/intro.md)
+- `为什么慢、为什么爆显存、证据怎么拿` -> [Profiling 专题](./profiling/intro.md)
+- `多卡通信和并行切分怎么判断` -> [通信与并行专题](./communication_parallel/intro.md)

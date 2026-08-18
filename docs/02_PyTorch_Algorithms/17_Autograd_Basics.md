@@ -1,6 +1,6 @@
 # 17. Autograd Basics | 自动微分基础
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `Autograd`, `Backward`, `梯度` | **目标人群：** 底层算子开发与算法基础训练
+**难度：** Medium | **环境：** CPU-first | **标签：** `显存优化`, `Autograd`, `反向传播` | **目标人群：** 显存优化学习者
 
 > 🚀 **云端运行环境**
 >
@@ -72,12 +72,21 @@ $$ dS = P \odot (dP - \text{row\_sum}(P \odot dP)) $$
 此时我们已经拿到了 $dS$。因为 $S = Q K^T$（如果带缩放因子则是 $S = \frac{Q K^T}{\sqrt{d}}$）：
 $$ dQ = \frac{dS \cdot K}{\sqrt{d}} $$
 $$ dK = \frac{dS^T \cdot Q}{\sqrt{d}} $$
+
+![Attention backward 图](/02_PyTorch_Algorithms/17_autograd_attention_backward.svg)
+
 ### Step 3: 手撕 PyTorch Autograd Function
 
 现在，把你刚才看到的微积分公式，转化为能够实际运行的代码。我们将继承 `torch.autograd.Function`。
 
 **要求**：完成 `backward` 函数中 TODO 的数学推导代码。你可以使用 `ctx.saved_tensors` 来获取前向传播时保存的 $Q, K, V, P$ 等变量。
 这一节的实现顺序就是先求 `dV / dP`，再穿过 Softmax 得到 `dS`，最后回到 `dQ / dK`。
+### 提示
+
+- 反向顺序可以记成 `dV -> dP -> dS -> dQ / dK`，先把最容易的分支算出来，再往 Softmax 和输入侧回推。
+- `ctx.save_for_backward` 里保存的是反向需要的最小状态，不是把所有中间量都留下。
+- Softmax 的反向不要去构造完整雅可比，按行做修正项即可。
+
 
 ```python
 import torch
@@ -141,6 +150,9 @@ class CustomAttention(torch.autograd.Function):
 
 ```
 
+### 测试
+
+运行下面的测试单元，确认手写 `backward` 和 PyTorch 自动求导保持一致。
 
 ```python
 # 运行此单元格以测试你的实现

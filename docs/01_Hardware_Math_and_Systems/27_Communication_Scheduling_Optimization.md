@@ -1,6 +1,6 @@
 # 27. Communication Scheduling Optimization | 通信调度优化
 
-**难度：** Hard | **环境：** CPU-first | **标签：** `通信优化`, `Overlap`, `All-Reduce` | **目标人群：** 想把分布式训练通信和计算重叠做好的学习者
+**难度：** Hard | **环境：** CPU-first | **标签：** `并行通信`, `通信优化`, `Overlap` | **目标人群：** 通信机制入门者
 
 > 🚀 **云端运行环境**
 >
@@ -10,26 +10,33 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-这一页关注的不是“通信协议是什么”，而是“通信怎么排，才能尽量不挡住计算”。它的核心问题是：如何把通信放进计算间隙里。
+---
+
+## 本节导读
+
+通信优化真正要解决的，不是“换一个协议名字”，而是怎样把通信排进计算间隙里，尽量少挡住主执行路径。只要 collective 出现在错误的时间点，即使通信总量没变，step time 也会因为等待和同步点被明显拉长。
+
+这一页在整个教程的纵向主线里属于 `Part 01` 的通信调度基础页，优先服务 `监督微调路线` 的多卡性能判断，也给 `通信与并行专题` 和 `Profiling 专题` 建立 overlap 前置。学完这里，后面再看 `46 / 79 / 80` 以及多卡 benchmark、通信 profiling 相关的页时，你会更容易先判断瓶颈是通信量太大，还是通信时机放错了；如果这里没学明白，后面很容易把所有扩展效率问题都归因到“通信很多”，却说不清真正拖慢 step time 的是总量、同步点，还是 overlap 没排起来。按专题归类，这一页主要属于 `通信与并行专题`，并和 `Profiling 专题` 共享一部分性能取证视角。
 
 **关键词：** `overlap`, `all-reduce`, `all-to-all`
 
+---
 ## 前置阅读
 
-**导语：** 这一页先接上通信拓扑、显存切分和并行策略判断，这样更容易理解为什么通信优化首先是调度问题。
+**导语：** 这一页先接上通信拓扑、并行策略和 NCCL 同步原语，再看通信优化为什么首先是调度问题。
 
 - [05. Communication Topologies | 通信拓扑与分布式基石](./05_Communication_Topologies.md)
-- [06. VRAM Calculation and ZeRO | 显存计算与 ZeRO 优化](./06_VRAM_Calculation_and_ZeRO.md)
+- [20. NCCL and AllReduce Basics | NCCL 与 AllReduce 基础](./20_NCCL_and_AllReduce_Basics.md)
 - [26. Parallel Strategy Decision Framework | 并行策略决策框架](./26_Parallel_Strategy_Decision_Framework.md)
 
 ## 相关阅读
 
-**导语：** 如果还想把通信优化和实现细节连起来，可以接着看通信原语、异步调度和容错，把调度、同步和恢复放在一起理解。
+**导语：** 如果还想把通信优化和实现细节连起来，可以接着看异步调度、容错和高级 stream 调度。
 
-- [20. NCCL and AllReduce Basics | NCCL 与 AllReduce 基础](./20_NCCL_and_AllReduce_Basics.md)
-- [28. Fault Tolerance and Checkpointing | 容错与检查点](./28_Fault_Tolerance_and_Checkpointing.md)
 - [17. CUDA Stream and Asynchrony | CUDA Stream 与异步执行](./17_CUDA_Stream_and_Asynchrony.md)
-
+- [28. Fault Tolerance and Checkpointing | 容错与检查点](./28_Fault_Tolerance_and_Checkpointing.md)
+- [29. CUDA Stream Advanced Scheduling | CUDA Stream 高级调度](./29_CUDA_Stream_Advanced_Scheduling.md)
+---
 ## Q1：为什么通信优化首先是调度问题？
 
 <details>

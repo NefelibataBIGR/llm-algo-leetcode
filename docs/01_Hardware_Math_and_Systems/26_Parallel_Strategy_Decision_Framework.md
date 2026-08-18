@@ -1,6 +1,6 @@
 # 26. Parallel Strategy Decision Framework | 并行策略决策框架
 
-**难度：** Hard | **环境：** CPU-first | **标签：** `DP`, `TP`, `PP` | **目标人群：** 多卡并行学习者
+**难度：** Hard | **环境：** CPU-first | **标签：** `并行通信`, `DP/TP/PP`, `策略决策` | **目标人群：** 通信机制入门者
 
 > 🚀 **云端运行环境**
 >
@@ -10,9 +10,17 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-这一页的目标不是重复介绍 DP / TP / PP / EP 的定义，而是回答更实用的问题：给定模型和硬件，应该怎么选并行策略，先选什么，再补什么。
+---
+
+## 本节导读
+
+并行策略真正难的地方，不是记住 `DP / TP / PP / EP` 的定义，而是知道什么时候该先考虑“能不能放下”，什么时候该先考虑“互连扛不扛得住”，以及模型结构本身是否值得引入更复杂的切分方式。策略选错了，通信和等待会很快把理论收益吃掉。
+
+这一页在整个教程的纵向主线里属于 `Part 01` 的并行选型基础页，优先服务 `监督微调路线` 的多卡扩展判断，也给后续 `通信与并行专题` 建立统一决策框架。学完这里，后面再看 `27 / 79 / 80 / 81` 以及多卡训练相关项目页时，你会更容易先做“fit gate -> interconnect gate -> structure gate”的排序，再决定先上哪类并行；如果这里没学明白，后面很容易把 `DP / TP / PP / EP` 当成固定搭配或流行名词，而说不清为什么当前问题首先卡在显存、互连还是模型结构。按专题归类，这一页主要属于 `通信与并行专题`，也直接支撑 `监督微调路线` 的训练工程判断。
 
 **关键词：** `DP`, `TP`, `PP`
+
+---
 
 ## 前置阅读
 
@@ -28,7 +36,7 @@
 - [20. NCCL and AllReduce Basics | NCCL 与 AllReduce 基础](./20_NCCL_and_AllReduce_Basics.md)
 - [27. Communication Scheduling Optimization | 通信调度优化](./27_Communication_Scheduling_Optimization.md)
 - [28. Fault Tolerance and Checkpointing | 容错与检查点](./28_Fault_Tolerance_and_Checkpointing.md)
-
+---
 ## Q1：什么时候优先考虑 DP、TP、PP、EP？
 
 <details>

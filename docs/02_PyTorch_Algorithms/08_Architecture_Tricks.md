@@ -1,6 +1,6 @@
 # 08. Architecture Tricks | 架构技巧
 
-**难度：** Easy | **环境：** CPU-first | **标签：** `模型架构`, `架构技巧`, `PyTorch` | **目标人群：** 模型微调与工程部署
+**难度：** Easy | **环境：** CPU-first | **标签：** `模型结构`, `架构技巧`, `Transformer` | **目标人群：** 模型结构学习者
 
 > 🚀 **云端运行环境**
 >
@@ -73,6 +73,36 @@ Weight Tying 让 Embedding 层和输出层（LM Head）共享同一份参数；L
 - **工程动机**：在大模型里，这类改动不是“省参数”这么简单，而是围绕训练稳定性、表达能力和内存布局做的取舍。
 
 设共享权重矩阵为 $W \in \mathbb{R}^{V \times d}$，其中 $V$ 为词表大小，$d$ 为隐藏维度。Embedding 查表和 LM Head 投影都围绕同一份词表参数展开。
+
+#### 图解：结构技巧放在模型哪里
+
+`08` 不是新增一个大模块，而是把真实模型里常见的小改动放回结构位置上看。
+
+```text
+input_ids
+   │
+   ▼
+Embedding  ◄──────────────┐
+   │                       │ weight tying
+   ▼                       │
+Transformer Blocks         │
+   │                       │
+   ├─ RMSNorm variants     │ Gemma-style RMSNorm changes scaling form
+   │                       │
+   ▼                       │
+LM Head ───────────────────┘
+```
+
+![结构技巧放在模型哪里](/02_PyTorch_Algorithms/08_architecture_tricks.svg)
+
+本节两个技巧的定位：
+
+| 技巧 | 改哪里 | 主要收益 |
+|:---|:---|:---|
+| Gemma-style RMSNorm | block 内归一化层 | 改变缩放形式，贴近部分模型实现 |
+| Weight tying | embedding 与 LM head | 参数共享，减少参数量并绑定输入/输出语义空间 |
+
+读这页时不要把 trick 当成孤立魔法；它们都是在已有 block 和输入输出层上的局部替换。
 
 ### Step 3: 代码实现框架
 

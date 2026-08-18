@@ -1,6 +1,6 @@
 # 05. Communication Topologies | 通信拓扑与分布式基石
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `通信拓扑`, `分布式训练` | **目标人群：** 分布式训练入门者
+**难度：** Medium | **环境：** CPU-first | **标签：** `并行通信`, `分布式训练`, `通信拓扑` | **目标人群：** 通信机制入门者
 
 > 🚀 **云端运行环境**
 >
@@ -10,21 +10,29 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-在大模型训练中，算力不是唯一限制，通信拓扑往往决定多卡并行能否真正扩展。
+---
+
+## 本节导读
+
+大模型训练里，算力并不是唯一瓶颈。很多任务从单卡扩到多卡后，吞吐并不会线性提升，问题往往不在矩阵乘法，而在通信路径本身：数据并行怎么同步，张量并行怎么切分，流水线并行为什么会产生等待，不同拓扑下这些通信会不会直接压过计算收益。
+
+这是一节**并行前置节**：在整个教程的纵向主线里，它属于 `Part 01` 的多卡通信基础页，优先服务 `监督微调路线`。学完这里，后面再看 `06 / 20 / 27 / 60` 时，你会更容易先把 `DP / TP / PP` 放到同一张通信图里看；如果这里没学明白，后面很容易只记住不同并行方式在切什么，却说不清通信主要走哪条链路，以及为什么同样的切分策略在不同拓扑下扩展效率会明显不同。按专题归类，这一页主要属于 `通信与并行专题`，也直接支撑训练工程里的多卡判断。
 
 **关键词：** `DP`, `TP`, `PP`
 
+---
+
 ## 前置阅读
-**导语：** 先把硬件拓扑和显存切分的基础接上，再看这页的并行策略，会更容易把通信和计算放到同一张图里。
+**导语：** 先把硬件拓扑和显存切分的基础接上，再看这页的并行策略，会更容易把通信和计算放到同一张图里；如果你正在走 `监督微调路线`，这里会直接服务多卡训练预算和并行切分判断。
 - [03. GPU Architecture and Memory | GPU 物理架构与内存层级](./03_GPU_Architecture_and_Memory.md)
 - [06. VRAM Calculation and ZeRO | 显存计算与 ZeRO 优化](./06_VRAM_Calculation_and_ZeRO.md)
 
 ## 相关阅读
-**导语：** 如果想把通信拓扑继续往并行策略和通信优化里接，可以接着看下面几页。
+**导语：** 如果想把通信拓扑继续往并行策略和通信优化里接，可以接着看下面几页，把“拓扑长什么样”继续收成“训练为什么扩不动、该怎么切并行”的判断链。
 - [20. NCCL and AllReduce Basics | NCCL 与 AllReduce 基础](./20_NCCL_and_AllReduce_Basics.md)
 - [26. Parallel Strategy Decision Framework | 并行策略决策框架](./26_Parallel_Strategy_Decision_Framework.md)
 - [27. Communication Scheduling Optimization | 通信调度优化](./27_Communication_Scheduling_Optimization.md)
-
+---
 ## Q1：什么是大模型训练中的 3D 并行 (3D Parallelism)？
 
 <details><summary>点击展开查看解析</summary>

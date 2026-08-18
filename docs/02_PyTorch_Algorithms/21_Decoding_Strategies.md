@@ -1,5 +1,5 @@
 # 21. Decoding Strategies | 解码策略
-**难度：** Medium | **环境：** CPU-first | **标签：** `解码`, `Sampling`, `推理优化` | **目标人群：** 推理与部署工程师
+**难度：** Medium | **环境：** CPU-first | **标签：** `推理优化`, `解码`, `Sampling` | **目标人群：** 推理优化学习者
 
 > 🚀 **云端运行环境**
 >
@@ -23,18 +23,15 @@
 
 ## 前置阅读
 
-**导语：** 先理解 logits、softmax 和最小训练接口，再看解码策略会更顺：本节关注的是模型已经给出分数之后，如何把分数变成下一个 token。
-- [P0: 11. PyTorch Optimizers and Loss | PyTorch 优化器与损失函数](../00_Prerequisites/11_PyTorch_Optimizers_and_Loss.md)
-- [P0: 12. PyTorch Minimal Training Interface | PyTorch 最小训练接口](../00_Prerequisites/12_PyTorch_Minimal_Training_Interface.md)
-- [P0: 13. Simple Neural Network Training | 简单神经网络训练循环](../00_Prerequisites/13_Simple_Neural_Network_Training.md)
+- [04. Attention MHA GQA | 注意力机制：MHA、MQA、GQA](./04_Attention_MHA_GQA.md)
+- [05. LLaMA3 Block Tutorial | LLaMA3 Block 实现](./05_LLaMA3_Block_Tutorial.md)
+- [20. FlashAttention Sim | FlashAttention 模拟](./20_FlashAttention_Sim.md)
 
 ## 相关阅读
 
-**导语：** 解码策略决定“选哪个 token”，后续的 KV Cache、PagedAttention 和投机解码则继续解决“怎样更快地生成更多 token”。
-- [P1: 11. KV Cache and Memory Growth | KV Cache 与显存增长](../01_Hardware_Math_and_Systems/11_KV_Cache_and_Memory_Growth.md)
-- [22. vLLM PagedAttention | vLLM 分页注意力](./22_vLLM_PagedAttention.md)
 - [23. Speculative Decoding | 投机解码](./23_Speculative_Decoding.md)
-- [P1: 13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
+- [35. Multi-Token Decoding | 多 Token 解码](./35_Multi_Token_Decoding.md)
+- [36. Decode Scheduling | 解码调度](./36_Decode_Scheduling.md)
 
 ---
 

@@ -1,0 +1,37 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="720" fill="#F7F4EC"/>
+  <rect x="56" y="48" width="1168" height="624" rx="28" fill="#FFFDF7" stroke="#1F2937" stroke-width="2"/>
+  <text x="88" y="98" fill="#111827" font-size="30" font-family="Arial, sans-serif" font-weight="700">KV Cache Budget</text>
+  <text x="88" y="130" fill="#4B5563" font-size="18" font-family="Arial, sans-serif">In this topic, KV cache is first a budget object. Reuse, paging and compression are all judged by whether they create more usable context and concurrency.</text>
+
+  <rect x="100" y="188" width="1080" height="84" rx="20" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2"/>
+  <text x="130" y="236" fill="#5B21B6" font-size="24" font-family="Arial, sans-serif" font-weight="700">Cache budget grows with layers × KV heads × sequence length × batch</text>
+
+  <rect x="100" y="320" width="250" height="242" rx="22" fill="#FDE68A" stroke="#D97706" stroke-width="2"/>
+  <text x="126" y="358" fill="#92400E" font-size="22" font-family="Arial, sans-serif" font-weight="700">Natural growth</text>
+  <text x="126" y="392" fill="#92400E" font-size="16" font-family="Arial, sans-serif">longer context / more requests</text>
+  <text x="126" y="430" fill="#92400E" font-size="16" font-family="Arial, sans-serif">Check first whether the budget</text>
+  <text x="126" y="452" fill="#92400E" font-size="16" font-family="Arial, sans-serif">is simply too small for the target</text>
+
+  <rect x="390" y="320" width="250" height="242" rx="22" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/>
+  <text x="416" y="358" fill="#1E3A8A" font-size="22" font-family="Arial, sans-serif" font-weight="700">Reuse / Paging</text>
+  <text x="416" y="392" fill="#1E3A8A" font-size="16" font-family="Arial, sans-serif">prefix reuse, block paging,</text>
+  <text x="416" y="414" fill="#1E3A8A" font-size="16" font-family="Arial, sans-serif">layout and fragmentation control</text>
+  <text x="416" y="452" fill="#1E3A8A" font-size="16" font-family="Arial, sans-serif">Best before jumping to compression</text>
+
+  <rect x="680" y="320" width="250" height="242" rx="22" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+  <text x="706" y="358" fill="#166534" font-size="22" font-family="Arial, sans-serif" font-weight="700">Scheduling</text>
+  <text x="706" y="392" fill="#166534" font-size="16" font-family="Arial, sans-serif">request ordering changes how</text>
+  <text x="706" y="414" fill="#166534" font-size="16" font-family="Arial, sans-serif">the cache is consumed in practice</text>
+  <text x="706" y="452" fill="#166534" font-size="16" font-family="Arial, sans-serif">Useful when budget looks okay</text>
+  <text x="706" y="474" fill="#166534" font-size="16" font-family="Arial, sans-serif">but real pressure stays high</text>
+
+  <rect x="970" y="320" width="210" height="242" rx="22" fill="#FCE7F3" stroke="#DB2777" stroke-width="2"/>
+  <text x="996" y="358" fill="#9D174D" font-size="22" font-family="Arial, sans-serif" font-weight="700">Compression</text>
+  <text x="996" y="392" fill="#9D174D" font-size="16" font-family="Arial, sans-serif">KV cache quantization</text>
+  <text x="996" y="430" fill="#9D174D" font-size="16" font-family="Arial, sans-serif">Use after reuse / paging</text>
+  <text x="996" y="452" fill="#9D174D" font-size="16" font-family="Arial, sans-serif">when budget is still too tight</text>
+
+  <rect x="100" y="598" width="1080" height="34" rx="12" fill="#ECFCCB" stroke="#65A30D" stroke-width="1.5"/>
+  <text x="126" y="620" fill="#365314" font-size="16" font-family="Arial, sans-serif">Routing rule: in this topic, KV cache is first a memory budget problem. Speed-related reading belongs to the inference-optimization topic.</text>
+</svg>

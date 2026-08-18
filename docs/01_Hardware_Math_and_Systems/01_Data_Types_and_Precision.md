@@ -1,6 +1,6 @@
 # 01. Data Types and Precision | 大模型的数据格式与混合精度
 
-**难度：** Easy | **环境：** CPU-first | **标签：** `基础概念`, `混合精度` | **目标人群：** 通用基础 (算法/Infra)
+**难度：** Easy | **环境：** CPU-first | **标签：** `数值基础`, `数据类型`, `混合精度` | **目标人群：** 基础概念补齐者
 
 > 🚀 **云端运行环境**
 >
@@ -10,24 +10,32 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
+---
+
+## 本节导读
 
 在计算任何大模型的显存或算力之前，先把“数据”在 GPU 中的表示方式搞清楚。这是所有硬件推导和量化算法的基础。本节我们将从最基础的字节换算开始，结合工业界常见的 A100 与较前沿的 H100 架构，一路走到混合精度的底层逻辑和 FP8 的设计思路。
 
+这一页在整个教程的纵向主线里属于 `Part 01` 的数值与精度基础页，优先服务 `监督微调路线` 的训练稳定性与资源账本前置。学完这里，后面再看 `09 / 12 / 26 / 65` 时，你会更容易分清 `FP16 / BF16 / AMP / master weights` 各自解决什么问题；如果这里没学明白，后面很容易只记住“大模型训练常用 BF16”这个结论，却说不清它和数值稳定性、显存占用、训练吞吐之间的关系。按专题归类，这一页主要属于 `监督微调路线` 的基础前置，也和 `量化与压缩专题` 共享一部分数值表示视角。
+
 **关键词：** `FP16`, `BF16`, `INT8`
 
+---
+
 ## 前置阅读
-**导语：** 这一页要先把张量、自动求导、调试和性能意识接上，后面的数据格式、显存估算和量化推导才不会只停留在公式层。
+**导语：** 这一页要先把张量、自动求导、调试和性能意识接上；如果你正在走 `监督微调路线`，这里会直接服务后面的 `09 / 12 / 26 / 65`，因为训练为什么优先用 `BF16`、AMP 为什么会影响稳定性、QLoRA 为什么先看 dtype 账本，这些判断都先从这里起步。
 
 - [Group 0B: PyTorch Tensors and Autograd | 0B: PyTorch 张量与自动求导](../00_Prerequisites/0B.md)
 - [Group 0E: Debugging and Performance | 0E: 调试与性能](../00_Prerequisites/0E.md)
 - [02. LLM Params and FLOPs | 大模型参数量与算力推导](./02_LLM_Params_and_FLOPs.md)
 
 ## 相关阅读
-**导语：** 如果想把“数据格式 -> 参数量 -> 显存 -> 量化”这条线补完整，可以按这个顺序继续看：
-- [02. LLM Params and FLOPs | 大模型参数量与算力推导](./02_LLM_Params_and_FLOPs.md)：先把参数量和算力推导接起来。
-- [06. VRAM Calculation and ZeRO | 显存计算与 ZeRO 优化](./06_VRAM_Calculation_and_ZeRO.md)：再看训练 / 推理场景下的显存拆分与 ZeRO 思路。
-- [21. Quantization Theory and INT4/INT8 | 量化理论与 INT4/INT8](./21_Quantization_Theory_and_INT4_INT8.md)：最后补量化理论和 INT4 / INT8 的视角。
+**导语：** 如果想把 `dtype` 选择继续接到显存预算、量化理论和低比特微调判断上，可以沿这条主线继续往下看。
+- [02. LLM Params and FLOPs | 大模型参数量与算力推导](./02_LLM_Params_and_FLOPs.md)
+- [06. VRAM Calculation and ZeRO | 显存计算与 ZeRO 优化](./06_VRAM_Calculation_and_ZeRO.md)
+- [26. QLoRA and 4bit Quantization | QLoRA 与 4-bit 量化](../02_PyTorch_Algorithms/26_QLoRA_and_4bit_Quantization.md)
 
+---
 ## Q1：基础认知——常见的数据格式分别占用多大内存空间？
 
 <details>

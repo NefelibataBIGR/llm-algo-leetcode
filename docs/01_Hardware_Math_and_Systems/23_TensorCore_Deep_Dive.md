@@ -1,6 +1,6 @@
 # 23. TensorCore Deep Dive | Tensor Core 深度剖析
 
-**难度：** Hard | **环境：** GPU optional | **标签：** `Tensor Core`, `MMA`, `Mixed Precision` | **目标人群：** 核心算子开发者
+**难度：** Hard | **环境：** GPU optional | **标签：** `硬件系统`, `Tensor Core`, `MMA` | **目标人群：** 硬件约束学习者
 
 > 🚀 **云端运行环境**
 >
@@ -10,9 +10,17 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-这一页讲的是 Tensor Core 为什么能把矩阵乘加做得更快，以及为什么它和精度、tile 和寄存器组织绑得这么紧。
+---
+
+## 本节导读
+
+Tensor Core 的关键，不只是“矩阵乘加更快”，而是它把吞吐上限和数据类型、tile 组织、寄存器布局绑得非常紧。只要输入精度、块形状或数据流没有对齐到它喜欢的执行方式，纸面算力就很难真正兑现出来。
+
+这一页在整个教程的纵向主线里属于 `Part 01` 的硬件执行细化页，优先服务后续 kernel 实现主线，也给 `监督微调路线` 和 `推理优化路线` 补一层吞吐上限判断。学完这里，后面再看 `24`、`Part 03` 的 Triton kernel 实战以及 `66 / 73` 这类 benchmark 页时，你会更容易判断一个 kernel 是不是真的吃到了 Tensor Core 收益；如果这里没学明白，后面很容易只看到“支持 Tensor Core”这句标签，却说不清 MMA、tile 组织、数据类型和寄存器布局为什么会一起限制实际吞吐。按专题归类，这一页主要属于 `编译与图优化专题` 的硬件执行前置，也和 `Profiling 专题` 共享一部分吞吐判断视角。
 
 **关键词：** `MMA`, `tile`, `throughput`
+
+---
 ## 前置阅读
 
 **导语：** 这一页先把矩阵乘加和混合精度的底层直觉接上，再看 Tensor Core 为什么会把 tile、精度和吞吐绑在一起。
@@ -28,7 +36,7 @@
 - [08. Programming Models and CUDA/Triton | 编程模型演进](./08_Programming_Models_CUDA_Triton.md)
 - [14. FlashAttention Memory Model | FlashAttention 显存模型](./14_FlashAttention_Memory_Model.md)
 - [25. Sparse Computation and Sparse Attention | 稀疏计算与稀疏注意力](./25_Sparse_Computation_and_Sparse_Attention.md)
-
+---
 ## Q1：Tensor Core 本质上是什么？
 
 <details><summary>点击展开查看解析</summary>

@@ -1,6 +1,6 @@
 # 05. LLaMA3 Block Tutorial | LLaMA3 Block 教程
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `模型架构`, `Transformer`, `PyTorch` | **目标人群：** 模型微调与工程部署
+**难度：** Medium | **环境：** CPU-first | **标签：** `模型结构`, `Transformer`, `LLaMA Block` | **目标人群：** 模型结构学习者
 
 > 🚀 **云端运行环境**
 >
@@ -64,6 +64,40 @@ LLaMA-3 的单个 Decoder 层遵循 Pre-Norm 架构，沿着一条固定的前�
 4. 经过 MLP 层的 **RMSNorm**。
 5. 执行 SwiGLU 前馈网络并再次加上残差。`x = x + mlp_out`
 
+
+#### 可视化：一个 LLaMA Block 如何把 01-04 串起来
+
+`01-04` 是零件，`05` 是组装。一个 decoder block 可以先按下面这条数据流理解：
+
+```text
+x [B, T, D]
+│
+├─► RMSNorm ─► Attention(MHA/GQA + RoPE) ─► + residual
+│                                                │
+└────────────────────────────────────────────────┘
+                                                 ▼
+                                           h [B, T, D]
+                                                 │
+                                                 ├─► RMSNorm ─► SwiGLU MLP ─► + residual
+                                                 │                              │
+                                                 └──────────────────────────────┘
+                                                                                ▼
+                                                                        output [B, T, D]
+```
+
+![LLaMA Block 结构图](/02_PyTorch_Algorithms/05_llama_block.svg)
+
+组件和前面章节的对应关系：
+
+| Block 位置 | 对应章节 | 负责什么 |
+|:---|:---|:---|
+| RMSNorm | `01` | 稳定每个 token 的 hidden state 尺度 |
+| SwiGLU MLP | `02` | 用 gate/up/down 三个投影做非线性变换 |
+| RoPE | `03` | 给 Q/K 注入位置信息 |
+| Attention / GQA | `04` | 让每个 token 读取上下文 |
+| Residual | `05` | 保留原表示，让深层堆叠更稳定 |
+
+初学时不要先背所有公式，先确认每一步输入输出都仍是 `[B, T, D]`，再逐个拆开 attention 和 MLP 内部。
 
 ### Step 3: 核心公式与架构
 

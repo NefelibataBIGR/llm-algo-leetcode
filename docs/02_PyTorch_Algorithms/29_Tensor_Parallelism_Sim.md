@@ -1,6 +1,6 @@
 # 29. Tensor Parallelism Sim | Tensor 并行模拟
 
-**难度：** Hard | **环境：** CPU-first | **标签：** `分布式训练`, `Tensor Parallelism`, `通信` | **目标人群：** 分布式训练工程师
+**难度：** Hard | **环境：** CPU-first | **标签：** `并行通信`, `Tensor Parallelism`, `通信` | **目标人群：** 并行通信学习者
 
 > 🚀 **云端运行环境**
 >
@@ -38,7 +38,7 @@ Tensor Parallelism 的核心就是按张量维度切分 Linear：Column Parallel
 - [P1: 17. CUDA Stream and Asynchrony | CUDA Stream 与异步执行](../01_Hardware_Math_and_Systems/17_CUDA_Stream_and_Asynchrony.md)
 - [P1: 27. Communication Scheduling Optimization | 通信调度优化](../01_Hardware_Math_and_Systems/27_Communication_Scheduling_Optimization.md)
 - [P1: 08. Programming Models and CUDA/Triton | 编程模型演进](../01_Hardware_Math_and_Systems/08_Programming_Models_CUDA_Triton.md)
-- [35. Multi-GPU Strategy Selection Project | 多卡策略选择项目](../02_PyTorch_Algorithms/35_Multi_GPU_Strategy_Selection_Project.md)
+- [79. Distributed Parallel Benchmark | 分布式并行基准](../02_PyTorch_Algorithms/79_Distributed_Parallel_Benchmark.md)
 
 ---
 ### Step 1: TP的两种切法
@@ -59,6 +59,8 @@ Tensor Parallelism 的核心就是按张量维度切分 Linear：Column Parallel
 > *适用场景：MLP 的第二个全连接层（缩回原始维度时）。*
 
 **精妙之处**：如果把 Column Parallel 放前面，Row Parallel 放后面，中间甚至可以省掉一次通信！
+
+![Tensor parallel 分切图](/02_PyTorch_Algorithms/29_tensor_parallel_split.svg)
 
 ### Step 2: Column 与 Row Parallelism 推导
 在一个两层的前馈网络 $Y = X \cdot W_1 \cdot W_2$ 中：
