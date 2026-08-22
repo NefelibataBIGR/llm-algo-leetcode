@@ -4,6 +4,8 @@
 
 这一页先解释编译与图优化的目标：不是“把图翻译成代码”，而是把高层结构一步步收敛成更高效的执行。
 
+本页的输出是执行链总览：明确图结构、lowering、execution 和 backend 各自改变什么，以及为什么“图正确”不等于“执行高效”。
+
 ## 问题起点
 
 很多性能问题表面上看起来像：
@@ -22,6 +24,10 @@
 - 很多“看起来正确”的变换，不一定值得执行
 - 同一张图在不同 backend 上的最优解不一样
 
+## 进入下一页
+
+进入 [02 图结构与 Fusion 决策](./02_graph_structure_and_fusion_decisions.md)，先判断哪些图级变化值得进入后续编译链。
+
 ## 可视化入口
 
 ![Graph to Backend Chain](/topic_discussion/compiler_graph_optimization/graph_to_backend_chain.svg)
@@ -32,6 +38,6 @@
 - `1D-08 / 15 / 18 / 29`
 - `2.6 / 2.7 / 2.10`
 
-## 小结
+## 本节要点
 
 编译专题的价值在于：它解释了为什么“图没问题”不等于“执行就高效”。
