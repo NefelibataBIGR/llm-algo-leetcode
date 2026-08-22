@@ -4,6 +4,8 @@
 
 这一页解释 Transformer 里的 FFN / MLP 为什么从最朴素的两层线性结构，逐步演化到 GELU、SwiGLU 和更复杂的门控设计。
 
+本页的输出是容量扩展接口：理解 gate、up、down 和激活如何改变 block 表达能力，以及为什么 MLP 是 MoE 替换的主要位置。
+
 ## 问题起点
 
 Attention 负责 token 之间的信息交互，但每个 token 自己内部的非线性变换主要依赖 MLP / FFN。
@@ -112,6 +114,10 @@ Attention 负责 token 之间的信息交互，但每个 token 自己内部的�
 - gate / up / down 路径
 - hidden size 扩张比例
 - 与 attention 分支的职责边界
+
+## 进入下一页
+
+进入 [09 MoE / Sparsity Evolution](./09_moe_sparsity_evolution.md)，观察 dense MLP 如何进一步变成 router 与 experts 组成的稀疏路径。
 
 ## 阅读建议
 

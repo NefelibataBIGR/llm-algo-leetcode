@@ -2,6 +2,10 @@
 
 ## 页面目标
 
+这一页回答的是：离散 token 如何变成可进入 decoder block 的连续表示，以及 tokenizer 选择为什么会影响上下文、词表和后续结构。
+
+本页的输出是输入接口：token 序列、embedding 维度和上下文表示方式必须能与后续 block 对接。
+
 这一页不只解释“词怎么切”，而是回答三件事：
 
 - 为什么大模型必须先处理 tokenization
@@ -122,6 +126,10 @@ Embedding 则把离散 token 变成可训练的连续表示，是大模型结构
 - 词表大小如何影响序列长度
 - 稀有词如何被子词拆分
 - Embedding 如何进入后续 block
+
+## 进入下一页
+
+进入 [03 Norm Evolution](./03_norm_evolution.md)，观察 hidden state 进入深层 block 后如何保持数值和优化稳定。
 
 ## 阅读建议
 

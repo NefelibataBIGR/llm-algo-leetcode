@@ -4,6 +4,8 @@
 
 这一页解释为什么现代大语言模型大多采用 decoder-only 架构，以及这种结构和训练、推理、上下文建模之间的关系。
 
+本页的输出是结构总览：明确 token 如何进入自回归 decoder，以及后续 norm、attention、RoPE、MLP 和 residual 为什么都要围绕 block 组织。
+
 ## 问题起点
 
 Transformer 不是只有 encoder 和 decoder 两条分支，但在大模型时代，decoder-only 成了最常见的主干选择。
@@ -96,6 +98,10 @@ Transformer 不是只有 encoder 和 decoder 两条分支，但在大模型时�
 - causal mask
 - self-attention
 - next-token generation loop
+
+## 进入下一页
+
+先进入 [02 Tokenization / BPE / Embedding](./02_tokenization_embedding.md)，确认 decoder block 接收的 hidden state 从哪里来。
 
 ## 阅读建议
 

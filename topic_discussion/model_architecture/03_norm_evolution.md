@@ -2,6 +2,10 @@
 
 ## 页面目标
 
+这一页回答的是：为什么 norm 的位置和形式会改变深层 Transformer 的训练稳定性，以及 RMSNorm、pre-norm 等选择如何进入 block。
+
+本页的输出是稳定性接口：明确 norm 解决的是哪类数值与优化问题，而不是把它当作孤立的替换层。
+
 这一页解释归一化为什么会从 LayerNorm 一路演化到 RMSNorm、Pre-Norm 和更深层的稳定化设计。
 
 ## 问题起点
@@ -146,6 +150,10 @@ DyT 就是这类思路的代表之一：它用类似 `tanh` 的动态门控式�
 - attention 前的 norm
 - MLP 前的 norm
 - residual 与 norm 的相对关系
+
+## 进入下一页
+
+进入 [04 Attention Evolution](./04_attention_evolution.md)，继续观察稳定的 hidden state 如何建立 token 间的上下文关系。
 
 ## 阅读建议
 

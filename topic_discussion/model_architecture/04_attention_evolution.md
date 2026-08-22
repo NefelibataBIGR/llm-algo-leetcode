@@ -2,6 +2,10 @@
 
 ## 页面目标
 
+这一页回答的是：attention 如何组织 token 间依赖，以及 MHA、GQA、MLA 和稀疏注意力分别在表达能力、KV cache 与计算成本上改变了什么。
+
+本页的输出是上下文建模候选：明确 head、Q/K/V 和缓存组织的变化，不能只用“attention 更快”概括结构差异。
+
 这一页解释 attention 为什么从标准 MHA 演化到 MQA、GQA，以及为什么后续又出现稀疏 attention、长上下文 attention 和系统级加速设计。
 
 ## 问题起点
@@ -197,6 +201,10 @@ FlashAttention 这类工作不是重新定义 attention 语义，而是重新定
 - 一张 `MHA -> MQA -> GQA` 的 head 关系图
 - 一张 `MHA -> GQA -> MLA / linear attention / sparse attention` 的演化图
 - 一张 attention 成本图，标出训练计算、推理 KV cache 和系统吞吐之间的关系
+
+## 进入下一页
+
+进入 [05 RoPE / Position Encoding](./05_rope_position_encoding.md)，把位置关系放回 attention 的几何结构中。
 
 ## 阅读建议
 

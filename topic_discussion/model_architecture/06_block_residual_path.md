@@ -4,6 +4,8 @@
 
 这一页解释现代 Transformer block 是怎么把 norm、attention、MLP 和 residual 组织成一条可训练、可扩展的信息流。
 
+本页的输出是 block 主干：能沿 hidden state 路径说明每个组件的位置、残差如何传递，以及哪些接口允许后续替换 attention 或 MLP。
+
 ## 问题起点
 
 单独看 `Norm`、`Attention`、`MLP` 都不够，因为真正决定模型行为的是它们如何被组装在一起。
@@ -128,6 +130,10 @@ pre-norm 的流行本质上是在解决深层优化中的“信号衰减”问�
 - pre-norm 的位置
 - MoE 替换 MLP 的位置
 - 真实实现中的局部变体
+
+## 进入下一页
+
+进入 [07 MLP / FFN Evolution](./07_mlp_ffn_evolution.md)，继续观察 block 中负责表示扩展的 MLP 如何从 dense FFN 演化到门控结构。
 
 ## 阅读建议
 

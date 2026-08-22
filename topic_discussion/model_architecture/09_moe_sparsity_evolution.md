@@ -4,6 +4,8 @@
 
 这一页解释为什么 dense FFN 会走向 sparse routing，MoE 为什么要把“容量”和“路由”拆开设计，以及这种稀疏化如何影响训练、通信和推理。
 
+本页的输出是稀疏结构边界：明确 router、Top-K、expert、负载均衡和通信代价分别属于模型、训练还是系统问题。
+
 ## 问题起点
 
 当模型规模继续变大时，最先撞墙的往往不是“模型不会做事”，而是“每个 token 都走同一条 dense 路径太贵”。
@@ -108,6 +110,10 @@ MoE 不是只改模型结构，它还会把训练和推理都拖进系统问题�
 如果要再往前走一步，可以把 `Top-K`、负载均衡和 expert parallel 分别标在不同层级上，这样能看出 MoE 为什么同时是模型问题和系统问题。
 
 ![MoE / Sparsity 演进图](/02_PyTorch_Algorithms/09_moe_sparsity_evolution.svg)
+
+## 进入下一页
+
+进入 [08 Representative Models / Cross Module Comparison](./08_representative_models.md)，把前面各组件放回真实模型的组合中。
 
 ## 阅读建议
 
