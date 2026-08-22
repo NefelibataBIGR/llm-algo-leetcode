@@ -30,6 +30,10 @@
 3. 用 offload 把状态从 GPU 驻留改成外部存储层驻留。
 4. 再用 profiling 看重算和搬运是否把时间赔过头。
 
+## 从机制到项目证据
+
+本页的关键不是背诵 checkpoint 和 offload 的定义，而是为每个候选方案写清楚三件事：减少了哪类 GPU 驻留、把代价转移到重算还是搬运、需要用哪一个指标证明代价可接受。对应项目链是 [73 Training Performance Analysis](../../02_PyTorch_Algorithms/73_Training_Performance_Analysis.ipynb) 先建立 baseline，再用 [76 Activation / Checkpoint / Offload Benchmark](../../02_PyTorch_Algorithms/76_Activation_Checkpoint_Offload_Benchmark.ipynb) 比较候选，最后由 [75 Memory Budget Compression](../../02_PyTorch_Algorithms/75_Memory_Budget_Compression_Project.ipynb) 按预算门槛做选择。
+
 ## 关键取舍
 
 - `checkpointing` 更适合计算相对便宜、重算可接受的片段。
@@ -45,9 +49,9 @@
 
 ## 对应 Part 02
 
-- `19` Activation Checkpointing and Activation Offload
-- `42` Activation Offload
-- `74` Profiling Driven End-to-End Optimization
+- [19 Activation Checkpointing and Activation Offload](../../02_PyTorch_Algorithms/19_Activation_Checkpointing_and_Activation_Offload.ipynb)
+- [42 Activation Offload](../../02_PyTorch_Algorithms/42_Activation_Offload.ipynb)
+- [73 Training Performance Analysis](../../02_PyTorch_Algorithms/73_Training_Performance_Analysis.ipynb)、[76 Activation / Checkpoint / Offload Benchmark](../../02_PyTorch_Algorithms/76_Activation_Checkpoint_Offload_Benchmark.ipynb)、[74 Profiling Driven End-to-End Optimization](../../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.ipynb)
 
 ## 典型阅读入口
 

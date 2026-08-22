@@ -2,6 +2,10 @@
 
 这页只做显存问题的判断框架：不重复 `intro` 的路线入口，也不写 `walkthrough` 的连续故事。
 
+## Infra 边界
+
+显存优化主要连接 Infra-L1 的容量与带宽、Infra-L2 的访存与 kernel、Infra-L3 的框架状态管理，并延伸到 Infra-L4 的 KV Cache、量化和 Serving 配置。每项策略都要同时检查容量、重算、搬运、通信、吞吐和质量；Infra-L5 只负责资源治理、回归和部署流程。
+
 ## 同一机制的显存目标
 
 显存专题与推理专题可以共享同一份机制 Notebook，但这里把 checkpoint、offload、paging、KV Cache 和量化看成资源预算策略：先确认减少了哪类状态的驻留，再判断代价转移到了重算、带宽、通信还是质量。

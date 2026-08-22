@@ -25,6 +25,10 @@
 
 训练侧的核心矛盾是：模型希望保留足够多的中间状态做反传，但系统又必须把这些状态压进有限显存预算。越大的 effective batch、越长的序列、越深的模型，越会把这个矛盾推到前台。
 
+## 它如何承接 Task0
+
+[17 Autograd Basics](../../02_PyTorch_Algorithms/17_Autograd_Basics.ipynb) 解释计算图和梯度流，[18 Activation and Loss Backward](../../02_PyTorch_Algorithms/18_Activation_and_Loss_Backward.ipynb) 进一步说明 loss、logits 和中间激活在反向传播中的生命周期。本页把这些机制转换成显存问题：哪些张量必须保留、哪些张量可以重算、哪些状态只是 optimizer 或 batch 组织带来的常驻成本。
+
 ## 演化路径
 
 1. 先从 batch / sequence length 的粗调开始。
@@ -48,9 +52,9 @@
 
 ## 对应 Part 02
 
-- `12` Gradient Accumulation
-- `17 / 18 / 19` backward、activation、checkpointing / offload
-- `73` Training Performance Analysis
+- [12 Gradient Accumulation](../../02_PyTorch_Algorithms/12_Gradient_Accumulation.ipynb)
+- [17 Autograd Basics](../../02_PyTorch_Algorithms/17_Autograd_Basics.ipynb)、[18 Activation and Loss Backward](../../02_PyTorch_Algorithms/18_Activation_and_Loss_Backward.ipynb)、[19 Activation Checkpointing and Activation Offload](../../02_PyTorch_Algorithms/19_Activation_Checkpointing_and_Activation_Offload.ipynb)
+- [73 Training Performance Analysis](../../02_PyTorch_Algorithms/73_Training_Performance_Analysis.ipynb)
 
 ## 典型阅读入口
 
