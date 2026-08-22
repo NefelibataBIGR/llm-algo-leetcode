@@ -4,6 +4,12 @@
 
 这一页回答的是：token 怎么生成，如何减少 decode 循环成本。
 
+## 本节在路线中的位置
+
+本节对应 **Task3：Decode 与生成策略**。它承接 01 的指标口径和 02 的 Prefill 判断，关注首 token 之后的生成阶段；完成后继续进入 Task4，判断 KV Cache、请求组织和调度是否成为主要瓶颈。
+
+本节先建立解码策略的共同判断框架，再把 speculative decoding、multi-token decoding 和 decode scheduling 作为不同层次的候选动作。它们不是同一种优化，也不能只用吞吐一个指标比较。
+
 ## 问题起点
 
 很多推理系统在长 prompt 上还能接受，但一进入连续生成阶段就开始掉速。原因在于 decode 不是一次大矩阵，而是一轮一轮的小步循环：
@@ -19,6 +25,8 @@
 - `TPOT` 是否高于预期。
 - `decode_share` 是否在总耗时里占主导。
 - 生成阶段是不是因为循环次数太多而慢。
+
+如果比较 speculative decoding，还必须固定 draft model、proposal length、target model、acceptance rate 和质量约束；如果比较调度，则要固定请求到达模式、并发窗口和输出长度分布。
 
 ## 核心矛盾
 
@@ -41,6 +49,20 @@ decode 阶段的核心不是“选哪种采样”，而是“每轮生成能不�
 - `decode scheduling` 不改变模型本身，却可能显著影响多请求场景下的真实吞吐。
 
 所以 decode 优化往往不是“某一种策略一定更好”，而是要看请求分布、草稿模型质量和服务目标。
+
+## 学习者交付物
+
+完成本节后，至少应能说明当前 Decode 瓶颈和候选策略的代价：
+
+| 项目 | 最小内容 |
+|:---|:---|
+| 症状 | TPOT、decode_share、generated tokens/s 的变化 |
+| 候选策略 | sampling、speculative、multi-token 或 scheduling |
+| 策略成本 | acceptance rate、draft cost、verify cost、额外调度开销 |
+| 质量约束 | 输出一致性、任务质量或允许的误差范围 |
+| 下一步 | 进入 04 看 Cache / 调度，或用 68 做专项 benchmark |
+
+核心结论应能够区分：是每轮 Decode 计算太慢、循环轮数太多，还是请求组织和 KV Cache 访问拖慢了生成。
 
 ![Decode strategy comparison](/topic_discussion/inference_optimization/decode_strategies.svg)
 
@@ -75,6 +97,13 @@ decode 阶段的核心不是“选哪种采样”，而是“每轮生成能不�
 
 - 看 `01`，确认指标口径。
 - 看 `04`，确认 decode 和 cache 怎么协作。
+
+## 对应项目
+
+- **扩展项目：** [68 Speculative Decoding Benchmark](../../02_PyTorch_Algorithms/68_Speculative_Decoding_Benchmark.ipynb)，在固定 workload 下比较 acceptance rate、draft / verify 成本和吞吐。
+- **核心综合项目：** [66 Inference Performance Comparison](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.ipynb)，把 Decode 策略与 Cache、量化和 backend 放到同一套指标中比较。
+
+本节不直接断言 speculative decoding 或 multi-token decoding 一定更快；是否采用必须回到请求分布、质量约束和最终服务目标。
 
 ## 本节要点
 

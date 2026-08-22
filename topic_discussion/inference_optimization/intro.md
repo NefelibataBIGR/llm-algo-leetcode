@@ -1,16 +1,23 @@
 # 推理优化专题
 
-## 专题定位
+## 专题定位与 Infra 层定位
 
-本专题用于串起推理优化主线：先看请求链路为什么慢，再看 prefill、decode、KV cache、调度和量化分别改的是哪一段，最后把判断收回 `66 / 67 / 68-70` 的 benchmark 与部署结论。这里重点关注 `TTFT / TPOT / throughput`；如果问题先表现为预算装不下，应优先转到显存优化专题。
+本专题串起推理优化主线：先定位请求链路中的 prefill、decode、KV Cache 和调度瓶颈，再比较解码策略、缓存策略、量化和 Serving 配置，最后回到 `66 / 67 / 68-70` 的 benchmark，形成可验证的部署决策。核心指标包括 `TTFT`、`TPOT`、吞吐、并发、P99、峰值显存和任务质量。
 
-## Infra 层定位
+从 LLM Infra 五层看，推理优化的主要落点是：
 
-推理优化主要位于 `L3 框架与运行时`、`L4 服务与模型优化`，同时受 `L2 算子/编译` 和 `L1 硬件带宽与显存` 约束。解码策略主要改变模型与请求行为，Attention/kernel 主要改变 L2，KV Cache 与调度主要改变 L3/L4，量化和并行部署则跨越 L2-L5。
+- **Infra-L3 框架与运行时**：请求执行、prefill/decode 调度、KV Cache 管理和批处理；
+- **Infra-L4 服务与模型优化**：推理引擎、Serving、量化部署、缓存策略和服务端指标；
+- **Infra-L2 系统软件与加速库**：Attention kernel、低比特 kernel、编译和算子实现；
+- **Infra-L1 硬件与基础设施**：GPU 算力、显存容量、带宽和互联拓扑。
+
+因此，推理优化不是单独修改某一层：解码策略主要改变请求与模型执行行为，KV Cache 和调度主要影响 Infra-L3/Infra-L4，量化通常跨越 Infra-L2–Infra-L4，Attention/kernel 则需要结合 Infra-L2 实现和 Infra-L4 端到端服务结果判断。Infra-L5 的模型版本管理、灰度发布、扩缩容和流量治理属于平台交付，不是本专题的核心实验范围。
+
+如果问题首先表现为“请求如何更快完成”，进入本专题；如果首先表现为“显存预算装不下”，转到显存优化专题；如果已经定位到单个 kernel 或图融合瓶颈，再进入编译与图优化专题。
 
 ## 同一内容的推理目标
 
-本专题把解码、KV Cache、调度和量化看成“请求执行策略”：核心问题是一个模型如何在固定 workload 下更快、更稳地完成请求。量化在这里是部署策略，需要同时比较 backend、dtype、TTFT、TPOT、吞吐、P99、显存和任务质量；显存下降不能直接推出服务变快。
+本专题把解码、KV Cache、调度和量化看成“请求执行策略”：核心问题是一个模型如何在固定 workload 下更快、更稳地完成请求。量化在这里首先是部署策略，需要同时比较 backend、dtype、TTFT、TPOT、吞吐、P99、显存和任务质量；显存下降不能直接推出服务变快。详细的机制对照和指标判断见[推理优化正文](./casebook.md)。
 
 与显存专题共享同一来源 Notebook 时，所有学习者先理解共同机制，再按目标选择指标：推理目标关注请求链路、服务并发和端到端体验，最终输出是 backend / 策略 / dtype 的服务选型结论。
 
@@ -26,27 +33,34 @@
 
 ## 主学习线
 
-`Task1-6` 是学习路线，指向 `Part 00 / Part 01 / Part 02` 的具体小节；最后一列的 `01-06` 是专题正文页，只负责解释和串联。
+`Task0-6` 是学习路线，指向 `Part 00 / Part 01 / Part 02` 的具体小节；最后一列的 `01-06` 是专题正文页，只负责解释和串联。
 
-| Task | 学习内容 | 主学习线 | 专题正文 |
+| Task | 学习内容 | 主学习线 / 项目入口 | 专题正文 |
 |:---|:---|:---|:---|
-| Task1 | 推理结构地基 | `04 -> 05` | [01 Request Path and Metrics](./01_request_path_and_metrics.md) |
-| Task2 | Attention 与 prefill | `20 + Part 01:03/14/24` | [02 Prefill and Attention Kernel](./02_prefill_and_attention_kernel.md) |
-| Task3 | 解码算法 | `21 -> 23 -> 35 -> 36` | [03 Decoding Strategies](./03_decoding_strategies.md) |
-| Task4 | KV Cache、服务内存与请求 disaggregation | `Part 01:11 -> 22 -> 24 -> 34 -> 37 -> 38` | [04 KV Cache and Scheduling](./04_kv_cache_and_scheduling.md) |
-| Task5 | 量化推理与部署 | `Part 01:21 -> 25 -> 40 -> 41 -> 67` | [05 Quantized Inference and Deployment](./05_quantized_inference_and_deployment.md) |
-| Task6 | benchmark 与项目复盘 | `39 -> 66 -> 68 -> 69 -> 70` | [06 Benchmark and Decision](./06_benchmark_and_decision.md) |
+| Task0 | 推理结构与请求链路基础 | [04 Attention / MHA / GQA](../../02_PyTorch_Algorithms/04_Attention_MHA_GQA.ipynb)；补充请求链路、TTFT、TPOT、throughput | [01 Request Path and Metrics](./01_request_path_and_metrics.md) |
+| Task1 | GPU 硬件与推理性能基础 | [Part 01:03 GPU Architecture and Memory](../../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.ipynb)；提前了解 [Part 01:11 KV Cache Growth](../../01_Hardware_Math_and_Systems/11_KV_Cache_and_Memory_Growth.ipynb) | [01 Request Path and Metrics](./01_request_path_and_metrics.md) |
+| Task2 | Attention 访存瓶颈与 Prefill | [Part 01:14 FlashAttention Memory Model](../../01_Hardware_Math_and_Systems/14_FlashAttention_Memory_Model.ipynb) → [20 FlashAttention Sim](../../02_PyTorch_Algorithms/20_FlashAttention_Sim.ipynb)；扩展 [Part 01:24 SRAM Optimization](../../01_Hardware_Math_and_Systems/24_SRAM_Optimization_Techniques.ipynb)、[34 Prefix Caching](../../02_PyTorch_Algorithms/34_Prefix_Caching_and_Chunked_Prefill.ipynb) | [02 Prefill and Attention Kernel](./02_prefill_and_attention_kernel.md) |
+| Task3 | Decode 与生成策略 | [21 Decoding Strategies](../../02_PyTorch_Algorithms/21_Decoding_Strategies.ipynb)；扩展 [23 Speculative Decoding](../../02_PyTorch_Algorithms/23_Speculative_Decoding.ipynb)、[35 Multi-Token Decoding](../../02_PyTorch_Algorithms/35_Multi_Token_Decoding.ipynb)、[36 Decode Scheduling](../../02_PyTorch_Algorithms/36_Decode_Scheduling.ipynb)；扩展项目 [68 Speculative Benchmark](../../02_PyTorch_Algorithms/68_Speculative_Decoding_Benchmark.ipynb) | [03 Decoding Strategies](./03_decoding_strategies.md) |
+| Task4 | KV Cache 与推理服务内存管理 | [Part 01:11 KV Cache Growth](../../01_Hardware_Math_and_Systems/11_KV_Cache_and_Memory_Growth.ipynb) → [22 PagedAttention](../../02_PyTorch_Algorithms/22_vLLM_PagedAttention.ipynb) → [24 RadixAttention](../../02_PyTorch_Algorithms/24_SGLang_RadixAttention.ipynb)；扩展 [34 Prefix Caching](../../02_PyTorch_Algorithms/34_Prefix_Caching_and_Chunked_Prefill.ipynb)、[37 KV Cache Scheduling](../../02_PyTorch_Algorithms/37_KV_Cache_Scheduling.ipynb)、[38 PD Disaggregation](../../02_PyTorch_Algorithms/38_Prefill_Decode_Disaggregation.ipynb)；核心项目 [69 Prefix Cache](../../02_PyTorch_Algorithms/69_Prefix_Caching_Benchmark.ipynb)；扩展项目 [70 Serving Scheduler](../../02_PyTorch_Algorithms/70_Serving_Scheduler_Benchmark.ipynb) | [04 KV Cache and Scheduling](./04_kv_cache_and_scheduling.md) |
+| Task5 | 量化推理与部署 | [Part 01:21 Quantization Theory](../../01_Hardware_Math_and_Systems/21_Quantization_Theory_and_INT4_INT8.ipynb) → [25 W8A16](../../02_PyTorch_Algorithms/25_Quantization_W8A16.ipynb)；核心项目 [67 Quantized Deployment](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.ipynb)；扩展 [40 GPTQ / AWQ](../../02_PyTorch_Algorithms/40_GPTQ_and_AWQ_Weight_Quantization.ipynb)、[41 FP8 / KV Cache Quantization](../../02_PyTorch_Algorithms/41_FP8_and_KV_Cache_Quantization.ipynb) | [05 Quantized Inference and Deployment](./05_quantized_inference_and_deployment.md) |
+| Task6 | 综合 benchmark 与项目决策 | 核心项目 [66 Inference Performance](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.ipynb)；可选扩展 [67 Quantized Deployment](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.ipynb)、[68 Speculative Benchmark](../../02_PyTorch_Algorithms/68_Speculative_Decoding_Benchmark.ipynb)、[69 Prefix Cache](../../02_PyTorch_Algorithms/69_Prefix_Caching_Benchmark.ipynb)、[70 Serving Scheduler](../../02_PyTorch_Algorithms/70_Serving_Scheduler_Benchmark.ipynb) | [06 Benchmark and Decision](./06_benchmark_and_decision.md) |
 
 ## 正文与跳转
 
-先按上面的 `Task1-6` 走 notebook 主线；遇到“这几个小节之间怎么串”“为什么先看这条线”时，再回来看对应的专题正文 `01-06`。想看汇总版就进 [推理优化正文](./casebook.md)，想按完整故事线走一遍就进 [推理优化深入阅读](./walkthrough.md)。
+先按上面的 `Task0-6` 走 notebook 主线；其中 `Task0-2` 主要建立结构、硬件和 Prefill 基础，`Task3-5` 进入 Decode、Cache、Serving 和量化策略，`Task6` 再用 66 做综合项目收口。带有“扩展”标记的内容不是主线前置，可按目标选读。遇到“这几个小节之间怎么串”“为什么先看这条线”时，再回来看对应的专题正文 `01-06`。想看汇总版就进 [推理优化正文](./casebook.md)，想按完整故事线走一遍就进 [推理优化深入阅读](./walkthrough.md)。
 
 如果问题已经跨到别的专题：
 [Profiling 专题](../profiling/intro.md) 负责定位慢在哪里，[显存优化专题](../memory_performance_tuning/intro.md) 负责看预算与吞吐取舍，[量化与压缩专题](../quantization/intro.md) 负责看低比特路线，[编译与图优化专题](../compiler_graph_optimization/intro.md) 负责看 backend、fusion 和 kernel schedule 差异。
 
 ## 项目结论
 
-核心入口是 [66 推理性能对比](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.ipynb)；扩展项目包括 [67 量化部署](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.ipynb)、[68 推测解码](../../02_PyTorch_Algorithms/68_Speculative_Decoding_Benchmark.ipynb)、[69 前缀缓存](../../02_PyTorch_Algorithms/69_Prefix_Caching_Benchmark.ipynb) 和 [70 服务调度](../../02_PyTorch_Algorithms/70_Serving_Scheduler_Benchmark.ipynb)。
+项目按“主题验证 → 综合决策”分层：
+
+- **核心综合项目：** [66 推理性能对比](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.ipynb)，统一比较 backend、workload、TTFT、TPOT、吞吐、P99 和峰值显存。
+- **主题项目：** [67 量化部署](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.ipynb)、[69 前缀缓存](../../02_PyTorch_Algorithms/69_Prefix_Caching_Benchmark.ipynb)。它们分别属于 Task5 和 Task4，先验证单一策略，再由 66 做综合比较。
+- **扩展项目：** [68 推测解码](../../02_PyTorch_Algorithms/68_Speculative_Decoding_Benchmark.ipynb)、[70 服务调度](../../02_PyTorch_Algorithms/70_Serving_Scheduler_Benchmark.ipynb)。它们适合在具备真实 backend 或明确请求 workload 后选做。
+
+没有 GPU 或真实 backend 时，可以先完成机制 Notebook 和 CPU-first 模板；接入 vLLM / SGLang 后，再将 66–70 升级为 Practice-P2 实验。最终统一使用 `accept / tune / reject` 输出策略判断。
 
 ## 环境与验证
 
