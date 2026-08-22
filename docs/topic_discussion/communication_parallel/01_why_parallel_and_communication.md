@@ -7,6 +7,8 @@
 - 系统为什么会从单卡自然走向多卡并行？
 - 为什么一旦走向并行，通信就不再是附属问题，而会变成新的主约束？
 
+本页的输出是并行问题定义：单卡边界是什么、需要摊开的对象是什么，以及预期会引入哪类通信和同步代价。
+
 ## 问题起点
 
 并行通常不是从“我想学一种新技术”开始，而是从已有主线里出现的两个约束开始：
@@ -46,7 +48,7 @@
 - AllReduce / 数据并行基础资料：理解为什么同步会成为多卡的第一层代价。
 - 并行系统资料：理解为什么切分层级会决定通信形态。
 
-## 对应 Part02
+## 对应 Part 02
 
 - `27` ZeRO Optimizer Sim
 - `28` Pipeline Parallelism MicroBatch
@@ -59,6 +61,10 @@
 - [02 Data Parallel and Synchronization](./02_data_parallel_and_synchronization.md)
 - [06 Benchmark and Parallel Decision](./06_benchmark_and_parallel_decision.md)
 
-## 小结
+## 本节要点
 
 系统走向并行，通常不是因为“并行更高级”，而是因为单卡约束先把你推到了多卡边界。
+
+## 进入下一页
+
+先进入 [02 数据并行与梯度同步](./02_data_parallel_and_synchronization.md)，从最直观的多卡扩展方式开始建立通信基线。

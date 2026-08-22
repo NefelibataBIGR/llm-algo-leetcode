@@ -4,6 +4,8 @@
 
 这一页解释 RLHF / PPO 为什么是理解后训练全貌的重要基线，以及它为什么完整但重。
 
+本页的输出是系统成本基线：reward model、rollout、policy 更新、reference 约束和评测分别增加了什么资源与工程复杂度。
+
 ## 问题起点
 
 RLHF / PPO 不只是多一个 loss。它通常意味着：
@@ -53,7 +55,7 @@ RLHF / PPO 试图更完整地表达“偏好优化”，但代价是：
 - 把 RLHF / PPO 看成后训练唯一正统路线。
 - 只看方法名，不看 rollout / reward / policy 这几类对象如何叠加成本。
 
-## 对应 Part02
+## 对应 Part 02
 
 - `14 RLHF PPO Memory`：这一页的主要 notebook 来源。
 - `17 / 19`：如果要解释 backward 和显存，回到训练机制专题。
@@ -65,6 +67,10 @@ RLHF / PPO 试图更完整地表达“偏好优化”，但代价是：
 - PPO 原始论文或高质量综述。
 - 工程资料：rollout、KL penalty、policy/reference 边界说明。
 
-## 小结
+## 本节要点
 
 RLHF / PPO 是后训练“完整但重”的基线。理解它，后面才能真正看出 DPO 和 GRPO 在简化什么、替代什么。
+
+## 进入下一页
+
+如果不需要显式 reward / rollout 闭环，进入 [03 DPO 与偏好优化](./03_dpo_and_preference_optimization.md)；如果核心数据不是 pairwise，而是候选组，再继续比较 GRPO。

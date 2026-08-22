@@ -2,6 +2,10 @@
 
 这页只做图优化问题的判断框架：不重复 `intro` 的路线入口，也不写 `walkthrough` 的连续故事。
 
+## 使用顺序
+
+先判断图结构和 fusion 候选，再检查 lowering、schedule、layout 与 backend 约束，最后用 benchmark 验证成本模型。不要把“图能编译”或“节点变少”直接当成性能结论。
+
 ## 判断表
 
 先分清问题在图结构、fusion、lowering、schedule、layout 还是 backend 成本模型，再判断 benchmark 差异是不是来自执行级约束。
@@ -22,6 +26,10 @@
 | backend 成本模型 | 不同后端为什么会给出不同最优解 | backend 只是实现细节 |
 | benchmark | 差异是不是在同一 workload 下成立 | 只看单次结果，不看约束一致性 |
 
-## 小结
+## 本节要点
 
 这页的职责不是再讲一遍编译术语，而是把图优化里最常见的判断点压成一张表。路线入口留给 `intro`，连续故事留给 `walkthrough`。
+
+## 最小执行审计模板
+
+记录 `图结构 -> fusion 候选 -> lowering/schedule -> backend 约束 -> workload 指标 -> 决策`。至少同时保留端到端延迟、吞吐、显存、编译成本和运行环境。
