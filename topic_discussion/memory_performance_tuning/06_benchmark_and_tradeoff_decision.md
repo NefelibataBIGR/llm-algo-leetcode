@@ -48,6 +48,8 @@
 ## 文献与工程入口
 
 - `73` Training Performance Analysis
+- `76` Activation / Checkpoint / Offload Benchmark
+- `75` Memory Budget Compression Project
 - `74` Profiling Driven End-to-End Optimization
 - `67` Quantized Inference and Deployment
 
@@ -59,4 +61,4 @@
 
 ## 项目结论
 
-显存优化只有在 benchmark 里仍然划算时，才算真正成立。
+显存优化只有在 `73 -> 76 -> 75` 的训练侧证据成立，并经过 `74` 的 profiling 驱动端到端验证后，才算真正完成收口。

@@ -14,6 +14,7 @@
 
 ## 建议图册
 
+- 显存优化路线总图：训练侧、推理侧和量化分支汇入 `74` 最终验证
 - VRAM / memory ledger 总图
 - training memory pressure 图
 - checkpointing / offload trade-off 图
@@ -22,6 +23,21 @@
 - benchmark / keep-tune-switch 决策图
 
 ## 当前已落地图
+
+### 00 显存优化路线总图
+
+```mermaid
+flowchart LR
+    A[Task 1 显存账本] --> B[Task 2 训练显存机制]
+    B --> C[73 训练基线]
+    C --> D[76 策略比较]
+    D --> E[75 预算决策]
+    F[Task 4 推理侧显存<br/>22 → 34 → 66] --> H[74 Profiling 驱动最终验证]
+    G[Task 5 量化显存<br/>21 → 25 → 67] --> H
+    E --> H
+```
+
+这张图只表达路线关系，不替代各页对 checkpoint、KV Cache 或量化机制的解释。
 
 ### 01 VRAM / Memory Ledger
 
@@ -49,12 +65,13 @@
 
 ## 建议顺序
 
-1. 账本总图：对应 `01`
-2. 训练侧显存压力图：对应 `02`
-3. checkpointing / offload 图：对应 `03`
-4. 推理 cache 与预算图：对应 `04`
-5. 量化作为显存手段图：对应 `05`
-6. benchmark / 决策图：对应 `06`
+1. 路线总图：先确认训练侧主线和推理 / 量化扩展的汇合点
+2. 账本总图：对应 `01`
+3. 训练侧显存压力图：对应 `02`
+4. checkpointing / offload 图：对应 `03`
+5. 推理 cache 与预算图：对应 `04`
+6. 量化作为显存手段图：对应 `05`
+7. benchmark / 决策图：对应 `06`
 
 ## 图的风格约束
 
