@@ -63,6 +63,32 @@ decision / environment
 
 如果 Notebook 不是从仓库根目录启动，CPU-first 题目测试仍可运行；要导出正式报告，应从仓库根目录运行，或先将仓库根目录加入 `sys.path`。
 
+### 最小报告模板
+
+下面模板只表示报告外层结构，不包含任何实验结果。学习者应在完成本节实验后，用真实的 baseline、candidate、quality 和 resources 替换占位内容，再运行导出单元：
+
+```python
+PROJECT_REPORT = {
+    "schema_version": "fine-tuning-project/v1",
+    "project": PROJECT_ID,
+    "stage": "project_decision",
+    "config": PROJECT_CONFIG,
+    "baseline": {"status": "not_run"},
+    "candidates": [],
+    "quality": {"task_metrics": {}},
+    "resources": {},
+    "artifacts": {"report": PROJECT_RESULT_PATH},
+    "decision": {
+        "decision": "tune",
+        "reason": "evidence_is_incomplete",
+        "next_action": "complete_validation",
+    },
+    "environment": runtime_snapshot(),
+}
+```
+
+项目特有字段直接放在对应区域：61 记录结构差异，62 记录格式与样例评测，63 记录 LoRA 变体，64 记录数据审计，65 记录量化和预算约束。不要把空模板直接当作正式实验报告。
+
 ## 项目特有字段
 
 - `60`：LoRA 配置、adapter 路径、merge 状态。
