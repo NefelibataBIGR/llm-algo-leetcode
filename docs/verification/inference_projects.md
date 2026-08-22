@@ -110,6 +110,18 @@ ls -lh \
 66–70 的结果允许保留策略特有字段，但公共结果位于 `normalized_result`，版本为
 `inference-benchmark/v1`。执行：
 
+历史 66 结果可能只有旧版顶层字段。不要覆盖原始测量文件，可使用下面的工具另存一份规范化结果：
+
+```bash
+python tools/normalize_inference_results.py \
+  benchmarks/results/66_vllm_real.json \
+  --output benchmarks/results/66_vllm_real_normalized.json \
+  --project 66 \
+  --strategy vllm-real
+```
+
+新运行由 `tools/benchmark_inference_backend.py` 自动写入 `normalized_result`；迁移工具主要用于保留历史实验的可比字段。
+
 ```bash
 for f in \
   benchmarks/results/66_vllm_real.json \
