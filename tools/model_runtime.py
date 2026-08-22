@@ -47,5 +47,13 @@ def resolve_model(model_id: str, source: str = "auto", cache_dir: str | Path | N
             from huggingface_hub import snapshot_download
         except ImportError as exc:
             raise RuntimeError("请先安装 huggingface_hub。") from exc
-        return str(snapshot_download(repo_id=model_id, cache_dir=str(cache_path)))
+        try:
+            return str(snapshot_download(repo_id=model_id, cache_dir=str(cache_path)))
+        except ImportError as exc:
+            if "socksio" in str(exc).lower() or "socks proxy" in str(exc).lower():
+                raise RuntimeError(
+                    "检测到 SOCKS 代理但缺少 socksio，请运行 pip install 'httpx[socks]'，"
+                    "或改用 MODEL_SOURCE='modelscope'。"
+                ) from exc
+            raise
     raise ValueError("MODEL_SOURCE 必须是 auto / local / huggingface / modelscope")
