@@ -32,14 +32,14 @@
 
 ## 经典阅读入口
 
-- [13 End-to-End Fine-Tuning Experiment](../../02_PyTorch_Algorithms/13_End_to_End_Fine_Tuning_Experiment.ipynb)
-- [60 LoRA Fine-Tuning Project](../../02_PyTorch_Algorithms/60_LoRA_Fine_Tuning_Project.ipynb)
+- [13 End-to-End Fine-Tuning Experiment](../../02_PyTorch_Algorithms/13_End_to_End_Fine_Tuning_Experiment.md)
+- [60 LoRA Fine-Tuning Project](../../02_PyTorch_Algorithms/60_LoRA_Fine_Tuning_Project.md)
 
 ## 前置关系
 
 - 先看 `01-03`，把数据、LoRA 和训练控制都对齐。
 - 再看 `04`，实验结论才有基础。
 
-## 小结
+## 本节要点
 
 端到端实验的价值不是“证明模型能训”，而是把训练结果变成能复盘、能比较、能交付的证据。

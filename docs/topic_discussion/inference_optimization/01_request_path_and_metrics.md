@@ -89,7 +89,7 @@ benchmark report
 
 ![Inference request lifecycle](/topic_discussion/inference_optimization/request_lifecycle.svg)
 
-## 与 Part02 Task1-6 的关系
+## 与 Part 02 Task1-6 的关系
 
 这页不是简单复述 `Task1-6`。它承担的是“知识组织层”的入口作用：
 
@@ -110,7 +110,7 @@ benchmark report
 - workload 没固定，就比较优化结果。
 - 只看单条请求，不看请求分布。
 
-## 对应 Part02
+## 对应 Part 02
 
 - `20` FlashAttention Sim
 - `21` Decoding Strategies
@@ -125,8 +125,8 @@ benchmark report
 - [06 Benchmark and Decision](./06_benchmark_and_decision.md)
 - [02 Prefill and Attention Kernel](./02_prefill_and_attention_kernel.md)
 - [03 Decoding Strategies](./03_decoding_strategies.md)
-- [66 Inference Performance Comparison](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.ipynb)
+- [66 Inference Performance Comparison](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.md)
 
-## 小结
+## 本节要点
 
 没有统一的 workload 和指标口径，后面的推理优化都没有可比性。

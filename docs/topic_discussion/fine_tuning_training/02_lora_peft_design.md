@@ -32,16 +32,16 @@ LoRA 不是“加一个小模块”这么简单，它本质上是在冻结 base 
 
 ## 经典阅读入口
 
-- [10 LoRA Tutorial](../../02_PyTorch_Algorithms/10_LoRA_Tutorial.ipynb)
-- [26 QLoRA and 4bit Quantization](../../02_PyTorch_Algorithms/26_QLoRA_and_4bit_Quantization.ipynb)
-- [60 LoRA Fine-Tuning Project](../../02_PyTorch_Algorithms/60_LoRA_Fine_Tuning_Project.ipynb)
+- [10 LoRA Tutorial](../../02_PyTorch_Algorithms/10_LoRA_Tutorial.md)
+- [26 QLoRA and 4bit Quantization](../../02_PyTorch_Algorithms/26_QLoRA_and_4bit_Quantization.md)
+- [60 LoRA Fine-Tuning Project](../../02_PyTorch_Algorithms/60_LoRA_Fine_Tuning_Project.md)
 
 ## 前置关系
 
 - 先看 `01`，确认监督口径。
 - 再看 `02`，理解 LoRA 是怎么接进这个监督闭环的。
 
-## 小结
+## 本节要点
 
 LoRA 的核心价值是把微调成本压下来，但它不是默认正确的。
 挂载位置、秩和合并策略都需要和任务一起判断。

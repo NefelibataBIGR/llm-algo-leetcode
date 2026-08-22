@@ -33,16 +33,16 @@ SFT 不是先写 loss，而是先把样本拆成可监督的三件套。
 
 ## 经典阅读入口
 
-- [09 SFT Training Loop](../../02_PyTorch_Algorithms/09_SFT_Training_Loop.ipynb)
-- [17 Autograd Basics](../../02_PyTorch_Algorithms/17_Autograd_Basics.ipynb)
-- [18 Activation and Loss Backward](../../02_PyTorch_Algorithms/18_Activation_and_Loss_Backward.ipynb)
+- [09 SFT Training Loop](../../02_PyTorch_Algorithms/09_SFT_Training_Loop.md)
+- [17 Autograd Basics](../../02_PyTorch_Algorithms/17_Autograd_Basics.md)
+- [18 Activation and Loss Backward](../../02_PyTorch_Algorithms/18_Activation_and_Loss_Backward.md)
 
 ## 前置关系
 
 - 先看 `model_architecture` 里的 `01-05`，确认模型主体和 block 结构。
 - 再回到这里看数据和 loss，理解训练信号是怎么落进去的。
 
-## 小结
+## 本节要点
 
 这一页的目标不是“解释 loss”，而是把监督边界定清楚。
 只有监督口径清楚，后面的 LoRA、训练控制和项目交付才有意义。

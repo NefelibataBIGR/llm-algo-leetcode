@@ -2,6 +2,19 @@
 
 这页只做推理问题的判断框架：不重复 `intro` 的路线入口，也不写 `walkthrough` 的连续故事。
 
+## 同一机制的推理目标
+
+推理专题与显存专题可以共享同一份机制 Notebook，但不共享同一套问题口径。这里把解码、KV Cache、调度和量化看成请求执行策略：先理解共同机制，再判断它是否改善服务体验。
+
+| 共同机制 | 推理侧要回答的问题 | 主要指标 | 项目输出 |
+|:---|:---|:---|:---|
+| 解码 / speculative decoding | 是否减少生成阶段的有效成本 | `TPOT`、吞吐、接受率、质量 | 解码策略选型 |
+| KV Cache / PagedAttention | 是否减少重复计算并支持更高并发 | `TTFT`、cache 命中率、并发、`peak memory` | cache / 调度策略选型 |
+| Continuous Batching / scheduling | 是否提高服务整体利用率 | 吞吐、排队延迟、P99、GPU 利用率 | serving 配置选型 |
+| 权重 / 激活 / KV Cache 量化 | 是否在质量可接受时改善服务成本 | TTFT、TPOT、吞吐、显存、质量 | backend / dtype / quantization 选型 |
+
+量化在本专题中首先是部署策略，不因为显存下降就自动代表服务变快；必须在固定 workload、backend 和并发条件下做端到端比较。
+
 ## 判断表
 
 先分清问题在 `prefill`、`decode`、`cache / scheduling` 还是 `deployment`，再统一 `TTFT / TPOT / throughput / peak memory` 口径，最后回到同一 workload，把候选方案收成 `accept / tune / reject`。
@@ -25,6 +38,6 @@
 
 `66` 的价值不在于再讲机制，而在于把这些指标放回同一 workload 比较 baseline 和 candidate。
 
-## 小结
+## 本节要点
 
 这页的职责不是列技巧，而是把症状、指标和下一步动作压成一张判断表。路线入口留给 `intro`，连续故事留给 `walkthrough`，项目证明留给 `66`。

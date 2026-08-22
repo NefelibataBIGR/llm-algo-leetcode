@@ -71,14 +71,14 @@ keep / tune / switch
 
 ## 文献与工程入口
 
-- [66 Inference Performance Comparison](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.ipynb)
+- [66 Inference Performance Comparison](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.md)
 - Profiling 专题：当报告还无法证明慢点在哪里时先回去补 profiling。
 - 推理优化 `01-05`：当报告还不能解释“为什么该切换/保留”时，回到对应问题页。
 
 ## 经典阅读入口
 
-- [66 Inference Performance Comparison](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.ipynb)
+- [66 Inference Performance Comparison](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.md)
 
-## 小结
+## 项目结论
 
 `06` 不是新增机制页，而是把前面的判断变成最终结论。
