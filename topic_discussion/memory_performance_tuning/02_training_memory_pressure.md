@@ -46,7 +46,7 @@
 - large batch / gradient accumulation 相关资料：理解 effective batch 如何改变显存与优化步节奏。
 - activation memory / training system 论文：理解训练峰值为何多在中间状态上。
 
-## 对应 Part02
+## 对应 Part 02
 
 - `12` Gradient Accumulation
 - `17 / 18 / 19` backward、activation、checkpointing / offload
@@ -57,6 +57,6 @@
 - [03 Checkpointing and Offload](./03_checkpointing_and_offload.md)
 - [06 Benchmark and Trade-off Decision](./06_benchmark_and_tradeoff_decision.md)
 
-## 小结
+## 本节要点
 
 训练显存问题首先是资源对象问题，其次才是 batch 参数问题。

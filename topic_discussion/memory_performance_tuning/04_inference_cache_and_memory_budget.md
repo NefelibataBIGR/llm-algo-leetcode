@@ -45,7 +45,7 @@ KV cache 一方面能让 decode 不必重复计算历史 token，另一方面又
 - RadixAttention / prefix reuse 工程资料：理解前缀共享对 cache 预算的影响。
 - KV cache quantization 资料：理解为什么缓存压缩和权重量化不是一回事。
 
-## 对应 Part02
+## 对应 Part 02
 
 - `22` vLLM PagedAttention
 - `24` SGLang RadixAttention
@@ -58,6 +58,6 @@ KV cache 一方面能让 decode 不必重复计算历史 token，另一方面又
 - [05 Quantization as a Memory Tool](./05_quantization_as_a_memory_tool.md)
 - [06 Benchmark and Trade-off Decision](./06_benchmark_and_tradeoff_decision.md)
 
-## 小结
+## 本节要点
 
 推理侧显存问题的核心不是“cache 有没有”，而是“cache 如何组织、预算是否可接受、代价是否值得”。

@@ -12,9 +12,9 @@
 
 数据能进训练以后，第二个问题通常不是“有没有 LoRA”，而是 LoRA 到底挂在什么地方、训练参数占比是否合理。这一段要沿下面的线去看：
 
-- Part02 [09 SFT Training Loop](../../02_PyTorch_Algorithms/09_SFT_Training_Loop.ipynb)
-- Part02 [10 LoRA Tutorial](../../02_PyTorch_Algorithms/10_LoRA_Tutorial.ipynb)
-- Part02 [26 QLoRA and 4bit Quantization](../../02_PyTorch_Algorithms/26_QLoRA_and_4bit_Quantization.ipynb)
+- Part 02 [09 SFT Training Loop](../../02_PyTorch_Algorithms/09_SFT_Training_Loop.ipynb)
+- Part 02 [10 LoRA Tutorial](../../02_PyTorch_Algorithms/10_LoRA_Tutorial.ipynb)
+- Part 02 [26 QLoRA and 4bit Quantization](../../02_PyTorch_Algorithms/26_QLoRA_and_4bit_Quantization.ipynb)
 
 这里真正想确认的是：target modules 是否挂在真正重要的层，`r / alpha / dropout` 是否合理，可训练参数占比是不是符合预期。这一段最常见的误判是：只要用了 LoRA，就默认已经做了有效微调；真实情况是，挂错层或参数比例失衡时，训练能跑，但结果可能几乎没变化。
 
@@ -22,9 +22,9 @@
 
 LoRA 挂进去以后，第三个问题经常出在训练控制。loss 在降，但实验结论并不可信，常见原因是 scheduler 计数口径不对、optimizer step 和 accumulation 不一致、effective batch 和你以为的不一样。这一段主要沿下面的线去看：
 
-- Part02 [11 LR Schedulers WSD Cosine](../../02_PyTorch_Algorithms/11_LR_Schedulers_WSD_Cosine.ipynb)
-- Part02 [12 Gradient Accumulation](../../02_PyTorch_Algorithms/12_Gradient_Accumulation.ipynb)
-- Part02 [13 End-to-End Fine-Tuning Experiment](../../02_PyTorch_Algorithms/13_End_to_End_Fine_Tuning_Experiment.ipynb)
+- Part 02 [11 LR Schedulers WSD Cosine](../../02_PyTorch_Algorithms/11_LR_Schedulers_WSD_Cosine.ipynb)
+- Part 02 [12 Gradient Accumulation](../../02_PyTorch_Algorithms/12_Gradient_Accumulation.ipynb)
+- Part 02 [13 End-to-End Fine-Tuning Experiment](../../02_PyTorch_Algorithms/13_End_to_End_Fine_Tuning_Experiment.ipynb)
 
 这里最容易出现的误判是：只要训练没报错，训练控制就是对的。实际上很多“看起来能跑”的实验，最后只是 step 口径混了。
 
@@ -36,8 +36,8 @@ LoRA 挂进去以后，第三个问题经常出在训练控制。loss 在降，�
 
 真正的闭环结束点不是“训练完成”，而是项目页：
 
-- Part02 [32 Data Engineering for SFT](../../02_PyTorch_Algorithms/32_Data_Engineering_for_SFT.ipynb)
-- Part02 [33 Fine Tuning Readiness](../../02_PyTorch_Algorithms/33_Fine_Tuning_Readiness.ipynb)
-- Part02 [60 LoRA Fine-Tuning Project](../../02_PyTorch_Algorithms/60_LoRA_Fine_Tuning_Project.ipynb)
+- Part 02 [32 Data Engineering for SFT](../../02_PyTorch_Algorithms/32_Data_Engineering_for_SFT.ipynb)
+- Part 02 [33 Fine Tuning Readiness](../../02_PyTorch_Algorithms/33_Fine_Tuning_Readiness.ipynb)
+- Part 02 [60 LoRA Fine-Tuning Project](../../02_PyTorch_Algorithms/60_LoRA_Fine_Tuning_Project.ipynb)
 
 这时要回答的已经不是“能不能训”，而是：数据是否可信，loss 口径是否正确，adapter、tokenizer、config 是否可交付，最终结果是否值得采用。基础闭环跑通以后，再进入 `26 -> 31 -> 15 -> 16` 这些分支，看小显存微调、LoRA 变体和对齐后续路线。把这条故事走完以后，一个更像真实交付的结论通常不是“我们完成了一次 SFT”，而是：数据口径正确、LoRA 挂载合理、训练控制一致、实验结果站得住，最终产出的 adapter 和报告可以被别人复现和采用。

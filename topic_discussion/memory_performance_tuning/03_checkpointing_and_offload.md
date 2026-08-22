@@ -43,7 +43,7 @@
 - activation checkpointing 经典论文：理解时间换空间的基本模式。
 - activation offload / memory hierarchy 相关资料：理解搬运路径为什么常成为隐藏成本。
 
-## 对应 Part02
+## 对应 Part 02
 
 - `19` Activation Checkpointing and Activation Offload
 - `42` Activation Offload
@@ -54,6 +54,6 @@
 - [02 Training Memory Pressure](./02_training_memory_pressure.md)
 - [06 Benchmark and Trade-off Decision](./06_benchmark_and_tradeoff_decision.md)
 
-## 小结
+## 本节要点
 
 checkpointing 和 offload 都是在省 activation，但一个主要赔计算，一个主要赔传输。

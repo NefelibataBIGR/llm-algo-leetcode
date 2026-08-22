@@ -79,6 +79,6 @@ keep / tune / switch
 
 - [66 Inference Performance Comparison](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.ipynb)
 
-## 小结
+## 项目结论
 
 `06` 不是新增机制页，而是把前面的判断变成最终结论。

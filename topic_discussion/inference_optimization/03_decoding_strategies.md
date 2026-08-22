@@ -56,7 +56,7 @@ decode 阶段的核心不是“选哪种采样”，而是“每轮生成能不�
 - speculative decoding 只看理论速度，不看 acceptance。
 - multi-token decoding 和调度问题混在一起看。
 
-## 对应 Part02
+## 对应 Part 02
 
 - `21` Decoding Strategies
 - `23` Speculative Decoding
@@ -76,6 +76,6 @@ decode 阶段的核心不是“选哪种采样”，而是“每轮生成能不�
 - 看 `01`，确认指标口径。
 - 看 `04`，确认 decode 和 cache 怎么协作。
 
-## 小结
+## 本节要点
 
 解码优化的重点是减少无效循环，让生成阶段的 token 产出更快。
