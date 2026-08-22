@@ -1,12 +1,10 @@
 # 反向传播与训练机制专题
 
-## 专题定位
+## 专题定位与 Infra 层定位
 
-本专题用于串起训练机制主线：先看梯度怎么沿计算图回传，再看 attention backward、loss 对齐、activation 保存、checkpointing、offload 和梯度累积怎样一起影响训练节奏与显存代价。这里聚焦训练侧基础机制；如果问题已经进入项目交付或训练路线选择，应转到监督微调专题。
+本专题串起训练机制主线：先看梯度怎么沿计算图回传，再看 attention backward、loss 对齐、activation 保存、checkpointing、offload 和梯度累积怎样一起影响训练节奏与显存代价。它主要连接 Infra-L2–Infra-L3：Infra-L2 解释算子、kernel 和自动求导如何执行，Infra-L3 解释框架如何构建计算图、保存 activation 并调度 backward；Infra-L1 的显存容量与带宽是边界，checkpoint、offload 和梯度累积是跨层策略。
 
-## Infra 层定位
-
-本专题主要连接 L2-L3：L2 解释算子、kernel 和自动求导如何执行，L3 解释框架如何构建计算图、保存 activation 并调度 backward。它向下受 L1 的显存容量与带宽约束，向上支撑 L4 的训练项目与显存优化决策；checkpoint、offload 和梯度累积属于跨层策略，必须同时看计算、内存和通信代价。
+因此，学习者需要同时看计算、内存和通信代价，而不是把本专题当作独立优化方案。若问题进入 SFT、LoRA 或训练项目交付，应转到监督微调专题；若重点是显存预算和策略选型，应转到显存优化专题。
 
 ## 推荐入口
 
