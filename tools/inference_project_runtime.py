@@ -8,6 +8,7 @@ port selection, service cleanup and result persistence from one place.
 from __future__ import annotations
 
 import json
+import platform
 import subprocess
 import sys
 from pathlib import Path
@@ -51,8 +52,43 @@ def shared_project_config(
         "concurrency": concurrency,
         "cache_policy": cache_policy,
     }
+    errors = validate_backend_config(config)
+    if errors:
+        raise ValueError("invalid backend config: " + "; ".join(errors))
     config.update({key: value for key, value in extra.items() if value is not None})
     return config
+
+
+def validate_backend_config(config: Mapping[str, Any]) -> list[str]:
+    """Validate common 66--70 fields without starting a server."""
+
+    errors: list[str] = []
+    for key in ("model", "backend", "dtype", "cache_policy"):
+        if not str(config.get(key, "")).strip():
+            errors.append(f"missing config: {key}")
+    for key in ("batch", "concurrency"):
+        if key in config and int(config[key]) <= 0:
+            errors.append(f"invalid config: {key}")
+    for key in ("prompt_tokens", "generated_tokens"):
+        if config.get(key) is not None and int(config[key]) <= 0:
+            errors.append(f"invalid config: {key}")
+    return errors
+
+
+def runtime_snapshot(torch_module: Any | None = None) -> dict[str, Any]:
+    """Capture the environment used by a backend run."""
+
+    snapshot: dict[str, Any] = {"python": sys.version, "platform": platform.platform()}
+    if torch_module is None:
+        return snapshot
+    snapshot["torch"] = getattr(torch_module, "__version__", None)
+    snapshot["torch_cuda"] = getattr(getattr(torch_module, "version", None), "cuda", None)
+    cuda = getattr(torch_module, "cuda", None)
+    if cuda is not None and cuda.is_available():
+        snapshot["device"] = cuda.get_device_name(0)
+    else:
+        snapshot["device"] = "cpu"
+    return snapshot
 
 
 def save_project_result(
