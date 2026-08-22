@@ -57,7 +57,7 @@ KV cache 是推理链路里最容易成为硬约束的部分。
 - 只看单请求，不看并发。
 - 看到 cache 占用高就直接量化，不先看复用和调度。
 
-## 对应 Part02
+## 对应 Part 02
 
 - `22` vLLM PagedAttention
 - `24` SGLang RadixAttention
@@ -67,11 +67,11 @@ KV cache 是推理链路里最容易成为硬约束的部分。
 
 ## 经典阅读入口
 
-- [11 KV Cache and Memory Growth](../../01_Hardware_Math_and_Systems/11_KV_Cache_and_Memory_Growth.ipynb)
-- [22 vLLM PagedAttention](../../02_PyTorch_Algorithms/22_vLLM_PagedAttention.ipynb)
-- [24 SGLang RadixAttention](../../02_PyTorch_Algorithms/24_SGLang_RadixAttention.ipynb)
-- [34 Prefix Caching and Chunked Prefill](../../02_PyTorch_Algorithms/34_Prefix_Caching_and_Chunked_Prefill.ipynb)
-- [37 KV Cache Scheduling](../../02_PyTorch_Algorithms/37_KV_Cache_Scheduling.ipynb)
+- [11 KV Cache and Memory Growth](../../01_Hardware_Math_and_Systems/11_KV_Cache_and_Memory_Growth.md)
+- [22 vLLM PagedAttention](../../02_PyTorch_Algorithms/22_vLLM_PagedAttention.md)
+- [24 SGLang RadixAttention](../../02_PyTorch_Algorithms/24_SGLang_RadixAttention.md)
+- [34 Prefix Caching and Chunked Prefill](../../02_PyTorch_Algorithms/34_Prefix_Caching_and_Chunked_Prefill.md)
+- [37 KV Cache Scheduling](../../02_PyTorch_Algorithms/37_KV_Cache_Scheduling.md)
 
 ## 相关跳转
 
@@ -79,6 +79,6 @@ KV cache 是推理链路里最容易成为硬约束的部分。
 - 看 `03`，确认 decode 循环怎么耗时。
 - 看 `05`，确认 cache 不够时怎么压缩。
 
-## 小结
+## 本节要点
 
 KV cache 不是附属缓存，而是推理吞吐和上下文长度的核心边界。

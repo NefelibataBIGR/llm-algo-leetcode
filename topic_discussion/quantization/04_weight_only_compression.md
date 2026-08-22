@@ -4,6 +4,8 @@
 
 这一页回答的是：GPTQ、AWQ 和 weight-only 路线在解决什么问题，为什么它们经常成为后训练量化的主轴。
 
+本页的输出是权重量化候选：模型权重、校准数据、量化粒度、后端支持和精度风险是否匹配当前部署目标。
+
 ## 问题起点
 
 很多部署场景的首要问题不是激活，而是权重驻留太大。于是，最先被问到的问题往往是：
@@ -42,7 +44,7 @@ GPTQ / AWQ 就是在这个问题上出现的。
 - GPTQ：理解后训练权重量化为何能用误差补偿稳住精度。
 - AWQ：理解为什么激活感知会影响权重量化的保精度能力。
 
-## 对应 Part02
+## 对应 Part 02
 
 - `25` Quantization W8A16
 - `40` GPTQ and AWQ Weight Quantization
@@ -53,6 +55,10 @@ GPTQ / AWQ 就是在这个问题上出现的。
 - [01 Quantization Object and Error](./01_quantization_object_and_error.md)
 - [06 Deployment and Benchmark Decision](./06_deployment_and_benchmark_decision.md)
 
-## 小结
+## 本节要点
 
 权重量化的主问题不是“能不能压”，而是“压完以后能不能还值这个部署收益”。
+
+## 进入下一页
+
+如果瓶颈转向推理执行或 KV cache，进入 [05 FP8 与 KV Cache 量化](./05_fp8_and_kv_cache_quantization.md)；否则带着权重量化候选进入 [06 部署与 Benchmark 决策](./06_deployment_and_benchmark_decision.md)。

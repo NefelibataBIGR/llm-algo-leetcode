@@ -8,10 +8,10 @@
 
 故事通常从一个很典型的症状开始：前几个 step 都正常，loss 也没问题，但训练跑到中后段时显存开始持续抬高，最后在某个 step 直接 OOM。第一反应往往是缩 batch，但这通常只是止血动作，不是判断结论。更稳的做法是先沿训练侧显存链路排一遍：
 
-- Part02 [12 Gradient Accumulation](../../02_PyTorch_Algorithms/12_Gradient_Accumulation.ipynb)
-- Part02 [19 Activation Checkpointing and Activation Offload](../../02_PyTorch_Algorithms/19_Activation_Checkpointing_and_Activation_Offload.ipynb)
-- Part02 [42 Activation Offload](../../02_PyTorch_Algorithms/42_Activation_Offload.ipynb)
-- Part02 [73 Training Performance Analysis](../../02_PyTorch_Algorithms/73_Training_Performance_Analysis.ipynb)
+- Part 02 [12 Gradient Accumulation](../../02_PyTorch_Algorithms/12_Gradient_Accumulation.ipynb)
+- Part 02 [19 Activation Checkpointing and Activation Offload](../../02_PyTorch_Algorithms/19_Activation_Checkpointing_and_Activation_Offload.ipynb)
+- Part 02 [42 Activation Offload](../../02_PyTorch_Algorithms/42_Activation_Offload.ipynb)
+- Part 02 [73 Training Performance Analysis](../../02_PyTorch_Algorithms/73_Training_Performance_Analysis.ipynb)
 
 这一段真正要拆开的，是 `effective batch`、`activation`、`checkpointing` 和 `offload`。很多时候 batch 只是把 activation、重算和搬运成本一并放大了，而不是唯一矛盾本身。
 
@@ -19,12 +19,12 @@
 
 训练阶段止血以后，第二个问题往往出现在部署或服务验证阶段。模型能加载，但只要上下文拉长、并发上去，显存又开始被 KV cache 顶满。这时要切到推理侧显存链路：
 
-- Part02 [22 vLLM PagedAttention](../../02_PyTorch_Algorithms/22_vLLM_PagedAttention.ipynb)
-- Part02 [24 SGLang RadixAttention](../../02_PyTorch_Algorithms/24_SGLang_RadixAttention.ipynb)
-- Part02 [34 Prefix Caching and Chunked Prefill](../../02_PyTorch_Algorithms/34_Prefix_Caching_and_Chunked_Prefill.ipynb)
-- Part02 [37 KV Cache Scheduling](../../02_PyTorch_Algorithms/37_KV_Cache_Scheduling.ipynb)
-- Part02 [41 FP8 and KV Cache Quantization](../../02_PyTorch_Algorithms/41_FP8_and_KV_Cache_Quantization.ipynb)
-- Part02 [67 Quantized Inference and Deployment](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.ipynb)
+- Part 02 [22 vLLM PagedAttention](../../02_PyTorch_Algorithms/22_vLLM_PagedAttention.ipynb)
+- Part 02 [24 SGLang RadixAttention](../../02_PyTorch_Algorithms/24_SGLang_RadixAttention.ipynb)
+- Part 02 [34 Prefix Caching and Chunked Prefill](../../02_PyTorch_Algorithms/34_Prefix_Caching_and_Chunked_Prefill.ipynb)
+- Part 02 [37 KV Cache Scheduling](../../02_PyTorch_Algorithms/37_KV_Cache_Scheduling.ipynb)
+- Part 02 [41 FP8 and KV Cache Quantization](../../02_PyTorch_Algorithms/41_FP8_and_KV_Cache_Quantization.ipynb)
+- Part 02 [67 Quantized Inference and Deployment](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.ipynb)
 
 这里的核心不是“为什么慢”，而是“为什么装不下”。要先分清 cache 增长是不是请求形态的自然结果，prefix reuse 和 paging 是否足够，KV cache quantization 是否值得引入。
 
@@ -32,10 +32,10 @@
 
 走到这一步，团队通常会碰到第三类问题：理论上算出来应该够，实测却还是很紧；或者峰值显存降下来了，但 benchmark 没好多少。这时就不能只看局部收益，而要把账本和实测证据对齐：
 
-- Part01 [06 VRAM Calculation and ZeRO](../../01_Hardware_Math_and_Systems/06_VRAM_Calculation_and_ZeRO.ipynb)
-- Part01 [13 Profiling and Bottleneck Analysis](../../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.ipynb)
-- Part02 [73 Training Performance Analysis](../../02_PyTorch_Algorithms/73_Training_Performance_Analysis.ipynb)
-- Part02 [74 Profiling Driven End-to-End Optimization](../../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.ipynb)
+- Part 01 [06 VRAM Calculation and ZeRO](../../01_Hardware_Math_and_Systems/06_VRAM_Calculation_and_ZeRO.ipynb)
+- Part 01 [13 Profiling and Bottleneck Analysis](../../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.ipynb)
+- Part 02 [73 Training Performance Analysis](../../02_PyTorch_Algorithms/73_Training_Performance_Analysis.ipynb)
+- Part 02 [74 Profiling Driven End-to-End Optimization](../../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.ipynb)
 
 这一段真正要回答的是：理论账本里有没有漏掉临时 buffer、碎片或流程开销；训练侧峰值下降是不是只是把时间转移到了别处；推理侧 cache 压缩是不是只是把显存问题换成了延迟问题。
 

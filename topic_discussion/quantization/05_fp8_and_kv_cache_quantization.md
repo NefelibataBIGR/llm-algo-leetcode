@@ -2,6 +2,10 @@
 
 ## 页面目标
 
+这一页回答的是：什么时候应该压执行路径或 KV cache，而不是继续压权重；以及硬件、后端和上下文长度如何改变这项选择。
+
+本页的输出是推理侧候选：FP8 或 KV cache 量化能释放什么资源，是否会改变 kernel、缓存容量、延迟或质量边界。
+
 这一页回答的是：FP8 和 KV cache quantization 为什么总被放在一起讨论，以及它们到底改的是哪一类成本。
 
 ## 问题起点
@@ -43,7 +47,7 @@ FP8 的核心矛盾是：更低精度的执行路径能带来更好的吞吐和�
 - FP8 相关资料：理解低精度执行路径如何和硬件协同。
 - KV cache quantization 资料：理解缓存压缩为什么首先是推理预算问题。
 
-## 对应 Part02
+## 对应 Part 02
 
 - `41` FP8 and KV Cache Quantization
 - `67` Quantized Inference and Deployment
@@ -53,6 +57,12 @@ FP8 的核心矛盾是：更低精度的执行路径能带来更好的吞吐和�
 - [04 Weight-Only Compression](./04_weight_only_compression.md)
 - [06 Deployment and Benchmark Decision](./06_deployment_and_benchmark_decision.md)
 
-## 小结
+## 本节要点
+
+FP8 更接近执行路径与硬件支持问题，KV cache quant 更接近长上下文下的缓存预算问题；二者都不能只用模型文件大小判断价值。
+
+## 进入下一页
+
+把权重、执行路径和 KV cache 的候选放到 [06 部署与 Benchmark 决策](./06_deployment_and_benchmark_decision.md) 中，用同一 workload 做最终比较。
 
 FP8 和 KV cache quantization 都是低精度路线，但一个更偏执行栈，一个更偏缓存预算。

@@ -4,6 +4,8 @@
 
 这一页回答的是：什么时候先做 PTQ，什么时候必须把量化误差带回训练过程。
 
+本页的输出是介入时机决策：先用 PTQ 验证收益，还是为精度恢复付出 QAT / 量化微调成本。
+
 ## 问题起点
 
 量化真正的第一道选择，不是 GPTQ 还是 AWQ，而是“量化发生在训练后，还是训练中”。这件事决定了：
@@ -42,7 +44,7 @@ PTQ 便宜、快、适合快速验证；QAT 更重，但能让模型在训练时
 - PTQ / QAT 经典资料：理解校准与量化感知训练的基本差异。
 - QLoRA 相关资料：理解低比特和训练感知为什么会在微调场景里耦合。
 
-## 对应 Part02
+## 对应 Part 02
 
 - `25` Quantization W8A16
 - `26` QLoRA and 4bit Quantization
@@ -53,6 +55,12 @@ PTQ 便宜、快、适合快速验证；QAT 更重，但能让模型在训练时
 - [03 Low-Bit Training Adaptation](./03_low_bit_training_adaptation.md)
 - [06 Deployment and Benchmark Decision](./06_deployment_and_benchmark_decision.md)
 
-## 小结
+## 本节要点
+
+PTQ 是低成本的第一轮验证，QAT 或量化微调是精度恢复手段；二者都必须回到同一评测集和部署目标比较。
+
+## 进入下一页
+
+如果 PTQ 的质量损失超过边界，进入 [03 低比特训练适配](./03_low_bit_training_adaptation.md)；如果 PTQ 已可接受，则可直接进入权重量化或部署验证。
 
 PTQ 和 QAT 的差别，本质上是“先压后测”还是“先让模型学会接受压缩”。

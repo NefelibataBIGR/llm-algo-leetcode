@@ -39,6 +39,6 @@
 
 ## 相关跳转
 
-- 回到 [监督微调（SFT）闭环专题入口](./intro.md)
+- 回到 [监督微调专题入口](./intro.md)
 - 回到 [监督微调（SFT）闭环正文](./casebook.md)
 - 回到 [监督微调（SFT）闭环深入阅读](./walkthrough.md)

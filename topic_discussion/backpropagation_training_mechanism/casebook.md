@@ -2,6 +2,10 @@
 
 这页只做训练机制问题的判断框架：不重复 `intro` 的路线入口，也不写 `walkthrough` 的连续故事。
 
+## 使用顺序
+
+先确认计算图和梯度路径，再检查 loss 对齐与显存账本；只有明确压力来源后，才在 checkpoint、offload、梯度累积或 profiling 之间选择。不要把所有 OOM 都归因于 batch size。
+
 ## 判断表
 
 先分清问题在计算图、autograd、loss 对齐、activation 保存还是训练节奏，再判断它是不是已经转成显存或 profiling 问题。
@@ -22,6 +26,10 @@
 | activation 保存 | 显存主峰值是不是来自中间状态 | 把所有问题都归到 batch 太大 |
 | accumulation | backward 次数和 step 次数是否一致 | 训练能跑就等于训练节奏对了 |
 
-## 小结
+## 本节要点
 
 这页的职责不是再讲一遍 backward 流程，而是把训练机制里最常见的判断点压成一张表。路线入口留给 `intro`，连续故事留给 `walkthrough`。
+
+## 最小机制审计模板
+
+记录 `梯度路径 -> 监督边界 -> 显存组成 -> 调度策略 -> step/quality 对照 -> 下一步`。如果只证明显存下降，没有说明 loss、吞吐或有效 batch 是否保持，结论仍应标记为待验证。

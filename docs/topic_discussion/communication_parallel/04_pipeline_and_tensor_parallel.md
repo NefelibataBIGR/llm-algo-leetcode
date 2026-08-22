@@ -2,6 +2,10 @@
 
 ## 页面目标
 
+这一页回答的是：当数据并行和状态切分仍不够时，如何在层级切分与算子切分之间选择，以及 pipeline bubble、同步频率和通信粒度如何影响结果。
+
+本页的输出是切分候选：模型切在哪里、通信发生多频繁、流水线空泡和小 batch 风险是否可接受。
+
 这一页回答的是：为什么系统会从“复制 batch / 切状态”继续走向“切层”或“切算子”，以及 Pipeline 和 Tensor Parallel 各自在解决什么约束。
 
 ## 问题起点
@@ -43,7 +47,7 @@ Pipeline 的核心矛盾是：层被切开后，计算可以分摊，但不同�
 - Pipeline parallel 资料：理解 micro-batch 和 bubble。
 - Tensor parallel 资料：理解张量切分和通信同步的对应关系。
 
-## 对应 Part02
+## 对应 Part 02
 
 - `28` Pipeline Parallelism MicroBatch
 - `29` Tensor Parallelism Sim
@@ -54,6 +58,12 @@ Pipeline 的核心矛盾是：层被切开后，计算可以分摊，但不同�
 - [05 Expert Parallel and Communication Hotspots](./05_expert_parallel_and_communication_hotspots.md)
 - [06 Benchmark and Parallel Decision](./06_benchmark_and_parallel_decision.md)
 
-## 小结
+## 本节要点
+
+Pipeline 主要改变层级和时序，Tensor Parallel 主要改变单层算子；二者都必须结合 batch、拓扑和通信频率评估，不能只按“能否切开”判断。
+
+## 进入下一页
+
+如果切分对象进一步变成动态路由的专家，进入 [05 Expert Parallel 与通信热点](./05_expert_parallel_and_communication_hotspots.md)；否则直接带着候选方案进入 [06 Benchmark 与并行决策](./06_benchmark_and_parallel_decision.md)。
 
 Pipeline 和 Tensor Parallel 都是在继续扩模型本体，但一个主要付出 bubble，另一个主要付出同步。

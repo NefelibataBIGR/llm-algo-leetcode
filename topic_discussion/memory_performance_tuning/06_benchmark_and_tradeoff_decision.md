@@ -57,6 +57,6 @@
 - [03 Checkpointing and Offload](./03_checkpointing_and_offload.md)
 - [05 Quantization as a Memory Tool](./05_quantization_as_a_memory_tool.md)
 
-## 小结
+## 项目结论
 
 显存优化只有在 benchmark 里仍然划算时，才算真正成立。

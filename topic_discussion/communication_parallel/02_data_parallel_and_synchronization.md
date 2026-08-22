@@ -4,6 +4,8 @@
 
 这一页回答的是：数据并行在解决什么问题，为什么梯度同步会成为最先出现的通信代价。
 
+本页的输出是同步基线：计算复制带来了多少收益，AllReduce 和等待占据了多少代价，以及何时需要从 DDP 转向状态切分。
+
 ## 问题起点
 
 数据并行是最直观的多卡扩展方式：每张卡各算一份 batch，再把梯度同步回来。但它最容易被误解成“多几张卡就线性加速”。真正的边界在于：
@@ -41,7 +43,7 @@
 - AllReduce / NCCL 基础资料：理解同步原语和通信语义。
 - 数据并行扩展资料：理解 scaling efficiency 为什么不会天然线性。
 
-## 对应 Part02
+## 对应 Part 02
 
 - `20` NCCL and AllReduce Basics
 - `27` ZeRO Optimizer Sim
@@ -52,6 +54,10 @@
 - [03 State Sharding and ZeRO](./03_state_sharding_and_zero.md)
 - [06 Benchmark and Parallel Decision](./06_benchmark_and_parallel_decision.md)
 
-## 小结
+## 本节要点
 
 数据并行的第一收益是复制计算，第一代价是同步更新。
+
+## 进入下一页
+
+如果主要问题是参数、梯度或优化器状态重复驻留，进入 [03 状态切分与 ZeRO](./03_state_sharding_and_zero.md)；如果同步本身已是主瓶颈，先保留通信证据进入 benchmark 验证。
