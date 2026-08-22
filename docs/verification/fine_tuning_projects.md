@@ -43,6 +43,26 @@ decision / environment
 
 公共协议由 `tools/fine_tuning_result_schema.py` 提供。它只规范外层结构，不会替项目补造缺失的质量或资源数据。
 
+## 61–65 自动化入口
+
+61–65 是 CPU-first 的项目模板，不会默认下载模型或启动训练。每节末尾的可选导出单元统一使用 `tools/fine_tuning_project_runtime.py`：
+
+| 配置 | 默认值 | 作用 |
+|:---|:---:|:---|
+| `PROJECT_ID` | 当前项目编号 | 写入报告的项目标识 |
+| `PROJECT_RESULT_PATH` | `benchmarks/results/<project>.json` | 自动创建目录并保存报告 |
+| `PROJECT_CONFIG` | Notebook 示例配置 | 校验 model、dtype、batch、seq_len、steps、seed |
+| `RUN_PROJECT_EXPORT` | `False` | 只有在结果已经完成后才导出 JSON |
+
+推荐流程：
+
+1. 先完成本节的 baseline、candidate、quality 和 decision 计算。
+2. 将这些结果组装成 `PROJECT_REPORT`，不要用模板演示数据代替实测数据。
+3. 确认 `RUN_PROJECT_EXPORT = True` 后运行导出单元。
+4. 检查生成的 JSON 是否包含 `baseline`、`candidates`、`quality`、`resources` 和 `decision`。
+
+如果 Notebook 不是从仓库根目录启动，CPU-first 题目测试仍可运行；要导出正式报告，应从仓库根目录运行，或先将仓库根目录加入 `sys.path`。
+
 ## 项目特有字段
 
 - `60`：LoRA 配置、adapter 路径、merge 状态。
@@ -68,6 +88,8 @@ python tools/check_docs_links.py \
 ```
 
 真实 GPU 或 Colab / ModelScope 运行时，还应保存模型、数据、dtype、batch、seq_len、seed、训练步数和环境信息；CPU-first 模板只能证明流程可运行，不能替代真实训练结论。
+
+61–65 的统一 runtime 只负责配置校验、环境快照和报告保存，不负责自动调参、自动改 batch，也不会在 OOM 后偷偷降低实验规模。这样可以避免“程序跑完了”被误读成“实验结论成立”。
 
 ## 60 真实模型 smoke test
 

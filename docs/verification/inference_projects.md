@@ -53,6 +53,8 @@ python tools/test_notebook_answers.py \
 - 把结果保存到 `benchmarks/results/`；
 - 在 `finally` 中停止 backend。
 
+66 使用兼容旧版 vLLM / 多环境 Notebook 的专用入口，但仍然复用相同的 benchmark 参数和 `normalized_result` 输出；67–70 使用共享 runtime helper。两条入口都必须满足“启动失败不生成成功结论、服务结束后执行清理、结果写入仓库根目录”的要求。
+
 从 Colab / ModelScope 打开 Notebook 时，先确保仓库已经 clone，并从仓库根目录运行；没有 GPU 时保持真实 backend 开关关闭。
 
 ## 3. 66 真实 backend 验证
@@ -80,6 +82,18 @@ jq '.normalized_result' benchmarks/results/66_vllm_real.json
 - 68：设置 `RUN_BACKEND_SMOKE = True`。该结果是 speculative baseline 的 backend smoke test，真正 speculative 实验还需要 draft model 和 verify 能力。
 - 69：设置 `RUN_REAL_BACKEND = True`，并确认 backend 的 prefix-cache 配置确实打开。
 - 70：设置 `RUN_REAL_BACKEND = True`，至少使用并发 4 的 workload，再比较 TTFT、TPOT、吞吐和公平性。
+
+各节的自动化边界如下：
+
+| 项目 | 自动完成 | 仍需学习者确认 |
+|---|---|---|
+| 66 | 模型解析、端口、服务生命周期、benchmark、结果保存 | vLLM 与当前 CUDA/驱动是否匹配 |
+| 67 | 模型解析、服务 smoke、结果保存 | 量化格式、量化启动参数和质量回归 |
+| 68 | baseline backend smoke、结果保存、服务清理 | draft model、接受率、verify 成本和真实 speculative 配置 |
+| 69 | backend 启动、benchmark、结果保存、服务清理 | prefix cache 是否真正开启、命中率和失效开销 |
+| 70 | backend 启动、并发 benchmark、结果保存、服务清理 | workload 规模、公平性、排队和长时间稳定性 |
+
+因此，`RUN_BACKEND_SMOKE = True` 只适用于 68 的链路检查；它不会自动把 baseline smoke 升级成 speculative decoding 实验。67 的默认 Qwen 模型也只验证部署链路，不能直接代表量化收益。
 
 检查结果文件：
 
