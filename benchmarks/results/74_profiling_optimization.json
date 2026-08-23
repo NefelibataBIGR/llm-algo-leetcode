@@ -1,0 +1,70 @@
+{
+  "schema_version": "profiling-project/v1",
+  "project": "74_profiling_driven_end_to_end_optimization",
+  "stage": "upstream_report_merge",
+  "sources": {
+    "73": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/73_real_gpu_training.json",
+    "76": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/76_real_gpu_memory.json",
+    "75": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/75_memory_budget_decision.json"
+  },
+  "upstream": {
+    "73_training_baseline": {
+      "step_time_ms": 251.137,
+      "samples_per_s": 3.982,
+      "loss": 3.483021,
+      "peak_mem_mb": 9474.12,
+      "peak_reserved_mb": 10674.0
+    },
+    "76_strategy_summary": {
+      "candidate_count": 4,
+      "feasible_count": 3,
+      "best_candidate": "checkpoint",
+      "quality_failed_count": 0,
+      "feasible_names": [
+        "checkpoint",
+        "hybrid",
+        "baseline"
+      ],
+      "baseline_peak_memory_mb": 9782.74,
+      "best_peak_memory_mb": 9450.76,
+      "memory_saving_mb": 331.97999999999956,
+      "throughput_ratio": 0.8044825941821651
+    },
+    "76_decision": {
+      "decision": "tune",
+      "reason": "memory_saving_below_meaningful_threshold",
+      "next_action": "test_pressure_or_offload_scope"
+    },
+    "75_budget_summary": {
+      "candidate_count": 4,
+      "feasible_count": 3,
+      "best_candidate": "checkpoint",
+      "quality_failed_count": 0,
+      "feasible_names": [
+        "checkpoint",
+        "hybrid",
+        "baseline"
+      ],
+      "baseline_peak_memory_mb": 9782.74,
+      "throughput_ratio": 0.8044825941821651,
+      "best_peak_memory_mb": 9450.76,
+      "memory_saving_mb": 331.97999999999956
+    },
+    "75_decision": {
+      "decision": "tune",
+      "reason": "memory_saving_below_meaningful_threshold",
+      "next_action": "test_larger_pressure_or_optimizer_compression"
+    }
+  },
+  "profiling": {
+    "status": "not_collected",
+    "tool": null,
+    "top_operators": [],
+    "evidence": []
+  },
+  "decision": {
+    "decision": "tune",
+    "reason": "upstream_reports_merged_but_profiling_evidence_missing",
+    "next_action": "collect_profile_and_rerun_same_workload"
+  }
+}
