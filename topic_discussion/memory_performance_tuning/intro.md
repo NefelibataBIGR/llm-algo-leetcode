@@ -26,6 +26,25 @@
 | Task5 | 量化作为显存手段 | 核心：[21 Quantization Theory](../../01_Hardware_Math_and_Systems/21_Quantization_Theory_and_INT4_INT8.ipynb) → [25 W8A16](../../02_PyTorch_Algorithms/25_Quantization_W8A16.ipynb) → [67 Quantized Deployment](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.ipynb)；扩展：[40 GPTQ / AWQ](../../02_PyTorch_Algorithms/40_GPTQ_and_AWQ_Weight_Quantization.ipynb)、[41 FP8 / KV Cache Quantization](../../02_PyTorch_Algorithms/41_FP8_and_KV_Cache_Quantization.ipynb) | [05 Quantization as a Memory Tool](./05_quantization_as_a_memory_tool.md) |
 | Task6 | Profiling 驱动的显存优化最终收口 | [43 Unified Memory Management](../../02_PyTorch_Algorithms/43_Unified_Memory_Management.ipynb) → [44 Auto Tuning Framework](../../02_PyTorch_Algorithms/44_Auto_Tuning_Framework.ipynb) → [45 Memory Cut Planning](../../02_PyTorch_Algorithms/45_Memory_Cut_Planning.ipynb) → [74 Profiling Driven Optimization](../../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.ipynb) | [06 Benchmark and Trade-off Decision](./06_benchmark_and_tradeoff_decision.md) |
 
+### Task1 的共享基础与本路线阅读视角
+
+[03 GPU Architecture and Memory](../../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.ipynb) 和 [20 FlashAttention Sim](../../02_PyTorch_Algorithms/20_FlashAttention_Sim.ipynb) 是多个学习路线共享的基础 Notebook。本路线不要求把它们重新学习成“显存专属内容”，而是带着下面的问题阅读：
+
+- GPU 存储层级的容量与带宽，如何限制训练规模？
+- 参数、梯度、优化器状态、激活和 Attention 临时空间分别是什么？
+- 哪些问题属于容量不足，哪些问题属于带宽或 IO 压力？
+- FlashAttention 减少的是哪类临时空间，和 checkpoint / offload 有什么不同？
+
+同一内容在推理优化路线中会进一步连接 KV Cache、Prefill/Decode 和请求并发；在算子与编译优化路线中会进一步连接 Tiling、数据复用、算子融合和 Kernel 执行效率。这里先保留共同机制，只切换观察角度。
+
+### Task1 输出
+
+完成一张简化显存账本，并对一个训练 workload 做初步判断：
+
+1. 当前主要瓶颈是容量、带宽、临时空间，还是状态驻留？
+2. 如果激活是主要瓶颈，下一步应进入 Gradient Accumulation、Checkpointing 还是 Offload？
+3. 哪些结论还只是机制推断，必须交给 73 / 76 的真实 GPU 测量？
+
 ### 核心与扩展分级
 
 Task 3、Task 4 和 Task 5 都采用“核心路径 + 扩展路径”，避免把高压力 workload、真实 backend、特定推理引擎和高级量化工具变成所有学习者的硬性前置。
@@ -39,6 +58,28 @@ Task 3、Task 4 和 Task 5 都采用“核心路径 + 扩展路径”，避免�
 核心路径的目标是理解机制并完成一次可复现实验：Task 3 记录 step time、吞吐、峰值显存和 loss，Task 4 记录 KV Cache、延迟、吞吐和峰值显存，Task 5 记录模型占用、峰值显存、速度和质量。扩展路径再测试 offload / hybrid、高压力序列长度、vLLM / SGLang、并发、长上下文或具体量化 backend。
 
 `66` 的机制学习属于核心路径，但只要真正启动 vLLM / SGLang 就进入 Practice-P2；没有 backend 时可完成机制和模拟验证。`67` 的本地模型加载属于 Practice-P1，真实 vLLM / SGLang 量化部署属于 Practice-P2。并发压测和多方案比较属于扩展路径。`26 QLoRA` 继续服务训练微调和训练侧显存路线，不并入 Task 5 的推理量化主线。
+
+## 高级路线：分布式显存与系统级预算
+
+上面的 `Task0-6` 是单机显存优化主线，默认先理解单 GPU 上的容量、带宽、激活、KV Cache 和量化问题。完成主线后，如果需要继续研究多卡训练、状态分摊和通信代价，再进入下面的高级路线；它不是单机主线的硬性前置。
+
+```text
+数据类型与参数规模
+  → GPU 与 Attention 显存
+  → 通信拓扑与训练状态账本
+  → ZeRO / 并行策略
+  → 异构调度与分布式项目
+```
+
+| 阶段 | 学习内容 | 入口 | 目标 |
+|:---|:---|:---|:---|
+| A0 | 精度、参数与规模估算 | [01 数据类型与精度](../../01_Hardware_Math_and_Systems/01_Data_Types_and_Precision.ipynb) → [02 参数量与 FLOPs](../../01_Hardware_Math_and_Systems/02_LLM_Params_and_FLOPs.ipynb) | 建立参数、dtype 和预算的换算关系 |
+| A1 | 单卡硬件与 Attention 显存 | [03 GPU Architecture and Memory](../../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.ipynb) → [04 Attention Memory Optimization](../../01_Hardware_Math_and_Systems/04_Attention_Memory_Optimization.ipynb) | 区分容量、带宽、临时空间和 KV Cache |
+| A2 | 通信与训练状态分摊 | [05 Communication Topologies](../../01_Hardware_Math_and_Systems/05_Communication_Topologies.ipynb) → [06 VRAM Calculation and ZeRO](../../01_Hardware_Math_and_Systems/06_VRAM_Calculation_and_ZeRO.ipynb) | 理解 DDP、ZeRO 和通信代价 |
+| A3 | 异构调度与并行决策 | [07 CPU/GPU Heterogeneous Scheduling](../../01_Hardware_Math_and_Systems/07_CPU_GPU_Heterogeneous_Scheduling.ipynb) → [26 Parallel Strategy Decision](../../01_Hardware_Math_and_Systems/26_Parallel_Strategy_Decision_Framework.ipynb) → [27 Communication Scheduling](../../01_Hardware_Math_and_Systems/27_Communication_Scheduling_Optimization.ipynb) | 判断状态放置、切分和通信时机 |
+| A4 | 分布式项目验证 | [79 Distributed Parallel Benchmark](../../02_PyTorch_Algorithms/79_Distributed_Parallel_Benchmark.ipynb) → [80 MoE Expert Parallel Benchmark](../../02_PyTorch_Algorithms/80_MoE_Expert_Parallel_Benchmark.ipynb) → [81 Distributed Inference Project](../../02_PyTorch_Algorithms/81_Distributed_Inference_Project.ipynb) | 在真实或模拟多卡环境中验证预算与通信权衡 |
+
+高级路线的核心问题是“状态如何在多卡之间分摊，以及显存下降是否换来了通信和调度代价”。`06` 负责理论账本，`79-81` 负责项目验证；不要把 ZeRO 的理论上限直接当成真实可训练规模。
 
 ## 学习方式与项目产出
 
