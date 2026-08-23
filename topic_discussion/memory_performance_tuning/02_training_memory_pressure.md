@@ -25,11 +25,15 @@
 
 训练侧的核心矛盾是：模型希望保留足够多的中间状态做反传，但系统又必须把这些状态压进有限显存预算。越大的 effective batch、越长的序列、越深的模型，越会把这个矛盾推到前台。
 
+## 它如何承接 Task0
+
+[17 Autograd Basics](../../02_PyTorch_Algorithms/17_Autograd_Basics.ipynb) 解释计算图和梯度流，[18 Activation and Loss Backward](../../02_PyTorch_Algorithms/18_Activation_and_Loss_Backward.ipynb) 进一步说明 loss、logits 和中间激活在反向传播中的生命周期。本页把这些机制转换成显存问题：哪些张量必须保留、哪些张量可以重算、哪些状态只是 optimizer 或 batch 组织带来的常驻成本。
+
 ## 演化路径
 
 1. 先从 batch / sequence length 的粗调开始。
 2. 再分清 parameters、gradients、optimizer state、activations 谁是主因。
-3. 如果 activation 是主因，就继续看 checkpointing 和 offload。
+3. 如果确认 activation 是主因，再进入 checkpointing 和 offload；如果主因是参数、梯度或 optimizer state，则转向分片、量化或其他状态压缩路线。
 4. 如果 optimizer state 或参数常驻太高，就回到 sharding / ZeRO / 量化路线。
 5. 最后把收益放回 `73 / 74` 看时间代价。
 
@@ -48,14 +52,31 @@
 
 ## 对应 Part 02
 
-- `12` Gradient Accumulation
-- `17 / 18 / 19` backward、activation、checkpointing / offload
-- `73` Training Performance Analysis
+- [12 Gradient Accumulation](../../02_PyTorch_Algorithms/12_Gradient_Accumulation.ipynb)
+- [17 Autograd Basics](../../02_PyTorch_Algorithms/17_Autograd_Basics.ipynb)、[18 Activation and Loss Backward](../../02_PyTorch_Algorithms/18_Activation_and_Loss_Backward.ipynb)、[19 Activation Checkpointing and Activation Offload](../../02_PyTorch_Algorithms/19_Activation_Checkpointing_and_Activation_Offload.ipynb)
+- [73 Training Performance Analysis](../../02_PyTorch_Algorithms/73_Training_Performance_Analysis.ipynb)
 
 ## 典型阅读入口
 
 - [03 Checkpointing and Offload](./03_checkpointing_and_offload.md)
 - [06 Benchmark and Trade-off Decision](./06_benchmark_and_tradeoff_decision.md)
+
+## Task2 的策略账本
+
+| 机制 | 主要减少的对象 | 没有减少的对象 | 代价 | 本阶段证据 |
+|---|---|---|---|---|
+| Gradient Accumulation | 单个 micro-batch 的激活峰值 | 参数、梯度、优化器状态 | 更多微步，吞吐和 step 节奏变化 | 12 的有效 batch 练习 |
+| Checkpointing | 需要长期保存的中间激活 | 参数、梯度、优化器状态 | 反向阶段重算 | 19 的正确性与 toy 峰值对比 |
+| Offload | GPU 上驻留的部分激活 | 激活总量 | CPU-GPU 搬运、带宽和同步等待 | 42 的预算模拟，真实结论交给 76 |
+
+### Task2 结束时应能回答
+
+1. 当前 OOM 的主因是参数、梯度、优化器状态还是激活？
+2. 选择的策略具体减少了哪一类 GPU 驻留？
+3. 代价转移到了微步数量、重算，还是 CPU-GPU 搬运？
+4. 如何用 peak memory、reserved memory、step time、吞吐和质量指标验证？
+
+Task2 的 Notebook 只负责建立机制和小规模证据，不直接给出真实大模型收益百分比。需要形成项目结论时，进入 `73 → 76 → 75` 的固定 workload、预算和决策流程。
 
 ## 本节要点
 

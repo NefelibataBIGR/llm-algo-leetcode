@@ -22,17 +22,30 @@
 
 | 层级 | 主要内容 | 核心问题 | 边界判断 |
 |:---|:---|:---|:---|
-| L1 硬件与基础设施 | GPU/NPU、CPU、HBM、PCIe、NVLink、InfiniBand、SSD | 物理资源提供了什么能力？ | 改的是芯片、容量、带宽、拓扑或物理设备 |
-| L2 系统软件与加速库 | 驱动、CUDA/ROCm、编译器、Triton、NCCL、cuBLAS、FlashAttention | 如何把硬件能力调用出来？ | 改的是 kernel、算子、编译、通信原语或设备运行时 |
-| L3 框架与运行时 | PyTorch、JAX、FSDP、DeepSpeed、Megatron、训练运行时 | 模型计算和状态如何组织？ | 改的是计算图、自动求导、并行切分、状态管理或执行调度 |
-| L4 服务与模型优化 | vLLM、SGLang、TensorRT-LLM、量化、KV Cache、Serving 调度 | 一个模型实例如何高效执行？ | 改的是模型加载、请求处理、缓存、实例吞吐和延迟 |
-| L5 平台与 MLOps | 资源调度、模型仓库、灰度发布、监控、告警、工作流 | 多个模型和用户如何稳定交付？ | 改的是资源编排、版本生命周期、流量治理和服务可用性 |
+| Infra-L1 硬件与基础设施 | GPU/NPU、CPU、HBM、PCIe、NVLink、InfiniBand、SSD | 物理资源提供了什么能力？ | 改的是芯片、容量、带宽、拓扑或物理设备 |
+| Infra-L2 系统软件与加速库 | 驱动、CUDA/ROCm、编译器、Triton、NCCL、cuBLAS、FlashAttention | 如何把硬件能力调用出来？ | 改的是 kernel、算子、编译、通信原语或设备运行时 |
+| Infra-L3 框架与运行时 | PyTorch、JAX、FSDP、DeepSpeed、Megatron、训练运行时 | 模型计算和状态如何组织？ | 改的是计算图、自动求导、并行切分、状态管理或执行调度 |
+| Infra-L4 服务与模型优化 | vLLM、SGLang、TensorRT-LLM、量化、KV Cache、Serving 调度 | 一个模型实例如何高效执行？ | 改的是模型加载、请求处理、缓存、实例吞吐和延迟 |
+| Infra-L5 平台与 MLOps | 资源调度、模型仓库、灰度发布、监控、告警、工作流 | 多个模型和用户如何稳定交付？ | 改的是资源编排、版本生命周期、流量治理和服务可用性 |
 
-模型、数据和 workload 不是独立的一层，而是运行在这五层之上的负载面：训练主要落在 L3，推理主要落在 L4，最终都受 L1/L2 的硬件与系统软件约束。
+模型、数据和 workload 不是独立的一层，而是运行在这五层之上的负载面：训练主要落在 Infra-L3，推理主要落在 Infra-L4，最终都受 Infra-L1/Infra-L2 的硬件与系统软件约束。
 
-层间存在灰色地带。例如，FlashAttention 的算法思想属于方法层，kernel 实现属于 L2，服务集成属于 L4；FSDP / DeepSpeed 属于 L3，但底层会调用 L2 的 NCCL，集群资源又由 L5 管理；量化理论属于算法方法，低比特 kernel 属于 L2，推理部署属于 L4，模型版本和发布流程属于 L5。KV Cache 的数据结构和调度主要在 L3/L4，显存容量和带宽受 L1 约束，监控和扩缩容则属于 L5。
+层间存在灰色地带。例如，FlashAttention 的算法思想属于方法层，kernel 实现属于 Infra-L2，服务集成属于 Infra-L4；FSDP / DeepSpeed 属于 Infra-L3，但底层会调用 Infra-L2 的 NCCL，集群资源又由 Infra-L5 管理；量化理论属于算法方法，低比特 kernel 属于 Infra-L2，推理部署属于 Infra-L4，模型版本和发布流程属于 Infra-L5。KV Cache 的数据结构和调度主要在 Infra-L3/Infra-L4，显存容量和带宽受 Infra-L1 约束，监控和扩缩容则属于 Infra-L5。
 
-Profiling 不属于某一个固定层，而是贯穿 L1-L5 的证据工具。它把硬件利用率、kernel 时间、框架调度、服务请求和平台资源放到同一条证据链中；因此一个优化结论不能只说“某层变快了”，还要说明它对 `Compute / Memory / Communication / Quality / End-to-End` 的影响。
+Profiling 不属于某一个固定层，而是贯穿 Infra-L1–Infra-L5 的证据工具。它把硬件利用率、kernel 时间、框架调度、服务请求和平台资源放到同一条证据链中；因此一个优化结论不能只说“某层变快了”，还要说明它对 `Compute / Memory / Communication / Quality / End-to-End` 的影响。
+
+## Practice 实践级别
+
+项目中的 `Practice-P0~P3` 描述实验需要达到的真实运行深度，不是 Infra 层级：
+
+| Practice 级别 | 含义 |
+|:---|:---|
+| Practice-P0 | CPU-first 逻辑验证、公式推导或指标模板 |
+| Practice-P1 | 单 GPU、本地模型、单机 profiling 或显存实验 |
+| Practice-P2 | vLLM / SGLang 等真实 inference backend |
+| Practice-P3 | 多 GPU、分布式通信或分布式 serving |
+
+例如，一个项目可以是 `Practice-P1 + Infra-L4`：在单 GPU 上学习服务实例内部的推理调度；也可以是 `Practice-P2 + Infra-L3–Infra-L4`：接入真实 backend，验证运行时与服务层的性能。
 
 ## 横向能力轴
 
@@ -50,13 +63,13 @@ Profiling 与 Evaluation 横跨五层：前者负责采集证据，后者负责�
 
 | 方向 | 主要落点 | 主要问题 | 典型证据 |
 |:---|:---|:---|:---|
-| 训练微调 | L3，受 L1/L2 约束 | 模型如何学习、数据如何进入训练、参数如何更新 | loss、质量、显存、step time、训练稳定性 |
-| 推理优化 | L3-L4 | 请求如何经过 prefill、decode、cache 和调度 | TTFT、TPOT、吞吐、并发、端到端延迟 |
-| 显存优化 | 横跨 L1-L4 | 状态放在哪里，容量、带宽、重算和搬运如何取舍 | peak memory、带宽、吞吐、质量、OOM 边界 |
-| 算子优化 | L2，受 L1 约束 | kernel、布局、访存和计算如何贴合硬件 | kernel time、occupancy、带宽利用率、端到端收益 |
-| 编译器图优化 | L2-L3，连接 L1/L4 | 如何进行图变换、融合、lowering 和执行调度 | 编译日志、算子数、kernel 组合、端到端收益 |
+| 训练微调 | Infra-L3，受 Infra-L1/Infra-L2 约束 | 模型如何学习、数据如何进入训练、参数如何更新 | loss、质量、显存、step time、训练稳定性 |
+| 推理优化 | Infra-L3–Infra-L4 | 请求如何经过 prefill、decode、cache 和调度 | TTFT、TPOT、吞吐、并发、端到端延迟 |
+| 显存优化 | 横跨 Infra-L1–Infra-L4 | 状态放在哪里，容量、带宽、重算和搬运如何取舍 | peak memory、带宽、吞吐、质量、OOM 边界 |
+| 算子优化 | Infra-L2，受 Infra-L1 约束 | kernel、布局、访存和计算如何贴合硬件 | kernel time、occupancy、带宽利用率、端到端收益 |
+| 编译器图优化 | Infra-L2–Infra-L3，连接 Infra-L1/Infra-L4 | 如何进行图变换、融合、lowering 和执行调度 | 编译日志、算子数、kernel 组合、端到端收益 |
 
-选择方向时先问“问题发生在哪一层”，不要先问“哪个方向更热门”：训练问题优先看 L3，服务延迟优先看 L3/L4，OOM 优先看 Memory 轴，单 kernel 热点再下沉到 L2，图到硬件的映射问题则进入编译与图优化。
+选择方向时先问“问题发生在哪一层”，不要先问“哪个方向更热门”：训练问题优先看 Infra-L3，服务延迟优先看 Infra-L3/Infra-L4，OOM 优先看 Memory 轴，单 kernel 热点再下沉到 Infra-L2，图到硬件的映射问题则进入编译与图优化。
 
 ## 算子、异构并行与 MLSys 的专题占位
 
@@ -64,11 +77,11 @@ Profiling 与 Evaluation 横跨五层：前者负责采集证据，后者负责�
 
 | 能力 | 主要连接 | 在专题中的展开位置 | 当前项目入口 |
 |:---|:---|:---|:---|
-| 算子与编译优化 | L1-L3 | 编译与图优化专题；推理专题解释 kernel 对 prefill/decode 的影响 | `66 / 67 / 74` |
-| 异构并行与通信 | L1-L5 | 通信与并行专题；Profiling 负责定位计算、内存、通信等待 | `79 / 80 / 81` |
-| MLSys 方法 | L2-L5 | 作为跨专题方法：约束建模、profiling、benchmark、资源调度和回归决策 | `74 / 75 / 79` |
+| 算子与编译优化 | Infra-L1–Infra-L3 | 编译与图优化专题；推理专题解释 kernel 对 prefill/decode 的影响 | `66 / 67 / 74` |
+| 异构并行与通信 | Infra-L1–Infra-L5 | 通信与并行专题；Profiling 负责定位计算、内存、通信等待 | `79 / 80 / 81` |
+| MLSys 方法 | Infra-L2–Infra-L5 | 作为跨专题方法：约束建模、profiling、benchmark、资源调度和回归决策 | `74 / 75 / 79` |
 
-通信库、算子库和分布式并行库也按这个原则放置：NCCL 主要是 L2 的通信原语，cuBLAS、FlashAttention 等属于 L2 的算子/内核实现，PyTorch、FSDP、DeepSpeed、Megatron 等属于 L3 的框架与并行运行时；它们在 L4 的服务和 L5 的资源调度中被组合使用。专题不重复介绍同一个库，而是分别解释它在当前问题中的作用和代价。
+通信库、算子库和分布式并行库也按这个原则放置：NCCL 主要是 Infra-L2 的通信原语，cuBLAS、FlashAttention 等属于 Infra-L2 的算子/内核实现，PyTorch、FSDP、DeepSpeed、Megatron 等属于 Infra-L3 的框架与并行运行时；它们在 Infra-L4 的服务和 Infra-L5 的资源调度中被组合使用。专题不重复介绍同一个库，而是分别解释它在当前问题中的作用和代价。
 
 ## 多专题项目如何阅读
 

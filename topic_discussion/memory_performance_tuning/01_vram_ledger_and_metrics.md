@@ -70,11 +70,16 @@ total memory budget
 
 ![VRAM ledger](/topic_discussion/memory_performance_tuning/vram_ledger.svg)
 
-## 与 Task1-6 的关系
+## 与 Task0-6 的关系
 
-- `Task1-6` 负责学习顺序，告诉读者先读哪些 notebook。
+- `Task0` 负责理解 autograd 和 backward 生命周期；`Task1` 才把这些状态放回 GPU 显存层级中。
+- `Task0-6` 负责学习顺序，告诉读者先读哪些 notebook。
 - `01-06` 负责知识组织，把训练、推理和验证三条显存线收成同一套判断框架。
 - 因此，这一页是诊断起点，不是目录索引。
+
+## 本页输出与下一步
+
+读完本页，至少应能写出一份简化显存账本：参数、梯度、optimizer state、activation、KV cache 和框架 buffer 分别占什么位置，峰值出现在哪个阶段，以及下一步应该测什么。然后进入 [03 GPU Architecture and Memory](../../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.ipynb) 和 [20 FlashAttention Sim](../../02_PyTorch_Algorithms/20_FlashAttention_Sim.ipynb)，把账本对象连接到带宽、访存和计算路径。
 
 ## 文献锚点
 
@@ -84,11 +89,11 @@ total memory budget
 
 ## 对应 Part 02
 
-- `12` Gradient Accumulation
-- `19` Activation Checkpointing and Activation Offload
-- `22` vLLM PagedAttention
-- `25 / 40 / 41 / 67` 量化与部署
-- `73 / 74` 性能分析与端到端优化
+- [12 Gradient Accumulation](../../02_PyTorch_Algorithms/12_Gradient_Accumulation.ipynb)
+- [19 Activation Checkpointing and Activation Offload](../../02_PyTorch_Algorithms/19_Activation_Checkpointing_and_Activation_Offload.ipynb)
+- [22 vLLM PagedAttention](../../02_PyTorch_Algorithms/22_vLLM_PagedAttention.ipynb)
+- [25 W8A16](../../02_PyTorch_Algorithms/25_Quantization_W8A16.ipynb)、[40 GPTQ / AWQ](../../02_PyTorch_Algorithms/40_GPTQ_and_AWQ_Weight_Quantization.ipynb)、[41 FP8 / KV Cache Quantization](../../02_PyTorch_Algorithms/41_FP8_and_KV_Cache_Quantization.ipynb)、[67 Quantized Deployment](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.ipynb)
+- [73 Training Performance Analysis](../../02_PyTorch_Algorithms/73_Training_Performance_Analysis.ipynb)、[74 Profiling Driven Optimization](../../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.ipynb)
 
 ## 典型阅读入口
 

@@ -19,6 +19,11 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+try:
+    from inference_result_schema import from_backend_report
+except ImportError:  # pragma: no cover - supports ``python tools/...``
+    from tools.inference_result_schema import from_backend_report
+
 
 def _percentile(values: list[float], percentile: float) -> float | None:
     if not values:
@@ -147,6 +152,12 @@ def benchmark(args: argparse.Namespace) -> dict[str, Any]:
     tpot = [item["tpot_ms"] for item in successful]
     e2e = [item["e2e_ms"] for item in successful]
     output_tokens = sum(item["output_tokens"] for item in successful)
+    prompt_token_values = [
+        item["usage"].get("prompt_tokens")
+        for item in successful
+        if isinstance(item.get("usage"), dict)
+        and isinstance(item["usage"].get("prompt_tokens"), (int, float))
+    ]
     return {
         "label": args.label,
         "base_url": args.base_url,
@@ -170,6 +181,8 @@ def benchmark(args: argparse.Namespace) -> dict[str, Any]:
             "e2e_ms": {"mean": round(statistics.mean(e2e), 3) if e2e else None,
                        "p50": _percentile(e2e, 50), "p99": _percentile(e2e, 99)},
             "output_tokens": output_tokens,
+            "prompt_tokens_mean": round(statistics.mean(prompt_token_values), 3)
+            if prompt_token_values else None,
             "duration_s": round(duration_s, 4),
         },
         "results": results if args.include_requests else None,
@@ -181,6 +194,12 @@ def main() -> None:
     parser.add_argument("--base-url", default="http://127.0.0.1:8000")
     parser.add_argument("--model", required=True)
     parser.add_argument("--label", default="backend")
+    parser.add_argument("--project", default="66", help="Project number using the shared result schema")
+    parser.add_argument("--backend", default="vllm")
+    parser.add_argument("--dtype", default="unknown")
+    parser.add_argument("--batch", type=int, default=1)
+    parser.add_argument("--cache-policy", default="default")
+    parser.add_argument("--peak-memory-mb", type=float)
     parser.add_argument("--workload", help="JSONL file with prompt or messages fields")
     parser.add_argument("--prompt", default="Explain KV cache in one sentence.")
     parser.add_argument("--num-prompts", type=int, default=10)
@@ -193,6 +212,20 @@ def main() -> None:
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     report = benchmark(args)
+    normalized = from_backend_report(
+        report,
+        project=args.project,
+        strategy=args.label,
+        backend=args.backend,
+        dtype=args.dtype,
+        batch=args.batch,
+        cache_policy=args.cache_policy,
+        peak_memory_mb=args.peak_memory_mb,
+    )
+    # Keep the raw report for compatibility with earlier result files while
+    # adding a stable, cross-project contract under ``normalized_result``.
+    report["schema_version"] = normalized["schema_version"]
+    report["normalized_result"] = normalized
     serialized = json.dumps(report, ensure_ascii=False, indent=2)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)

@@ -13,6 +13,8 @@
 - `logging / experiment tracking`：关注训练过程是否留下足够证据支撑最终结论。
 - `report template`：关注 baseline、candidate、资源指标和采用建议怎么写清楚。
 
+60–65 的公共报告协议见[训练微调项目验证清单](../../docs/verification/fine_tuning_projects.md)，用于统一结果外层结构；本附录继续负责 checkpoint、artifact、tracking 和交付证据的细节。
+
 ## 这页不展开什么
 
 - `LoRA / QLoRA` 的机制差异
