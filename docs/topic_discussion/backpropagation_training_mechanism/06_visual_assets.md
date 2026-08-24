@@ -18,6 +18,16 @@
 
 这张图负责把 `dV -> dP -> dS -> dQ / dK` 的反向顺序固定下来。
 
+### 2.1 Naive vs FlashAttention Backward 对照图
+
+![Naive vs FlashAttention Backward](/topic_discussion/backpropagation_training_mechanism/attention_backward_impl_compare.svg)
+
+这张图负责说明现代实现差异：
+
+- 哪些中间状态被完整保存
+- 哪些状态在 backward 中重算
+- 哪些路径通过 fused kernel 减少了中间写回
+
 ### 3. 显存账本图
 
 ![显存账本图](/topic_discussion/backpropagation_training_mechanism/activation_ledger.svg)
@@ -46,6 +56,7 @@
 
 - 先看总图，确认机制链路。
 - 再看 attention 图，确认梯度回传顺序。
+- 再用对照图确认现代实现里哪些状态是“保存”、哪些是“重算”、哪些是“融合带过”。
 - 再看显存账本图，确认为什么要做优化。
 - 最后看两类取舍图和标签对齐图，确认怎么选方案。
 

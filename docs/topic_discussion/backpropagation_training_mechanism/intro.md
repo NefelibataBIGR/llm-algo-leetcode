@@ -4,9 +4,21 @@
 
 本专题用于串起训练机制主线：先看梯度怎么沿计算图回传，再看 attention backward、loss 对齐、activation 保存、checkpointing、offload 和梯度累积怎样一起影响训练节奏与显存代价。这里聚焦训练侧基础机制；如果问题已经进入项目交付或训练路线选择，应转到监督微调专题。
 
+## Infra 层定位
+
+本专题主要连接 L2-L3：L2 解释算子、kernel 和自动求导如何执行，L3 解释框架如何构建计算图、保存 activation 并调度 backward。它向下受 L1 的显存容量与带宽约束，向上支撑 L4 的训练项目与显存优化决策；checkpoint、offload 和梯度累积属于跨层策略，必须同时看计算、内存和通信代价。
+
+## 推荐入口
+
+推荐把本专题作为 [监督微调专题](../fine_tuning_training/intro.md) 或 [显存优化专题](../memory_performance_tuning/intro.md) 的机制桥接。需要理解训练为什么变慢、爆显存或必须做 checkpointing 时，再进入对应的 Task，而不是把本专题当作独立项目线顺序完成。
+
+## 前置阅读
+
+建议先具备 `Part 00` 的 PyTorch 张量与自动求导基础；如果要进入 attention backward、checkpointing 或 offload，可直接按表中 `17 -> 18 -> 19 -> 42` 回看来源 notebook。
+
 ## 主学习线
 
-`Task1-5` 是学习路线，指向 `Part00 / Part01 / Part02` 的具体小节；最后一列主要对应 `01-05` 的专题正文页，`06` 是图册补充。
+`Task1-5` 是学习路线，指向 `Part 00 / Part 01 / Part 02` 的具体小节；最后一列主要对应 `01-05` 的专题正文页，`06` 是图册补充。
 
 | Task | 学习内容 | 主学习线 | 专题正文 |
 |:---|:---|:---|:---|
@@ -22,3 +34,7 @@
 
 如果问题已经跨到别的专题：
 [监督微调专题](../fine_tuning_training/intro.md) 负责训练闭环与项目交付，[显存优化专题](../memory_performance_tuning/intro.md) 负责训练侧显存 trade-off，[Profiling 专题](../profiling/intro.md) 负责证据链与热点定位。
+
+## 环境与验证
+
+计算图、loss 和小规模 backward 实验通常可用 CPU；长序列、checkpoint/offload 和真实训练性能比较建议使用 GPU。验证时应区分数值正确性、峰值显存和 step time，不能把单项指标改善直接当成整体优化结论。

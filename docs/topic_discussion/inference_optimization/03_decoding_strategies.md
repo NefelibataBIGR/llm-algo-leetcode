@@ -56,7 +56,7 @@ decode 阶段的核心不是“选哪种采样”，而是“每轮生成能不�
 - speculative decoding 只看理论速度，不看 acceptance。
 - multi-token decoding 和调度问题混在一起看。
 
-## 对应 Part02
+## 对应 Part 02
 
 - `21` Decoding Strategies
 - `23` Speculative Decoding
@@ -66,16 +66,16 @@ decode 阶段的核心不是“选哪种采样”，而是“每轮生成能不�
 
 ## 经典阅读入口
 
-- [21 Decoding Strategies](../../02_PyTorch_Algorithms/21_Decoding_Strategies.ipynb)
-- [23 Speculative Decoding](../../02_PyTorch_Algorithms/23_Speculative_Decoding.ipynb)
-- [35 Multi-Token Decoding](../../02_PyTorch_Algorithms/35_Multi_Token_Decoding.ipynb)
-- [36 Decode Scheduling](../../02_PyTorch_Algorithms/36_Decode_Scheduling.ipynb)
+- [21 Decoding Strategies](../../02_PyTorch_Algorithms/21_Decoding_Strategies.md)
+- [23 Speculative Decoding](../../02_PyTorch_Algorithms/23_Speculative_Decoding.md)
+- [35 Multi-Token Decoding](../../02_PyTorch_Algorithms/35_Multi_Token_Decoding.md)
+- [36 Decode Scheduling](../../02_PyTorch_Algorithms/36_Decode_Scheduling.md)
 
 ## 相关跳转
 
 - 看 `01`，确认指标口径。
 - 看 `04`，确认 decode 和 cache 怎么协作。
 
-## 小结
+## 本节要点
 
 解码优化的重点是减少无效循环，让生成阶段的 token 产出更快。

@@ -4,6 +4,8 @@
 
 这一页负责把前面的并行判断收束到 benchmark：这套并行方案到底值不值得继续保留。
 
+本页的输出是并行交付决策：明确显存、吞吐、延迟、通信占比、扩展效率和复杂度之间的取舍，并选择 `keep / tune / reject`。
+
 ## 问题起点
 
 并行专题里最常见的误判是：显存降了、卡数多了，所以一定更好。工程上真正要问的是：
@@ -51,6 +53,10 @@
 - [04 Pipeline and Tensor Parallel](./04_pipeline_and_tensor_parallel.md)
 - [05 Expert Parallel and Communication Hotspots](./05_expert_parallel_and_communication_hotspots.md)
 
-## 小结
+## 项目结论
 
 并行路线最终不是靠“方法名更复杂”成立，而是靠 benchmark 和通信热点解释成立。
+
+## 回到项目
+
+将结论回填到 `79 分布式并行 benchmark -> 80 MoE 专家并行 benchmark -> 81 分布式推理项目`。单卡模拟只能解释机制；真实多卡结论必须保留 world size、拓扑、通信库和 workload。

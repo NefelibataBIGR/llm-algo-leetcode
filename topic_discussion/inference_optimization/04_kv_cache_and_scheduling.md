@@ -4,6 +4,12 @@
 
 这一页回答的是：KV cache 怎么增长、复用、分页、驱逐，decode 请求怎么排。
 
+## 本节在路线中的位置
+
+本节对应 **Task4：KV Cache 与推理服务内存管理**。它承接 03 的 Decode 生成循环，进一步解释为什么并发、长上下文和重复前缀会把服务推到显存或调度边界；完成后可以进入 Task5 的量化部署，或先用 69 / 70 做缓存与调度项目验证。
+
+本节同时覆盖 Infra-L3 运行时和 Infra-L4 服务优化：KV Cache 的布局、分页和复用属于运行时执行机制；请求排队、batch 组织和服务内存边界属于服务实例内部的优化。跨模型路由、扩缩容和灰度发布仍属于 Infra-L5，不在本节主线内。
+
 ## 问题起点
 
 只要系统开始做长上下文、多轮对话或高并发服务，KV cache 就很快从“实现细节”变成“系统边界”：
@@ -19,6 +25,8 @@
 - peak memory 是否接近预算。
 - 长上下文和并发请求是否把 cache 撑爆。
 - prefix reuse 是否有明显收益。
+
+还要固定请求分布、prompt 长度、generated tokens、batch、并发窗口和 cache policy；否则 cache hit rate、TTFT 和显存变化没有可比性。
 
 ## 核心矛盾
 
@@ -43,6 +51,20 @@ KV cache 是推理链路里最容易成为硬约束的部分。
 
 因此，这一页的读法应该是：先看 cache 是否成为硬约束，再决定先做复用、分页、调度还是压缩。
 
+## 学习者交付物
+
+完成本节后，至少应形成一份 KV Cache / Serving 判断：
+
+| 项目 | 最小内容 |
+|:---|:---|
+| 增长边界 | 层数、KV heads、上下文长度、batch 和并发如何影响 cache |
+| 请求证据 | prefix reuse、cache hit rate、TTFT、TPOT 和 peak memory |
+| 管理策略 | paging、prefix reuse、cache policy、调度或容量限制 |
+| 服务代价 | cache 维护、碎片、排队、batch 变化和公平性影响 |
+| 下一步 | 进入 05 看量化，或用 69 / 70 做主题项目验证 |
+
+核心结论应能够区分：当前问题是 cache 容量不够、cache 复用不足、内存碎片，还是请求调度没有把可并行的工作组织起来。
+
 ![KV cache lifecycle and scheduling](/topic_discussion/inference_optimization/kv_cache_scheduling.svg)
 
 ## 文献锚点
@@ -57,7 +79,7 @@ KV cache 是推理链路里最容易成为硬约束的部分。
 - 只看单请求，不看并发。
 - 看到 cache 占用高就直接量化，不先看复用和调度。
 
-## 对应 Part02
+## 对应 Part 02
 
 - `22` vLLM PagedAttention
 - `24` SGLang RadixAttention
@@ -79,6 +101,14 @@ KV cache 是推理链路里最容易成为硬约束的部分。
 - 看 `03`，确认 decode 循环怎么耗时。
 - 看 `05`，确认 cache 不够时怎么压缩。
 
-## 小结
+## 对应项目
+
+- **核心主题项目：** [69 Prefix Caching Benchmark](../../02_PyTorch_Algorithms/69_Prefix_Caching_Benchmark.ipynb)，验证请求复用模式、cache hit rate、TTFT 和维护成本。
+- **扩展项目：** [70 Serving Scheduler Benchmark](../../02_PyTorch_Algorithms/70_Serving_Scheduler_Benchmark.ipynb)，验证队列、batch、TTFT、TPOT、吞吐和公平性。
+- **综合项目：** [66 Inference Performance Comparison](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.ipynb)，把 Cache 和调度候选放回统一 workload 做最终比较。
+
+没有真实 backend 时，可以先完成请求分布、命中行为和调度逻辑的 Practice-P1 模拟；接入 vLLM / SGLang 后，再升级为 Practice-P2，验证真实服务中的分页、复用和调度代价。
+
+## 本节要点
 
 KV cache 不是附属缓存，而是推理吞吐和上下文长度的核心边界。

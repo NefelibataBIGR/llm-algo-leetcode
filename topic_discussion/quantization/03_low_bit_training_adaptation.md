@@ -4,6 +4,8 @@
 
 这一页回答的是：当纯 PTQ 不够时，为什么会出现 QAT、LoRA / QLoRA 这类“训练适配量化”的路线。
 
+本页的输出是训练适配边界：质量损失是否值得通过额外训练恢复，以及训练显存、时间和稳定性是否被纳入收益计算。
+
 ## 问题起点
 
 很多量化问题并不是“压不下去”，而是“压下去后效果掉太多”。一旦进入这个阶段，量化就不再只是部署动作，而开始和训练、微调、参数高效适配绑在一起。
@@ -35,7 +37,7 @@
 - QAT 经典资料：理解量化误差如何被训练过程显式吸收。
 - QLoRA / PEFT 资料：理解为什么低比特和参数高效微调常一起出现。
 
-## 对应 Part02
+## 对应 Part 02
 
 - `26` QLoRA and 4bit Quantization
 - `60` LoRA Fine-Tuning Project
@@ -45,6 +47,10 @@
 - [02 PTQ and QAT Timing](./02_ptq_and_qat_timing.md)
 - [06 Deployment and Benchmark Decision](./06_deployment_and_benchmark_decision.md)
 
-## 小结
+## 本节要点
 
 低比特训练适配是量化路线和微调路线的交叉区，重点不是“多做训练”，而是“多做训练是否真能换回可接受收益”。
+
+## 进入下一页
+
+若目标是压缩模型驻留并尽量保持推理路径稳定，进入 [04 权重量化与后训练压缩](./04_weight_only_compression.md)；若目标是缓存预算，则进入 [05 FP8 与 KV Cache 量化](./05_fp8_and_kv_cache_quantization.md)。

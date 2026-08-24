@@ -82,7 +82,7 @@ total memory budget
 - PyTorch profiler / memory profiling 文档：帮助理解实测峰值和保留显存的区别。
 - ZeRO / activation checkpointing 相关论文：帮助理解为什么账本要先拆成对象。
 
-## 对应 Part02
+## 对应 Part 02
 
 - `12` Gradient Accumulation
 - `19` Activation Checkpointing and Activation Offload
@@ -96,6 +96,6 @@ total memory budget
 - [04 Inference Cache and Memory Budget](./04_inference_cache_and_memory_budget.md)
 - [06 Benchmark and Trade-off Decision](./06_benchmark_and_tradeoff_decision.md)
 
-## 小结
+## 本节要点
 
 显存优化的第一步不是动技巧，而是先把峰值拆成对象、把对象放回同一张账本里。

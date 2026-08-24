@@ -117,6 +117,6 @@
 - [Profiling 专题](../profiling/intro.md)：当你需要补吞吐、显存和训练热点证据时先看这里。
 - [显存优化专题](../memory_performance_tuning/intro.md)：当项目交付需要解释 OOM、checkpointing 或资源账本时先看这里。
 
-## 小结
+## 本节要点
 
 项目交付附录的重点不是再跑一次训练，而是把 checkpoint、artifact、tracking 和最终结论收成一套别人能接手的证据链。

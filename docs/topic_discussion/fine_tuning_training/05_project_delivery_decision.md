@@ -33,16 +33,16 @@
 
 ## 经典阅读入口
 
-- [60 LoRA Fine-Tuning Project](../../02_PyTorch_Algorithms/60_LoRA_Fine_Tuning_Project.ipynb)
-- [26 QLoRA and 4bit Quantization](../../02_PyTorch_Algorithms/26_QLoRA_and_4bit_Quantization.ipynb)
-- [13 End-to-End Fine-Tuning Experiment](../../02_PyTorch_Algorithms/13_End_to_End_Fine_Tuning_Experiment.ipynb)
+- [60 LoRA Fine-Tuning Project](../../02_PyTorch_Algorithms/60_LoRA_Fine_Tuning_Project.md)
+- [26 QLoRA and 4bit Quantization](../../02_PyTorch_Algorithms/26_QLoRA_and_4bit_Quantization.md)
+- [13 End-to-End Fine-Tuning Experiment](../../02_PyTorch_Algorithms/13_End_to_End_Fine_Tuning_Experiment.md)
 
 ## 前置关系
 
 - 先看 `04`，确认实验已经闭环。
 - 再看 `05`，把实验变成交付决策。
 
-## 小结
+## 项目结论
 
 项目交付不是训练的附属步骤，而是闭环的一部分。
 只有能交付、能复现、能解释的结果，才算真正完成 SFT。

@@ -4,6 +4,8 @@
 
 这一页把训练里最容易出错的两件事放在一起看：监督口径到底在哪里，和 backward 为什么会把显存吃满。
 
+本页的输出是可信账本：确认 labels、mask、shift、ignore_index 的监督边界，并拆开 activation、参数、梯度、优化器状态和系统缓冲。
+
 ## 核心问题
 
 ### 1. 为什么 `mask / shift / ignore_index` 很重要
@@ -68,3 +70,7 @@ label alignment 里最关键的不是“有没有算 loss”，而是“loss 在
 
 - 先确认监督区间，再谈模型是否学得好。
 - 如果你已经知道 next-token prediction，就重点看 mask / shift / ignore_index。
+
+## 进入下一页
+
+如果主要压力来自 activation，进入 [04 Checkpointing 与 Offload](./04_checkpointing_and_offload.md)；如果主要问题是更新频率或有效 batch，再进入 [05 梯度累积、训练闭环与 Profiling](./05_accumulation_decision_profiling.md)。

@@ -2,6 +2,10 @@
 
 ## 页面目标
 
+这一页回答的是：高层图如何经过 legalization、lowering 和 schedule 变成可执行 kernel，以及哪些转换会把图级收益损失掉。
+
+本页的输出是执行候选：明确语义等价之外的 tile、layout、kernel 组织和调度约束。
+
 这一页负责解释为什么 lowering 不是简单翻译，以及 legal / executable / efficient 这三件事为什么不能混成一个判断。
 
 ## 问题起点
@@ -19,6 +23,10 @@
 - layout transformation
 - codegen 之前的执行形态
 
+## 进入下一页
+
+进入 [04 执行模型与 Backend 约束](./04_execution_model_and_backend_constraints.md)，把 lowering 结果放回具体硬件和 runtime 执行模型。
+
 ## 可视化入口
 
 ![Lowering and Schedule Ladder](/topic_discussion/compiler_graph_optimization/lowering_schedule_ladder.svg)
@@ -29,6 +37,6 @@
 - `33 TCO and Cost Model`
 - `29 CUDA Stream Advanced Scheduling`
 
-## 小结
+## 本节要点
 
 lowering 的关键不是“能翻译”，而是“翻译之后是否仍然划算”。

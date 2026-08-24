@@ -4,6 +4,8 @@
 
 这一页讲两种最重要的显存优化策略：重算换显存和搬运换显存。
 
+本页的输出是策略边界：明确 checkpointing 消除的是哪类保存，offload 改变的是状态驻留位置，以及算力、带宽和 wall time 各自承担什么代价。
+
 ## 核心问题
 
 ### 1. checkpointing 做了什么
@@ -66,3 +68,7 @@ checkpointing / offload 不是同一个维度的方案：
 
 - 先把 checkpointing 和 offload 区分开。
 - 这页的重点是代价模型，不是 API 语法。
+
+## 进入下一页
+
+把策略带来的显存和时间变化带入 [05 梯度累积、训练闭环与 Profiling](./05_accumulation_decision_profiling.md)，统一 effective batch、step time 和验证口径。

@@ -23,6 +23,8 @@
 - 绝对位置编码 -> 相对位置编码 -> RoPE -> RoPE 扩展
 - FFN -> GELU -> SwiGLU -> MoE-FFN
 
+这张图的作用是让读者先知道“演化顺序”，再去看每个单页。
+
 ![模块演进时间线](/topic_discussion/model_architecture/timeline.png)
 
 ### 2. Block 总图
@@ -38,6 +40,8 @@
 - residual add
 - optional MoE replacement
 
+这张图是 `06_block_residual_path.md` 的视觉版本，也是 `01-08` 的总对照图。
+
 ![Decoder Block 总图](/topic_discussion/model_architecture/block_overview.png)
 
 ### 3. 代表模型结构矩阵
@@ -48,6 +52,24 @@
 - 列：tokenization、norm、attention、RoPE、MLP、decoder-only、长上下文、系统优化
 
 它的作用不是记参数，而是快速看出各模型的结构选择差异。
+
+这张矩阵建议后续用表格 + 图结合呈现；当前已经补了一版视觉锚点：
+
+![代表模型结构矩阵](/topic_discussion/model_architecture/representative_models_matrix.svg)
+
+### 3.1 国产模型版本分层图
+
+除了总矩阵，后续最值得单独补的是一张“国产模型版本分层图”：
+
+- `Qwen2.5 -> Qwen3 Dense / Qwen3 MoE`
+- `DeepSeek-V2 -> V3 -> V3.2 -> V4`
+- `DeepSeek-R1` 从结构基座分叉出去
+
+这张图的目标不是做产品罗列，而是帮助读者区分：
+
+- 哪些是基础模型代际
+- 哪些是 `dense / MoE` 结构分化
+- 哪些是后训练 / reasoning 分支
 
 ### 4. 跨模块关系图
 
@@ -60,6 +82,12 @@
 - `01_transformer_decoder` -> `08_representative_models`
 - `08_representative_models` -> `09_moe_sparsity_evolution`
 
+这张图是整个专题的“知识导航图”。
+
+专题页之间的关系图，当前已经补了一版：
+
+![跨模块知识地图](/topic_discussion/model_architecture/cross_module_map.svg)
+
 ## 当前图册
 
 建议的观看顺序：
@@ -69,6 +97,7 @@
 3. `DeepSeek Attention 演进图`、`MoE / Sparsity 路由图`
 4. `MoE / Sparsity 演进图`
 5. `代表模型结构矩阵`、`跨模块知识地图`
+6. `Qwen 版本分层图`、`DeepSeek 版本分层图`
 
 - [专题总导航图](/topic_discussion/model_architecture/overview_map.svg)
 - [模块演进时间线](/topic_discussion/model_architecture/timeline.png)
@@ -76,6 +105,10 @@
 - [DeepSeek Attention 演进图](/topic_discussion/model_architecture/deepseek_attention.png)
 - [MoE / Sparsity 路由图](/topic_discussion/model_architecture/moe_sparsity.png)
 - [MoE / Sparsity 演进图](/02_PyTorch_Algorithms/09_moe_sparsity_evolution.svg)
+- [代表模型结构矩阵](/topic_discussion/model_architecture/representative_models_matrix.svg)
+- [跨模块知识地图](/topic_discussion/model_architecture/cross_module_map.svg)
+- [Qwen 版本分层图](/topic_discussion/model_architecture/qwen_version_split.svg)
+- [DeepSeek 版本分层图](/topic_discussion/model_architecture/deepseek_version_split.svg)
 
 ## 设计原则
 

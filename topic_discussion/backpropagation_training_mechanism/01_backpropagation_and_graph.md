@@ -4,6 +4,8 @@
 
 这一页把“为什么要单独看 backward”说清楚，并把它和计算图、链式法则、显存和调度边界连起来。
 
+本页的输出是训练图总览：明确梯度沿哪里回传、哪些中间状态必须保留，以及这些保存边界为什么会影响显存和调度。
+
 ## 核心问题
 
 ### 1. backward 在训练里处于什么位置
@@ -55,3 +57,7 @@ forward 负责产生输出，backward 负责把 loss 的信号沿计算图传回
 
 - 先把它当成整条专题的导言页。
 - 如果你已经知道 backward 的基本概念，可以直接进入 `02`。
+
+## 进入下一页
+
+进入 [02 Autograd 与 Attention Backward](./02_autograd_and_attention_backward.md)，把计算图上的抽象梯度路径对齐到 PyTorch autograd 和 attention 算子。

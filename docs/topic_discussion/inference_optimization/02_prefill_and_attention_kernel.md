@@ -56,7 +56,7 @@ prefill 不是“先算一遍前向”这么简单。它要把已有 prompt 组�
 - 把 prefill 慢简单等同于模型本身慢。
 - chunked prefill 和 prefix caching 混为一谈。
 
-## 对应 Part02
+## 对应 Part 02
 
 - `20` FlashAttention Sim
 - `34` Prefix Caching and Chunked Prefill
@@ -64,16 +64,16 @@ prefill 不是“先算一遍前向”这么简单。它要把已有 prompt 组�
 
 ## 经典阅读入口
 
-- [03 GPU Architecture and Memory](../../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.ipynb)
-- [14 FlashAttention Memory Model](../../01_Hardware_Math_and_Systems/14_FlashAttention_Memory_Model.ipynb)
-- [24 SRAM Optimization Techniques](../../01_Hardware_Math_and_Systems/24_SRAM_Optimization_Techniques.ipynb)
-- [20 FlashAttention Sim](../../02_PyTorch_Algorithms/20_FlashAttention_Sim.ipynb)
+- [03 GPU Architecture and Memory](../../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.md)
+- [14 FlashAttention Memory Model](../../01_Hardware_Math_and_Systems/14_FlashAttention_Memory_Model.md)
+- [24 SRAM Optimization Techniques](../../01_Hardware_Math_and_Systems/24_SRAM_Optimization_Techniques.md)
+- [20 FlashAttention Sim](../../02_PyTorch_Algorithms/20_FlashAttention_Sim.md)
 
 ## 相关跳转
 
 - 看 `01`，确认指标口径。
 - 看 `04`，确认 prefill 结束后 cache 怎么接。
 
-## 小结
+## 本节要点
 
 prefill 优化的重点是减少访存和中间写回，把首 token 延迟压下来。

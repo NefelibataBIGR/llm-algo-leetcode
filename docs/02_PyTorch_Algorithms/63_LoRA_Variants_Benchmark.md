@@ -13,11 +13,7 @@
 
 ## 本节导读
 
-这一节对应的真实项目问题不是“LoRA 变体里哪个名字听起来更先进”，而是“在既定训练预算和交付目标下，哪一种 LoRA 配置最值得继续采用”。真实工程里，读者真正要比较的不是单点分数，而是不同 rank、alpha、dropout、target modules 和初始化策略在效果、显存、步时和可训练参数上的综合代价。
-
-本节的核心矛盾是变体收益与资源成本之间的权衡：某些配置可能带来更好的 train / val 表现，但也可能明显抬高训练参数、显存峰值或训练时间。做完这一节，你应该能输出一份 LoRA 变体 benchmark 结论，而不只是得到一张排序表。
-
-因此，这一页把 LoRA 变体收成一个最小 benchmark 交付入口：先固定比较口径，再比较不同 rank、alpha、dropout、target modules 和资源消耗，最后把候选方案收成 `accept / tune / reject` 的项目结论。它直接承接 `10 / 12 / 13 / 60` 的基础 LoRA 项目，并继续通向 `73` 的训练性能分析。
+本节要求你在统一训练预算下比较多种 LoRA 配置。固定数据、步数和评测口径后，分别记录 rank、alpha、dropout、target modules 对效果、显存、训练步时和可训练参数量的影响。最终输出一张 benchmark 排名与推荐表，并说明推荐结果依赖哪些约束。
 
 **关键词：** `LoRA`, `variant`, `benchmark`, `budget`, `decision`
 

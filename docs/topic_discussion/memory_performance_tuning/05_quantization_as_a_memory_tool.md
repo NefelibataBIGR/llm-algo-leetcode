@@ -43,7 +43,7 @@
 - GPTQ / AWQ：看权重量化如何在有限损失下省驻留。
 - FP8 / KV cache quantization 资料：看缓存压缩怎样改变显存预算。
 
-## 对应 Part02
+## 对应 Part 02
 
 - `25` Quantization W8A16
 - `40` GPTQ and AWQ Weight Quantization
@@ -55,6 +55,6 @@
 - [04 Inference Cache and Memory Budget](./04_inference_cache_and_memory_budget.md)
 - [06 Benchmark and Trade-off Decision](./06_benchmark_and_tradeoff_decision.md)
 
-## 小结
+## 本节要点
 
 量化在本专题里是预算工具。它必须先回答“装不装得下”，再讨论“跑得快不快”。

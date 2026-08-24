@@ -14,11 +14,7 @@
 
 ## 本节导读
 
-这一节对应的真实项目问题不是“QLoRA 能不能跑起来”，而是“在既定显存预算、吞吐约束和质量下限下，QLoRA 是否比 LoRA 或全参数方案更值得采用”。真实工程里，低资源微调的核心不是把 bit 数压得越低越好，而是判断压缩带来的显存收益，是否足以覆盖训练稳定性、步时和最终效果的代价。
-
-本节的核心矛盾是预算约束与训练质量之间的权衡：QLoRA 往往能显著降低显存占用，但也会引入量化误差、实现复杂度和恢复成本。做完这一节，你应该能输出一份 baseline vs LoRA vs QLoRA 的项目结论，而不只是给出“显存省了多少”的单项指标。
-
-因此，这一页把 QLoRA 选型收成一个最小项目交付入口：先固定预算、质量下限和候选方案，再统一比较显存、吞吐、训练稳定性和验证质量，最后把结果收成 `accept / tune / reject` 的项目结论。它直接承接 `10 / 12 / 13 / 40 / 41` 的微调与量化基础，并继续通向 `67` 的量化部署验证和 `75` 的显存预算压缩项目。
+本节要求你在显存预算和质量下限明确的情况下，比较全参数、LoRA 与 QLoRA 三种方案。统一记录显存、吞吐、训练稳定性和验证质量，确认量化收益是否足以覆盖额外误差与实现成本。最终输出当前预算下的方案选择及其适用边界。
 
 **关键词：** `QLoRA`, `budget`, `memory`, `selection`, `project`
 
@@ -29,7 +25,7 @@
 - [10. LoRA Tutorial | LoRA 教程](./10_LoRA_Tutorial.md)
 - [12. Gradient Accumulation | 梯度累积](./12_Gradient_Accumulation.md)
 - [13. End-to-End Fine-Tuning Experiment | 端到端微调实验](./13_End_to_End_Fine_Tuning_Experiment.md)
-- [40. GPTQ and AWQ | GPTQ 与 AWQ](./40_GPTQ_and_AWQ.md)
+- [40. GPTQ and AWQ | GPTQ 与 AWQ](./40_GPTQ_and_AWQ_Weight_Quantization.md)
 
 ## 相关阅读
 

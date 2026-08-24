@@ -10,11 +10,7 @@
 
 ## 本节导读
 
-这一节对应的真实项目问题不是“DPO loss 能不能下降”，而是“在既定偏好数据、评测窗口和 beta 约束下，这个离线偏好优化方案是否值得继续训练”。真实工程里，读者真正要判断的不是单独的 loss 变化，而是 baseline 与 candidate 在数据合法性、margin 稳定性和 chosen / rejected 区分固定之后，是否还能支撑可解释的对齐决策结论。
-
-本节的核心矛盾是离线优化收益与数据 / 模板风险之间的权衡：DPO 可以稳定拉开 chosen 与 rejected 的相对优势，也可能因为偏好对不干净、模板不一致或 beta 不合适而把结论做偏。做完这一节，你应该能输出一份 baseline vs candidate 的离线偏好优化结论，而不只是记录一条 loss 曲线。
-
-因此，这一页把 DPO 收成一个最小项目交付入口：先定义离线偏好项目目标，再确认 baseline 与数据口径合法，用统一口径比较 loss、margin 和 coverage，并把结论收成 `accept / tune / reject` 的项目判断。它直接承接 `15 / 2.4 / 50 / 51` 的偏好优化直觉，并继续通向 `85` 的组内对齐项目和 `86` 的在线 DPO 基准。
+本节围绕一个离线 DPO 方案是否值得继续训练展开。你需要先检查偏好数据和 chosen / rejected 样本的合法性，再比较 baseline 与 candidate 的 loss、margin 和有效样本比例。最后判断当前收益是否足以覆盖数据风险，并给出继续训练、调整数据或停止实验的建议。
 
 **关键词：** `preference pair`, `margin`, `baseline`, `alignment decision`
 ## 前置阅读

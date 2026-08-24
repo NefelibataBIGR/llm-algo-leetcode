@@ -60,7 +60,7 @@
 - 不分在线交互和离线批处理，直接比较量化收益。
 - 把推理量化和训练量化混在一起看。
 
-## 对应 Part02
+## 对应 Part 02
 
 - `25` Quantization W8A16
 - `40` GPTQ and AWQ Weight Quantization
@@ -69,11 +69,11 @@
 
 ## 经典阅读入口
 
-- [21 Quantization Theory and INT4 INT8](../../01_Hardware_Math_and_Systems/21_Quantization_Theory_and_INT4_INT8.ipynb)
-- [25 Quantization W8A16](../../02_PyTorch_Algorithms/25_Quantization_W8A16.ipynb)
-- [40 GPTQ and AWQ Weight Quantization](../../02_PyTorch_Algorithms/40_GPTQ_and_AWQ_Weight_Quantization.ipynb)
-- [41 FP8 and KV Cache Quantization](../../02_PyTorch_Algorithms/41_FP8_and_KV_Cache_Quantization.ipynb)
-- [67 Quantized Inference and Deployment](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.ipynb)
+- [21 Quantization Theory and INT4 INT8](../../01_Hardware_Math_and_Systems/21_Quantization_Theory_and_INT4_INT8.md)
+- [25 Quantization W8A16](../../02_PyTorch_Algorithms/25_Quantization_W8A16.md)
+- [40 GPTQ and AWQ Weight Quantization](../../02_PyTorch_Algorithms/40_GPTQ_and_AWQ_Weight_Quantization.md)
+- [41 FP8 and KV Cache Quantization](../../02_PyTorch_Algorithms/41_FP8_and_KV_Cache_Quantization.md)
+- [67 Quantized Inference and Deployment](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.md)
 
 ## 相关跳转
 
@@ -81,6 +81,6 @@
 - 看 `04`，确认 cache 是否已经是硬约束。
 - 看 `06`，把量化和其他候选方案一起比较。
 
-## 小结
+## 本节要点
 
 量化是推理优化的候选方案之一，不是默认答案；最终仍要回到 workload 和服务目标。
