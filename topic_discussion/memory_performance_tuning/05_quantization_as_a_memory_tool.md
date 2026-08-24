@@ -24,6 +24,10 @@
 
 量化通过降低数值表示成本来省显存和带宽，但它一定会同时引入精度、kernel、兼容性或部署复杂度上的代价。因此，这条线的核心不是“能不能量化”，而是“量化是否值得作为显存优化工具”。
 
+## 量化对象与证据顺序
+
+先区分权重、activation 和 KV Cache 三个对象，再决定使用哪一种量化路线：[21 Quantization Theory](../../01_Hardware_Math_and_Systems/21_Quantization_Theory_and_INT4_INT8.ipynb) 和 [25 W8A16](../../02_PyTorch_Algorithms/25_Quantization_W8A16.ipynb) 适合建立基础；[40 GPTQ / AWQ](../../02_PyTorch_Algorithms/40_GPTQ_and_AWQ_Weight_Quantization.ipynb) 和 [41 FP8 / KV Cache Quantization](../../02_PyTorch_Algorithms/41_FP8_and_KV_Cache_Quantization.ipynb) 进入扩展路线；最后用 [67 Quantized Inference and Deployment](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.ipynb) 验证显存、速度和质量是否同时满足约束。
+
 ## 演化路径
 
 1. 先识别预算对象是权重还是 cache。
@@ -43,18 +47,18 @@
 - GPTQ / AWQ：看权重量化如何在有限损失下省驻留。
 - FP8 / KV cache quantization 资料：看缓存压缩怎样改变显存预算。
 
-## 对应 Part02
+## 对应 Part 02
 
-- `25` Quantization W8A16
-- `40` GPTQ and AWQ Weight Quantization
-- `41` FP8 and KV Cache Quantization
-- `67` Quantized Inference and Deployment
+- [25 Quantization W8A16](../../02_PyTorch_Algorithms/25_Quantization_W8A16.ipynb)
+- [40 GPTQ and AWQ Weight Quantization](../../02_PyTorch_Algorithms/40_GPTQ_and_AWQ_Weight_Quantization.ipynb)
+- [41 FP8 and KV Cache Quantization](../../02_PyTorch_Algorithms/41_FP8_and_KV_Cache_Quantization.ipynb)
+- [67 Quantized Inference and Deployment](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.ipynb)
 
 ## 典型阅读入口
 
 - [04 Inference Cache and Memory Budget](./04_inference_cache_and_memory_budget.md)
 - [06 Benchmark and Trade-off Decision](./06_benchmark_and_tradeoff_decision.md)
 
-## 小结
+## 本节要点
 
 量化在本专题里是预算工具。它必须先回答“装不装得下”，再讨论“跑得快不快”。

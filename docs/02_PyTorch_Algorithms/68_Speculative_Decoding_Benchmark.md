@@ -13,11 +13,7 @@
 
 ## 本节导读
 
-这一节对应的真实项目问题不是“推测解码能不能提速”，而是“在既定 workload、质量约束和验证成本下，这条推测链路是否值得上线”。真实工程里，读者真正要判断的不是单独的吞吐涨幅，而是 baseline 与 speculative 方案在 acceptance rate、draft cost 和 verify cost 固定之后，是否还能支撑可解释的推理选型结论。
-
-本节的核心矛盾是吞吐收益与验证代价之间的权衡：推测解码可以减少有效解码步数、提高单位时间产出，也可能因为接受率不足、draft 模型过重或 verify 阶段太贵而把收益抵消掉。做完这一节，你应该能输出一份 baseline vs speculative 的 benchmark 结论，而不只是收集几组 TTFT 和 throughput 数字。
-
-因此，这一页把推测解码收成一个最小项目交付入口：先定义 benchmark workload，再确认 baseline 和质量口径合法，用统一口径比较 acceptance、draft / verify 成本和系统收益，并把结论收成 `accept / tune / reject` 的项目判断。它直接承接 `21 / 23 / 66 / 20` 的解码与基础推理直觉，并继续通向 `69` 的前缀缓存基准和 `70` 的 serving 调度基准。
+本节要求你评估推测解码在固定 workload 下是否真的带来可用收益。除了比较 TTFT 和吞吐，还要记录 acceptance rate、draft cost 与 verify cost，并检查输出质量是否满足约束。最终给出是否值得继续调参或进入上线验证的 benchmark 结论。
 
 **关键词：** `acceptance rate`, `draft cost`, `verify cost`, `benchmark`
 

@@ -4,6 +4,8 @@
 
 这一页回答的是：为什么系统会从朴素数据并行走向 ZeRO，以及 ZeRO 真正切开的是什么。
 
+本页的输出是状态切分决策：显存节省来自哪类状态、额外通信发生在哪里，以及这笔通信成本是否值得接受。
+
 ## 问题起点
 
 很多时候，加卡后显存还是紧，因为参数、梯度和 optimizer state 仍然在每张卡上重复驻留。ZeRO 的出现，就是因为“复制计算”解决不了“状态冗余”。
@@ -37,7 +39,7 @@ ZeRO 的核心矛盾是：它通过切分状态换显存，但切分后的访问
 
 - ZeRO 经典论文：理解状态切分为何会显著改变显存账本。
 
-## 对应 Part02
+## 对应 Part 02
 
 - `06` VRAM Calculation and ZeRO
 - `27` ZeRO Optimizer Sim
@@ -48,6 +50,10 @@ ZeRO 的核心矛盾是：它通过切分状态换显存，但切分后的访问
 - [02 Data Parallel and Synchronization](./02_data_parallel_and_synchronization.md)
 - [06 Benchmark and Parallel Decision](./06_benchmark_and_parallel_decision.md)
 
-## 小结
+## 本节要点
 
 ZeRO 不是新的训练语义，而是把重复驻留的状态拆开，以通信成本换显存空间。
+
+## 进入下一页
+
+如果状态切分仍无法容纳模型，进入 [04 Pipeline 与 Tensor Parallel](./04_pipeline_and_tensor_parallel.md)；如果显存已满足预算，则回到 benchmark 比较吞吐和扩展效率。

@@ -7,6 +7,8 @@
 - 量化到底在压什么，压的是权重、激活，还是 KV cache？
 - 为什么量化的核心不是“位宽更小”，而是“误差能不能被系统接受”？
 
+本页的输出是量化问题定义：压缩对象、目标约束、误差来源和可接受的质量边界。没有这四项，后面的算法比较没有共同口径。
+
 ## 问题起点
 
 量化最容易被误解成“把 `fp16` 改成 `int8`”。但真正决定量化效果的，不只是位宽，而是三件事：
@@ -47,7 +49,7 @@
 - 量化基础资料：对称 / 非对称量化、scale、zero-point、误差模型。
 - 量化硬件资料：低比特表示为什么会同时影响访存、吞吐和部署选型。
 
-## 对应 Part02
+## 对应 Part 02
 
 - `25` Quantization W8A16
 - `40` GPTQ and AWQ Weight Quantization
@@ -60,6 +62,10 @@
 - [04 Weight-Only Compression](./04_weight_only_compression.md)
 - [05 FP8 and KV Cache Quantization](./05_fp8_and_kv_cache_quantization.md)
 
-## 小结
+## 本节要点
 
 量化的第一步不是选算法，而是先分清压缩对象、误差来源和目标约束。
+
+## 进入下一页
+
+先进入 [02 PTQ 与 QAT 的介入时机](./02_ptq_and_qat_timing.md)，判断量化应该发生在训练之后，还是需要被带回训练过程。

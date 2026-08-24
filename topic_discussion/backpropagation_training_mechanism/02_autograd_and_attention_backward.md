@@ -4,6 +4,8 @@
 
 这一页把 PyTorch 的 autograd 机制和 attention 的反向链路放在一起看，目标是把“机制接口”和“算子级梯度路径”对齐。
 
+本页的输出是算子级反传证据：能解释 `grad_fn`、`saved_tensors` 与 attention backward 的关系，并区分公式不变和执行路径改变。
+
 ## 核心问题
 
 ### 1. `grad_fn` 是什么
@@ -131,3 +133,7 @@ FlashAttention 不是只优化前向，它同样会重写 backward 的执行路�
 - 先把 `dV -> dP -> dS -> dQ / dK` 这条链背顺。
 - 再回头看 `grad_fn` 和 `saved_tensors`。
 - 如果你关心工程层面，重点看 `FlashAttention backward / fused backward / recompute` 这三件事是怎么一起出现的。
+
+## 进入下一页
+
+进入 [03 Loss Backward、标签对齐与显存账本](./03_loss_alignment_memory_ledger.md)，先保证监督口径正确，再分析 backward 的显存组成。

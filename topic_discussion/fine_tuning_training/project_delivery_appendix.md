@@ -13,6 +13,8 @@
 - `logging / experiment tracking`：关注训练过程是否留下足够证据支撑最终结论。
 - `report template`：关注 baseline、candidate、资源指标和采用建议怎么写清楚。
 
+60–65 的公共报告协议见[训练微调项目验证清单](../../docs/verification/fine_tuning_projects.md)，用于统一结果外层结构；本附录继续负责 checkpoint、artifact、tracking 和交付证据的细节。
+
 ## 这页不展开什么
 
 - `LoRA / QLoRA` 的机制差异
@@ -117,6 +119,6 @@
 - [Profiling 专题](../profiling/intro.md)：当你需要补吞吐、显存和训练热点证据时先看这里。
 - [显存优化专题](../memory_performance_tuning/intro.md)：当项目交付需要解释 OOM、checkpointing 或资源账本时先看这里。
 
-## 小结
+## 本节要点
 
 项目交付附录的重点不是再跑一次训练，而是把 checkpoint、artifact、tracking 和最终结论收成一套别人能接手的证据链。

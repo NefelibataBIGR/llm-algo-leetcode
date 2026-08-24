@@ -4,6 +4,8 @@
 
 这一页负责把“为什么慢”先拆成可观察的时间问题：operator、kernel、launch、等待和阶段切换。
 
+本页的输出是时间瓶颈假设：问题主要属于计算、调度、启动开销还是等待。只有当时间线显示出内存驻留或分配行为时，才进入下一页。
+
 ## 问题起点
 
 “慢”不是一个统一现象。常见情况包括：
@@ -33,6 +35,10 @@
 - `20 Profiling and Memory Ledger`
 - `74 Profiling Driven End-to-End Optimization`
 
-## 小结
+## 本节要点
 
 时间拆分是 profiling 的第一入口，因为大多数问题都先表现为“某一段时间不合理”。
+
+## 进入下一页
+
+若时间热点伴随显存抬升或分配震荡，进入 [03 Memory Timeline 与 Residency](./03_memory_timeline_and_residency.md)；否则保留时间假设，直接准备 benchmark 对照。

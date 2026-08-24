@@ -24,6 +24,10 @@
 
 KV cache 一方面能让 decode 不必重复计算历史 token，另一方面又会稳定吞掉显存预算。系统希望保留上下文、提高并发，但显存预算会先行成为边界。
 
+## 与推理优化路线的边界
+
+推理优化路线主要问“请求怎样更快、服务怎样更稳”；本页主要问“KV Cache 如何在有限预算中驻留、复用和增长”。因此同一个 [66 Inference Performance Comparison](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.ipynb) 在推理专题中比较 TTFT、TPOT 和吞吐，在本专题中还必须记录 cache policy、命中率、峰值显存和并发容量。这样可以避免把“延迟变快”误读成“显存管理已经优化”。
+
 ## 演化路径
 
 1. 先看 cache 增长是否自然且可接受。
@@ -45,19 +49,19 @@ KV cache 一方面能让 decode 不必重复计算历史 token，另一方面又
 - RadixAttention / prefix reuse 工程资料：理解前缀共享对 cache 预算的影响。
 - KV cache quantization 资料：理解为什么缓存压缩和权重量化不是一回事。
 
-## 对应 Part02
+## 对应 Part 02
 
-- `22` vLLM PagedAttention
-- `24` SGLang RadixAttention
-- `34 / 37` Prefix caching / KV cache scheduling
-- `41` FP8 and KV Cache Quantization
-- `67` Quantized Inference and Deployment
+- [22 vLLM PagedAttention](../../02_PyTorch_Algorithms/22_vLLM_PagedAttention.ipynb)
+- [24 SGLang RadixAttention](../../02_PyTorch_Algorithms/24_SGLang_RadixAttention.ipynb)
+- [34 Prefix Caching and Chunked Prefill](../../02_PyTorch_Algorithms/34_Prefix_Caching_and_Chunked_Prefill.ipynb)、[37 KV Cache Scheduling](../../02_PyTorch_Algorithms/37_KV_Cache_Scheduling.ipynb)
+- [41 FP8 and KV Cache Quantization](../../02_PyTorch_Algorithms/41_FP8_and_KV_Cache_Quantization.ipynb)
+- [66 Inference Performance Comparison](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.ipynb)、[67 Quantized Inference and Deployment](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.ipynb)
 
 ## 典型阅读入口
 
 - [05 Quantization as a Memory Tool](./05_quantization_as_a_memory_tool.md)
 - [06 Benchmark and Trade-off Decision](./06_benchmark_and_tradeoff_decision.md)
 
-## 小结
+## 本节要点
 
 推理侧显存问题的核心不是“cache 有没有”，而是“cache 如何组织、预算是否可接受、代价是否值得”。

@@ -35,6 +35,15 @@ python tools/test_chapter0_1_notebooks.py
 python tools/test_notebook_answers.py path/to/your.ipynb --mode both
 ```
 
+## Part 02 项目验证
+
+训练、推理和显存项目除了 Notebook 答案区测试，还可能需要真实 GPU、模型下载或本地 backend。
+推理项目 `66–70` 的完整检查顺序、结果文件和 JSON schema 见
+[66–70 推理项目验证清单](./verification/inference_projects.md)。
+
+建议先完成 CPU-first 验证，再按 Notebook 中的开关进入真实 backend；没有 GPU 时不要把
+Practice-P1 的本地/模拟结果当作 Practice-P2 的真实服务结论。
+
 ## 最小规则
 
 - Part 0 / Part 1：优先在线 Notebook 或本地基础环境。

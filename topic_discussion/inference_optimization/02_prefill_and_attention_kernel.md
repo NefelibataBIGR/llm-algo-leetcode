@@ -4,6 +4,12 @@
 
 这一页回答的是：长 prompt 为什么会慢，FlashAttention 和 chunked prefill 具体改的是哪一段。
 
+## 本节在路线中的位置
+
+本节对应 **Task2：Attention 访存瓶颈与 Prefill**。它承接 01 的请求链路和指标口径，专门解释长 Prompt 下 `TTFT` 为什么升高；完成后再进入 Task3 的 Decode，或进入 Task4 判断 Prefix Cache、KV Cache 和服务调度是否成为新的瓶颈。
+
+本节不要求学习者手写完整 CUDA kernel，也不把 FlashAttention、chunked prefill 和 prefix caching 当成同一种优化。三者分别对应访存路径、长输入分块和重复前缀复用。
+
 ## 问题起点
 
 推理链路里，首 token 延迟往往最先暴露出 prefill 的代价。用户感受到的是“输入一大段上下文后，模型迟迟不出第一个 token”，但真正的问题常常不是模型参数量本身，而是：
@@ -17,6 +23,8 @@
 - TTFT 是否在长 prompt 下明显升高。
 - `prefill_share` 是否高于 decode。
 - attention 是否被中间 score 矩阵和 HBM 读写拖慢。
+
+最好同时记录 prompt length、`TTFT`、`prefill_share`、batch、dtype 和 attention backend；如果比较长短输入，还要保证 generated tokens 和其他运行条件一致。
 
 ## 核心矛盾
 
@@ -42,6 +50,20 @@ prefill 不是“先算一遍前向”这么简单。它要把已有 prompt 组�
 
 因此，看到 TTFT 高时，不能把这三者混成一个动作，它们处理的是不同层面的瓶颈。
 
+## 学习者交付物
+
+完成本节后，至少应形成一条可复查的 Prefill 判断：
+
+| 项目 | 最小内容 |
+|:---|:---|
+| 症状 | prompt length 增长时 TTFT 如何变化 |
+| 阶段证据 | prefill_share、decode_share、必要时的 profiler 统计 |
+| 候选动作 | FlashAttention、chunked prefill 或 prefix caching |
+| 适用条件 | 长 prompt、重复前缀、backend 和硬件要求 |
+| 下一步 | 进入 03 看 Decode，进入 04 看 Cache，或交给 66 做端到端比较 |
+
+核心结论应能够区分：是 Attention 访存导致 Prefill 变慢，还是排队、batch 组装或重复前缀导致 TTFT 变差。
+
 ![Prefill and attention kernel](/topic_discussion/inference_optimization/prefill_attention.svg)
 
 ## 文献锚点
@@ -56,7 +78,7 @@ prefill 不是“先算一遍前向”这么简单。它要把已有 prompt 组�
 - 把 prefill 慢简单等同于模型本身慢。
 - chunked prefill 和 prefix caching 混为一谈。
 
-## 对应 Part02
+## 对应 Part 02
 
 - `20` FlashAttention Sim
 - `34` Prefix Caching and Chunked Prefill
@@ -74,6 +96,13 @@ prefill 不是“先算一遍前向”这么简单。它要把已有 prompt 组�
 - 看 `01`，确认指标口径。
 - 看 `04`，确认 prefill 结束后 cache 怎么接。
 
-## 小结
+## 对应项目
+
+- **核心综合项目：** [66 Inference Performance Comparison](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.ipynb)，在固定 prompt length 和 generated tokens 下验证 TTFT 变化。
+- **相关主题项目：** [69 Prefix Caching Benchmark](../../02_PyTorch_Algorithms/69_Prefix_Caching_Benchmark.ipynb)，当问题主要来自重复前缀时再进入。
+
+本节负责 Prefill 和 Attention 的瓶颈解释，不单独裁定某个 backend 永远更快；最终仍需回到统一 workload 做比较。
+
+## 本节要点
 
 prefill 优化的重点是减少访存和中间写回，把首 token 延迟压下来。

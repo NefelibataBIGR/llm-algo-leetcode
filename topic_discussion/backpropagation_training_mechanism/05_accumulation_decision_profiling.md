@@ -4,6 +4,8 @@
 
 这一页把 backward 放回训练节奏里，回答为什么梯度累积、调度和 profiling 必须一起看。
 
+本页的输出是训练闭环决策：明确 micro-batch、accumulation、optimizer step、AMP 和 profiling 的顺序，并把显存收益与吞吐、质量一起验证。
+
 ## 核心问题
 
 ### 1. 为什么要梯度累积
@@ -99,3 +101,7 @@ gradient accumulation 里最容易混淆的是三个概念：
 - 再把 `AMP / BF16 / GradScaler / clipping` 放回 step 之前的调用顺序里。
 - 最后把训练闭环放回 profiling。
 - 如果你已经知道 batch / update cadence 的关系，就重点看验证方法。
+
+## 回到项目
+
+将机制结论回填到 `73 Training Performance Analysis -> 76 Activation Checkpoint / Offload Benchmark`；如果需要预算与策略采用判断，再接入 `75 Memory Budget Compression Project`。基础机制页负责解释原因，项目页负责给出实测结论。

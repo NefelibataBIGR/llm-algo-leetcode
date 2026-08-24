@@ -23,6 +23,12 @@ LoRA 不是“加一个小模块”这么简单，它本质上是在冻结 base 
 
 这条线的关键不是“有 LoRA”，而是“LoRA 挂在哪、挂多大、怎么合并”。
 
+## 方案比较入口
+
+当基础 LoRA 已经能够稳定训练，再进入 [31 LoRA Variants Theory](../../02_PyTorch_Algorithms/31_LoRA_Variants_Theory.ipynb)，先把不同变体的 `rank / alpha / dropout / target_modules` 统一成可比较的规格。需要真实 benchmark 时，再进入 [63 LoRA Variants Benchmark](../../02_PyTorch_Algorithms/63_LoRA_Variants_Benchmark.ipynb)，同时比较可训练参数量、训练稳定性、质量和资源成本。
+
+方案比较不追求脱离场景的“最优 LoRA”，而是根据优先级分流：显存紧张时先看参数量和峰值显存，质量优先时看评测和生成样例，交付优先时还要看实现复杂度、merge 路径和复现成本。
+
 ## 常见误区
 
 - target modules 选太少，导致可学习容量不足。
@@ -34,14 +40,16 @@ LoRA 不是“加一个小模块”这么简单，它本质上是在冻结 base 
 
 - [10 LoRA Tutorial](../../02_PyTorch_Algorithms/10_LoRA_Tutorial.ipynb)
 - [26 QLoRA and 4bit Quantization](../../02_PyTorch_Algorithms/26_QLoRA_and_4bit_Quantization.ipynb)
+- [31 LoRA Variants Theory](../../02_PyTorch_Algorithms/31_LoRA_Variants_Theory.ipynb)
 - [60 LoRA Fine-Tuning Project](../../02_PyTorch_Algorithms/60_LoRA_Fine_Tuning_Project.ipynb)
+- [63 LoRA Variants Benchmark](../../02_PyTorch_Algorithms/63_LoRA_Variants_Benchmark.ipynb)
 
 ## 前置关系
 
 - 先看 `01`，确认监督口径。
 - 再看 `02`，理解 LoRA 是怎么接进这个监督闭环的。
 
-## 小结
+## 本节要点
 
 LoRA 的核心价值是把微调成本压下来，但它不是默认正确的。
 挂载位置、秩和合并策略都需要和任务一起判断。

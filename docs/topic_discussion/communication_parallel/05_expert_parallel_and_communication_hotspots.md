@@ -4,6 +4,8 @@
 
 这一页回答的是：为什么 MoE / Expert Parallel 会把通信问题再推高一层，以及 profiling 在并行专题里为什么必须存在。
 
+本页的输出是动态并行归因：路由不均、专家间通信、拓扑拥塞和 overlap 分别贡献了什么代价。
+
 ## 问题起点
 
 当系统走到 MoE 或 expert parallel 时，并行已经不再只是“切层”或“切算子”，而开始涉及：
@@ -43,7 +45,7 @@ Expert Parallel 的核心矛盾是：稀疏计算可以减少无效算力，但�
 - MoE / expert parallel 资料：理解稀疏路由为什么天然带来通信与负载不均。
 - NCCL / profiling 工程资料：理解等待时间和 overlap 如何被量化。
 
-## 对应 Part02
+## 对应 Part 02
 
 - `46` Communication Profiling with NCCL
 - `47` MoE Expert Parallel
@@ -54,6 +56,10 @@ Expert Parallel 的核心矛盾是：稀疏计算可以减少无效算力，但�
 - [04 Pipeline and Tensor Parallel](./04_pipeline_and_tensor_parallel.md)
 - [06 Benchmark and Parallel Decision](./06_benchmark_and_parallel_decision.md)
 
-## 小结
+## 本节要点
 
 Expert Parallel 往往不是“通信更多”这么简单，而是“通信更动态、更不均、更依赖 profiling 才看得清”。
+
+## 进入下一页
+
+把专家负载、通信热点和单卡/多卡基线带入 [06 Benchmark 与并行决策](./06_benchmark_and_parallel_decision.md)，确认 MoE 并行是否真的换回了可接受收益。

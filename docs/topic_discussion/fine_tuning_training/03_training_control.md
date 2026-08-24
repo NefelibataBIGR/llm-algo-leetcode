@@ -32,16 +32,16 @@
 
 ## 经典阅读入口
 
-- [11 LR Schedulers WSD Cosine](../../02_PyTorch_Algorithms/11_LR_Schedulers_WSD_Cosine.ipynb)
-- [12 Gradient Accumulation](../../02_PyTorch_Algorithms/12_Gradient_Accumulation.ipynb)
-- [13 End-to-End Fine-Tuning Experiment](../../02_PyTorch_Algorithms/13_End_to_End_Fine_Tuning_Experiment.ipynb)
+- [11 LR Schedulers WSD Cosine](../../02_PyTorch_Algorithms/11_LR_Schedulers_WSD_Cosine.md)
+- [12 Gradient Accumulation](../../02_PyTorch_Algorithms/12_Gradient_Accumulation.md)
+- [13 End-to-End Fine-Tuning Experiment](../../02_PyTorch_Algorithms/13_End_to_End_Fine_Tuning_Experiment.md)
 
 ## 前置关系
 
 - 先看 `01` 和 `02`，确认数据和 LoRA 都已经对齐。
 - 再看 `03`，否则 scheduler 和 accumulation 的关系很容易混掉。
 
-## 小结
+## 本节要点
 
 训练控制的作用不是“让训练跑起来”，而是让训练按正确的节奏跑起来。
 这里的口径不统一，后面的实验结论就不稳。

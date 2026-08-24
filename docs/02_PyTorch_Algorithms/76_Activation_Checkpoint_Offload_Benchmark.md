@@ -14,11 +14,7 @@
 
 ## 本节导读
 
-这一节对应的真实项目问题不是“activation checkpointing 和 offload 怎么实现”，而是“在既定预算、吞吐约束和质量下限下，checkpoint、offload 或二者组合哪一种最值得采用”。真实工程里，显存优化的难点不在知道这些技巧，而在判断它们是否真的比 baseline 更值，以及代价落在速度、复杂度还是稳定性上。
-
-本节的核心矛盾是显存收益与系统代价之间的权衡：checkpoint 往往会增加重算成本，offload 会引入数据搬运开销，组合方案虽然更省显存，但也可能把 step time 拉得不可接受。做完这一节，你应该能输出一份 baseline vs checkpoint vs offload vs hybrid 的项目结论，而不只是比较几组显存数字。
-
-因此，这一页把 activation / checkpoint / offload 的显存策略收成一个最小项目交付入口：先固定预算与质量边界，再统一比较显存、吞吐、step time 和质量约束，最后把结果收成 `accept / tune / reject` 的项目结论。它直接承接 `19 / 42 / 43 / 75` 的机制与预算内容，并继续通向 `77-78` 的后续显存扩展位。
+本节要求你在相同训练任务下比较 checkpoint、offload 和组合方案。固定显存预算、吞吐目标与质量下限后，分别记录 peak memory、step time、数据搬运或重算开销，并与 baseline 对照。最终输出方案排序和推荐条件，说明省下的显存付出了什么代价。
 
 **关键词：** `activation`, `checkpoint`, `offload`, `memory`, `benchmark`
 

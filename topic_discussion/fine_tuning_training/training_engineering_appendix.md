@@ -94,6 +94,6 @@
 - [通信与并行专题](../communication_parallel/intro.md)：当你开始比较 `DDP / FSDP / ZeRO / DeepSpeed` 的并行与状态分摊边界时先看这里。
 - [显存优化专题](../memory_performance_tuning/intro.md)：当训练脚本已经能跑，但 OOM 和显存账本还没压住时先看这里。
 
-## 小结
+## 本节要点
 
 训练工程附录的目的不是推荐单一框架，而是把 `SFT / LoRA` 主线接到可复现的训练脚本、输入管线和项目交付闭环。

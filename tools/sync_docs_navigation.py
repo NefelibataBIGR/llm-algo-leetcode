@@ -92,7 +92,14 @@ def sync_navigation() -> None:
                 continue
             dst = dst_dir / name
             text = src.read_text(encoding="utf-8")
-            dst.write_text(text.replace(".ipynb)", ".md)"), encoding="utf-8")
+            mirrored = text.replace(".ipynb)", ".md)")
+            # Source topic pages may link to docs/guide.md. Once mirrored
+            # inside docs/topic_discussion, guide.md is already at the docs
+            # root, so remove the extra docs/ segment in the mirror only.
+            mirrored = mirrored.replace("../../docs/guide.md", "../../guide.md")
+            mirrored = mirrored.replace("../docs/guide.md", "../guide.md")
+            mirrored = mirrored.replace("../docs/", "../")
+            dst.write_text(mirrored, encoding="utf-8")
             copied += 1
     print(f"Synced {copied} navigation files into docs/")
 

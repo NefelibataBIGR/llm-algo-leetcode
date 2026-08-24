@@ -2,31 +2,30 @@
 
 ## Part Overview | Part 概览
 
-本部分聚焦 PyTorch 级别的大模型实现，位于 Part 0 / Part 1 之后、Part 3 之前，目标是把基础算子、模型组装、训练与对齐、显存优化、推理优化、并行策略和项目实战串成一条可运行的工程链。正文默认 notebook-first，组页负责组级资产与阅读路径，Part 级导学只管组间关系和阅读顺序，不下沉到具体节号。
+本部分聚焦 PyTorch 级别的大模型实现，位于 Part 0 / Part 1 之后、Part 3 之前，负责把算子、模型结构、训练、对齐、显存、推理、并行和项目验证连接成一条工程实现链。正文默认 notebook-first，组页负责组内阅读顺序，Part 级导学只说明整体结构和入口。
 
-`2.7-2.10` 当前按四个平级组组织：`2.7` 负责高级推理策略，`2.8` 负责模型压缩与量化，`2.9` 负责并行通信，`2.10` 负责项目验证与工程收口。
+Part 02 按 10 个专题组组织：`2.1-2.6` 建立基础算子、模型、训练、显存和推理直觉，`2.7-2.9` 扩展到推理策略、量化、通信与并行，`2.10` 负责项目验证和工程收口。具体章节状态和逐节资产由组页与维护文档负责。
 
-Part 02 现在还配套了两条基础横向机制线和两条方法横向线：
-- `反向传播与训练机制`：串起 `00 / 17 / 18 / 12 / 19 / 42 / 74`
-- `后训练与对齐`：串起 `14-16 / 50 / 84-85`
-- `大模型结构和原理`：承接 `01-08`
-- `训练微调闭环`：承接 `09-13 + 60`
+```mermaid
+flowchart TB
+    P2[Part 2: PyTorch Algorithms]
 
-Part 2 更像一张多入口学习地图：不同基础和目标的读者可以从不同组切入，最后都汇到项目实战，再按需要回补前面的训练、推理和并行内容。
+    subgraph C[内容分层]
+        L1[00-16 基础、结构、训练与对齐]
+        L2[17-29 显存、推理与并行机制]
+        L3[30-59 方法扩展与专题页]
+        L4[60-89 项目验证与工程收口]
+    end
 
-## 实际演进到的定位（基于 00-89）
+    subgraph G[专题分组]
+        G1[2.1-2.6 基础主线]
+        G2[2.7-2.9 优化与系统扩展]
+        G3[2.10 项目主线]
+    end
 
-```text
-Part 02 实际定位：
-  大模型算法工程师的 "算法实现底座"
-  ├── 组件层（00-08）：PyTorch 实现的核心算子与结构
-  ├── 训练层（09-16）：SFT、LoRA、DPO、GRPO 的完整训练链路
-  ├── 优化层（17-29）：显存优化、推理加速、并行策略的 PyTorch 实现
-  ├── 进阶层（30-59）：训练、推理、显存、通信、对齐方法与预留位
-  └── 项目层（60-89）：训练、推理、显存、通信、对齐项目与预留位
+    P2 --> C
+    P2 --> G
 ```
-
-关键变化：Part 02 不再是 "PyTorch 入门"，而是 "所有能用 PyTorch / Triton 表达的算法，都在这里实现"。
 
 ## Part 02、Part 03、Part 04 的分工
 
@@ -50,88 +49,6 @@ Part 03（Triton 算子）：回答 "这个算子怎么用 Triton 写得更快�
 Part 04（CUDA / 系统）：回答 "这个系统怎么在 CUDA 层面做极致优化？"
 ```
 
-## Part 02 编号索引
-
-编号到 89 本身不是问题，但需要让学习者在进入 Part 02 时不被编号淹没。
-
-| 编号区间 | 主题 | 对应路线 |
-|:---|:---|:---|
-| `00-08` | PyTorch 基础 + 模型组件 | 训练基础 |
-| `09-16` | 训练闭环 + 对齐理论 | 训练基础 + 对齐 |
-| `17-29` | 显存优化 + 推理加速 + 并行 | 推理 + 显存 + 分布式 |
-| `30-59` | 非项目理论 / 方法页 | 训练、推理、显存、通信、对齐进阶 |
-| `60-89` | 项目实战 / 收口页 | 训练、推理、显存、通信、对齐项目收口 |
-
-### Non-Project Placeholder Map | 非项目占位图
-
-| 编号 | 归属路线 | 预留标题 | 状态 |
-|:---|:---|:---|:---|
-| `30` | 训练微调 | `Long_Context_Fine_Tuning` | 占位 |
-| `31` | 训练微调 | `LoRA_Variants_Theory` | 占位 |
-| `32` | 训练微调 | `Data_Engineering_for_SFT` | 占位 |
-| `33` | 训练微调 | 预留 | 占位 |
-| `34` | 推理优化 | `Prefix_Caching_and_Chunked_Prefill` | 已落盘 |
-| `35` | 推理优化 | `Multi_Token_Decoding` | 已落盘 |
-| `36` | 推理优化 | `Decode_Scheduling` | 已落盘 |
-| `37` | 推理优化 | `KV_Cache_Scheduling` | 已落盘 |
-| `38` | 推理优化 | `Prefill_Decode_Disaggregation` | 占位 |
-| `39` | 推理优化 | 预留 | 占位 |
-| `40` | 显存优化 | `GPTQ_and_AWQ_Weight_Quantization` | 已落盘 |
-| `41` | 显存优化 | `FP8_and_KV_Cache_Quantization` | 已落盘 |
-| `42` | 显存优化 | `Activation_Offload` | 已落盘 |
-| `43` | 显存优化 | `Unified_Memory_Management` | 占位 |
-| `44` | 显存优化 | `Auto_Tuning_Framework` | 占位 |
-| `45` | 显存优化 | 预留 | 占位 |
-| `46` | 通信与并行 | `Communication_Profiling_with_NCCL` | 已落盘 |
-| `47` | 通信与并行 | `MoE_Expert_Parallel` | 已落盘 |
-| `48` | 通信与并行 | `Communication_Reserved` | 占位 |
-| `49` | 通信与并行 | `Parallelism_Reserved` | 占位 |
-| `50` | 后训练对齐 | `Preference_Data_and_Evaluation` | 已落盘 |
-| `51` | 后训练对齐 | `Online_DPO` | 占位 |
-| `52` | 后训练对齐 | `Alignment_Reserved` | 占位 |
-| `53` | 通用预留 | `Reserved_53` | 占位 |
-| `54` | 通用预留 | `Reserved_54` | 占位 |
-| `55` | 通用预留 | `Reserved_55` | 占位 |
-| `56` | 通用预留 | `Reserved_56` | 占位 |
-| `57` | 通用预留 | `Reserved_57` | 占位 |
-| `58` | 通用预留 | `Reserved_58` | 占位 |
-| `59` | 通用预留 | `Reserved_59` | 占位 |
-
-### Project Placeholder Map | 项目占位图
-
-| 编号 | 归属路线 | 预留标题 | 状态 |
-|:---|:---|:---|:---|
-| `60` | 训练微调 | `LoRA_Full_Project` | 已落盘 |
-| `61` | 训练微调 | `Model_Architecture_Exploration` | 已按项目交付模板收口 |
-| `62` | 训练微调 | `Instruction_Fine_Tuning_Project` | 已按项目交付模板收口 |
-| `63` | 训练微调 | `LoRA_Variants_Benchmark` | 已按项目交付模板收口 |
-| `64` | 训练微调 | `SFT_Data_Quality_Project` | 已落盘 |
-| `65` | 训练微调 | `QLoRA_Selection_Project` | 已落盘 |
-| `66` | 推理优化 | `Inference_Performance_Comparison` | 已落盘 |
-| `67` | 推理优化 | `Quantized_Inference_and_Deployment` | 已落盘 |
-| `68` | 推理优化 | `Speculative_Decoding_Benchmark` | 已按项目交付模板收口 |
-| `69` | 推理优化 | `Prefix_Caching_Benchmark` | 已按项目交付模板收口 |
-| `70` | 推理优化 | `Serving_Scheduler_Benchmark` | 已按项目交付模板收口 |
-| `71` | 推理优化 | `Reserved_71` | 占位 |
-| `72` | 推理优化 | `Reserved_72` | 占位 |
-| `73` | 显存优化 | `Training_Performance_Analysis` | 已落盘 |
-| `74` | 显存优化 | `Profiling_Driven_Optimization` | 已落盘 |
-| `75` | 显存优化 | `Memory_Budget_Compression_Project` | 已落盘 |
-| `76` | 显存优化 | `Activation_Checkpoint_Offload_Benchmark` | 已落盘 |
-| `77` | 显存优化 | `Reserved_77` | 占位 |
-| `78` | 显存优化 | `Reserved_78` | 占位 |
-| `79` | 通信与并行 | `Distributed_Parallel_Benchmark` | 已落盘 |
-| `80` | 通信与并行 | `MoE_Expert_Parallel_Benchmark` | 已按项目交付模板收口 |
-| `81` | 通信与并行 | `Distributed_Inference_Project` | 已落盘 |
-| `82` | 通信与并行 | `Reserved_82` | 占位 |
-| `83` | 通信与并行 | `Reserved_83` | 占位 |
-| `84` | 后训练对齐 | `DPO_Preference_Project` | 已落盘 |
-| `85` | 后训练对齐 | `GRPO_Groupwise_Alignment_Project` | 已落盘 |
-| `86` | 后训练对齐 | `DPO_Online_Benchmark` | 已按项目交付模板收口 |
-| `87` | 通用预留 | 预留 | 占位 |
-| `88` | 通用预留 | 预留 | 占位 |
-| `89` | 通用预留 | 预留 | 占位 |
-
 ## Part Asset Overview | Part 资产总览
 
 本章内容按 10 个主题组组织，后续页面也沿该结构继续扩展。
@@ -140,18 +57,18 @@ Part 04（CUDA / 系统）：回答 "这个系统怎么在 CUDA 层面做极致�
 > 组页负责组内阅读顺序与资产收口，不需要一次性读完全部页面。
 > Part 2 既是工程实战目录，也是 Part 0 / Part 1 之后、Part 3 之前的共同衔接层。
 
-| 学习组 | 职责作用 | 当前内容映射 | 每组多少节 |
+| 学习组 | 职责作用 | 入口与代表内容 | 规模 |
 |:---|:---|:---|:---|
-| [2.1](./2_1.md) | 建立基础算子和组件直觉 | [00](./00_PyTorch_Warmup.ipynb)、[01](./01_RMSNorm_Tutorial.ipynb)、[02](./02_SwiGLU_Activation.ipynb)、[03](./03_RoPE_Tutorial.ipynb)、[04](./04_Attention_MHA_GQA.ipynb) | 5 |
-| [2.2](./2_2.md) | 组装模型结构并理解 MoE 组件 | [05](./05_LLaMA3_Block_Tutorial.ipynb)、[06](./06_MoE_Router.ipynb)、[07](./07_MoE_Load_Balancing_Loss.ipynb)、[08](./08_Architecture_Tricks.ipynb) | 4 |
-| [2.3](./2_3.md) | 立住 SFT、LoRA 和训练更新闭环 | [09](./09_SFT_Training_Loop.ipynb)、[10](./10_LoRA_Tutorial.ipynb)、[11](./11_LR_Schedulers_WSD_Cosine.ipynb)、[12](./12_Gradient_Accumulation.ipynb)、[13](./13_End_to_End_Fine_Tuning_Experiment.ipynb) | 5 |
-| [2.4](./2_4.md) | 理解偏好优化与对齐链路 | [14](./14_RLHF_PPO_Memory.ipynb)、[15](./15_DPO_Loss_Tutorial.ipynb)、[16](./16_GRPO_Loss_Tutorial.ipynb) | 3 |
-| [2.5](./2_5.md) | 理解反向传播与训练侧显存优化 | [17](./17_Autograd_Basics.ipynb)、[18](./18_Activation_and_Loss_Backward.ipynb)、[19](./19_Activation_Checkpointing_and_Activation_Offload.ipynb) | 3 |
-| [2.6](./2_6.md) | 建立推理加速和缓存直觉 | [20](./20_FlashAttention_Sim.ipynb)、[21](./21_Decoding_Strategies.ipynb)、[22](./22_vLLM_PagedAttention.ipynb) | 3 |
-| [2.7](./2_7.md) | 高级推理策略，继续向 serving、cache 和调度边界扩展 | 已落盘映射：核心 [23](./23_Speculative_Decoding.ipynb)、[24](./24_SGLang_RadixAttention.ipynb)；扩展 [34](./34_Prefix_Caching_and_Chunked_Prefill.ipynb)、[35](./35_Multi_Token_Decoding.ipynb)、[36](./36_Decode_Scheduling.ipynb)、[37](./37_KV_Cache_Scheduling.ipynb)；补页 [38](./38_Prefill_Decode_Disaggregation.ipynb)、[39](./39_Inference_Fallback_and_Tiers.ipynb) | 核心 2 + 扩展 4 + 补页 2 |
-| [2.8](./2_8.md) | 模型压缩与量化，继续向低比特训练、部署和量化家族扩展 | 已落盘映射：核心 [25](./25_Quantization_W8A16.ipynb)、[26](./26_QLoRA_and_4bit_Quantization.ipynb)；扩展 [40](./40_GPTQ_and_AWQ_Weight_Quantization.ipynb)、[41](./41_FP8_and_KV_Cache_Quantization.ipynb) | 核心 2 + 扩展 2 |
-| [2.9](./2_9.md) | 形成并行策略和通信边界判断，并延伸到通信 profiling 与项目桥接 | 已落盘映射：核心 [27](./27_ZeRO_Optimizer_Sim.ipynb)、[28](./28_Pipeline_Parallelism_MicroBatch.ipynb)、[29](./29_Tensor_Parallelism_Sim.ipynb)；扩展 [46](./46_Communication_Profiling_with_NCCL.ipynb)、[47](./47_MoE_Expert_Parallel.ipynb)；补页 [48](./48_Communication_Hotspots_and_Mitigation.ipynb)、[49](./49_Parallelism_Strategy_Selection.ipynb) | 核心 3 + 扩展 2 + 补页 2 |
-| [2.10](./2_10.md) | 汇总项目验证和工程闭环，承接训练 / 推理 / 系统 / 部署项目 | 核心：[60](./60_LoRA_Fine_Tuning_Project.ipynb)、[61](./61_Model_Architecture_Exploration.ipynb)、[62](./62_Instruction_Fine_Tuning_Project.ipynb)、[63](./63_LoRA_Variants_Benchmark.ipynb)、[66](./66_Inference_Performance_Comparison.ipynb)、[73](./73_Training_Performance_Analysis.ipynb)；扩展：[64](./64_SFT_Data_Quality_Project.ipynb)、[65](./65_QLoRA_Selection_Project.ipynb)、[67](./67_Quantized_Inference_and_Deployment.ipynb)、[68](./68_Speculative_Decoding_Benchmark.ipynb)、[69](./69_Prefix_Caching_Benchmark.ipynb)、[70](./70_Serving_Scheduler_Benchmark.ipynb)、[74](./74_Profiling_Driven_End_to_End_Optimization.ipynb)、[75](./75_Memory_Budget_Compression_Project.ipynb)、[76](./76_Activation_Checkpoint_Offload_Benchmark.ipynb)、[79](./79_Distributed_Parallel_Benchmark.ipynb)、[80](./80_MoE_Expert_Parallel_Benchmark.ipynb)、[81](./81_Distributed_Inference_Project.ipynb)、[84](./84_DPO_Preference_Project.ipynb)、[85](./85_GRPO_Groupwise_Alignment_Project.ipynb)、[86](./86_DPO_Online_Benchmark.ipynb) | 核心 6 + 扩展 15 |
+| [2.1](./2_1.md) | 建立基础算子和组件直觉 | 00-04：基础算子、Attention | 5 |
+| [2.2](./2_2.md) | 组装模型结构并理解 MoE 组件 | 05-08：Block、MoE、结构技巧 | 4 |
+| [2.3](./2_3.md) | 立住 SFT、LoRA 和训练更新闭环 | 09-13：训练与微调 | 5 |
+| [2.4](./2_4.md) | 理解偏好优化与对齐链路 | 14-16：PPO、DPO、GRPO | 3 |
+| [2.5](./2_5.md) | 理解反向传播与训练侧显存优化 | 17-19：Autograd、激活与 checkpoint | 3 |
+| [2.6](./2_6.md) | 建立推理加速和缓存直觉 | 20-22：Attention、解码、PagedAttention | 3 |
+| [2.7](./2_7.md) | 深入 serving、cache 和调度 | 23-24 + 34-39：推理进阶 | 8 |
+| [2.8](./2_8.md) | 理解模型压缩与量化 | 25-26 + 40-45：量化与压缩 | 8 |
+| [2.9](./2_9.md) | 建立通信和并行策略判断 | 27-29 + 46-49：并行与通信 | 7 |
+| [2.10](./2_10.md) | 用项目验证前面的机制与方法 | 60-89：训练、推理、显存、并行和对齐项目 | 30 |
 
 ## Learning Path | 学习路径
 
@@ -178,3 +95,35 @@ Part 2 可以按多条入口理解：零基础入口先把算子、组装、训�
 - 整体学习路径默认按 `CPU-first` 组织，优先保证概念理解、逻辑验证和最小 correctness。
 - 这里只写 Part 级统一前提，不点到具体节号。
 - 少数进阶 notebook 会把 GPU、多卡或完整工具链作为扩展验证条件；若存在这类要求，以单页说明为准，不在导学页重复展开。
+
+Part 02 的运行环境分为三层：
+
+| 环境层 | 适用内容 | 学习者需要准备什么 |
+|:---|:---|:---|
+| CPU-first | 概念、答案测试和大多数 Notebook | Python、PyTorch CPU 依赖 |
+| GPU PyTorch | 真实训练、显存和 CUDA 测量 | NVIDIA GPU、匹配驱动、CUDA 版 PyTorch、Transformers |
+| GPU serving | 真实推理后端和吞吐测试 | GPU PyTorch 环境，以及与当前 CUDA / 驱动匹配的 vLLM |
+
+在 Colab 或 ModelScope Notebook 中，默认把所有依赖安装在当前 runtime，不要求学习者创建多个 Conda 环境。只有本地机器同时维护多个 CUDA / vLLM 版本时，才通过单节配置中的环境名选择独立 vLLM 环境。具体依赖安装命令和版本约束由需要该环境的 Notebook 单独说明。
+
+因此，学习者的默认路径是“一个 runtime / 一个虚拟环境”。本地多环境只是 vLLM 与 PyTorch 依赖冲突时的可选兜底，不是开始学习前必须搭建的两套环境。
+
+### 真实模型与 GPU 实验的统一约定
+
+Part 02 中需要真实模型或真实 GPU 的项目，采用“统一下载、缓存复用、按节启用”的工作流：
+
+- 模型默认使用 `MODEL_SOURCE = "auto"`，优先复用本地模型目录；本地没有时再从 Hugging Face 或 ModelScope 下载。
+- 模型统一缓存到项目根目录的 `model_cache/`，同一个模型只下载一次，训练、推理和显存实验共享同一份权重。
+- 已有本地模型时可设置 `MODEL_SOURCE = "local"`，并把 `MODEL_ID` 改为模型目录；网络受限时可显式使用 `MODEL_SOURCE = "modelscope"`。
+- 真实实验默认关闭，不影响 CPU-first 的答案测试；只有学习者确认 GPU、驱动、PyTorch 和对应运行时可用后，才打开单节中的真实实验开关。
+- 本地、Colab 和 ModelScope Notebook 均应把仓库或持久化目录作为工作目录；实验结果统一保存到 `benchmarks/results/`，避免重启会话后丢失。
+- Part 级 Intro 只规定这套工作流；模型大小、数据类型、序列长度、端口和显存阈值由具体 notebook 的环境说明负责。
+
+最小准备流程如下：
+
+```python
+MODEL_SOURCE = "auto"       # auto / huggingface / modelscope / local
+MODEL_CACHE_DIR = "model_cache"
+```
+
+首次运行会下载模型，后续项目直接复用缓存。Colab 或 ModelScope 中如果使用临时磁盘，应将 `MODEL_CACHE_DIR` 和 `benchmarks/results/` 指向持久化目录。

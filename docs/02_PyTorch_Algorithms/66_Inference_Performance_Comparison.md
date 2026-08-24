@@ -14,11 +14,10 @@
 
 ## 本节导读
 
-这一节对应的真实项目问题不是“某个推理优化技巧能不能带来收益”，而是“在既定 workload、延迟约束和显存预算下，哪种推理方案最值得采用”。真实工程里，读者真正要判断的不是单点 latency 或单次吞吐，而是 workload、backend、batch、cache policy 和评测口径固定之后，baseline 与 candidate 是否还能做出可解释的选型结论。
+本节要求你比较一个推理 baseline 与候选优化方案在固定 workload 下的表现。先统一 batch、输入长度、生成长度和 warm-up 方式，再分别测量 TTFT、端到端延迟、吞吐和峰值显存。最终输出一张对比表，并说明该方案适合低延迟、高吞吐还是显存受限场景。
+**层级定位：** 本项目主落在 L4，关注单个模型实例如何执行请求；会调用 L2 的算子/后端能力和 L3 的运行时，但不负责 L5 的多模型发布、集群扩缩容或流量治理。
 
-本节的核心矛盾是吞吐、延迟与显存预算之间的权衡：有的方案能压低 TTFT，有的方案能提高 throughput，还有的方案能节省 peak memory，但这些收益未必能同时成立。做完这一节，你应该能输出一份 baseline vs candidate 的推理选型结论，而不只是收集几组 benchmark 数字。
-
-因此，这一页把推理性能对比收成一个最小项目交付入口：先固定 workload 与 baseline，再拆开 prefill 和 decode 记录指标，用统一口径诊断瓶颈、比较候选方案，并把结论收成 `accept / tune / reject` 的项目报告。它直接承接 `20 / 21 / 22` 和 `P1:11` 的推理机制与 KV cache 直觉，并继续通向 `68` 的推测解码基准和 `67` 的量化推理部署。
+> 环境提示：如果你在 Colab、ModelScope 或本地 GPU 上运行真实 backend，请先阅读 [Part02 Intro 的环境说明](./intro.md#environment-notes-环境说明)。默认只需要当前 Notebook runtime；本地只有在 vLLM 与 PyTorch 依赖冲突时才需要额外的 vLLM 环境。
 
 **关键词：** `benchmark`, `TTFT`, `TPOT`, `throughput`, `KV cache`
 
@@ -80,6 +79,8 @@
 ### Step 5: 最小代码模板
 
 上面的 Step 1-4 是完整推理性能对比项目流程。下面的代码实现六块最小能力：配置 workload、汇总 prefill/decode、计算指标、诊断瓶颈、比较候选方案和输出决策。
+
+完成 Step 5 后，如果当前环境具备 GPU 和 vLLM，可以继续运行文末的真实 backend Notebook 实验单元；没有这些条件时，停留在 CPU-first 主线即可。
 #### 图解：推理项目如何从 workload 走到选型结论
 
 `66` 不重复讲所有推理优化机制，而是把它们放进同一套 benchmark 口径里比较。
@@ -104,6 +105,28 @@ candidate run ─► candidate comparison ───────────► a
 | 对比 | latency / throughput / memory delta | 判断 candidate 是否值得保留 |
 | 决策 | accept / tune / reject | 输出推理选型结论 |
 
+### Colab / ModelScope Notebook 工作流
+
+两类云端 Notebook 都遵循同一条链路：先探测 GPU 和 CUDA，再安装 backend，下载模型，启动本地 OpenAI-compatible 服务，最后运行本节 benchmark。云端 GPU 型号可能变化，因此不能直接复制本机的版本和 dtype。
+
+**Colab**
+
+1. 选择 GPU runtime，并确认 `nvidia-smi`、`torch.cuda.is_available()` 和 GPU 型号。
+2. 在同一个 Notebook kernel 中安装 vLLM；此时 `VLLM_ENV = None`、`VLLM_COMMAND = None`。
+3. 通常使用 `MODEL_SOURCE = 'huggingface'`；网络受限时先用 ModelScope 下载到本地路径。
+4. T4 优先 `float16`；L4/A100/H100 通常可用 `bfloat16`；第一次建议 `ENFORCE_EAGER = True`。
+5. 设置 `RUN_REAL_BACKEND = True`，运行 Step 6；服务端口由 helper 自动选择，不需要公开 Colab 端口。
+6. 将 `benchmarks/results/*.json` 复制到 Google Drive 或下载到本地，因为 Colab runtime 释放后文件会消失。
+
+**ModelScope Notebook**
+
+1. 先探测平台提供的 GPU、驱动、CUDA 和 Python 环境。
+2. 安装 `modelscope` 与匹配的 vLLM；如果 vLLM 与 Notebook kernel 不在同一环境，设置 `VLLM_ENV` 为实际环境名。
+3. 设置 `MODEL_SOURCE = 'modelscope'`，helper 会调用 `snapshot_download`，然后把本地模型目录传给 vLLM。
+4. 先用小模型和 `CONCURRENCY = 1` 完成 smoke test，再测试并发 4。
+5. 将 JSON 结果保存到持久化工作目录，并记录 GPU 型号、驱动、PyTorch、vLLM 和启动参数。
+
+两种平台都不应直接把结果与本机 RTX 5070 Ti 的结果横向比较；先比较同一平台内的 baseline / candidate，再把硬件和软件栈作为实验条件写入报告。
 
 ```python
 import time
@@ -503,3 +526,144 @@ print(recommend_inference_decision(comparison, diagnose_inference_bottleneck(can
 - **指标闭环**：每次实验至少记录 TTFT、TPOT、throughput 和 peak memory。
 - **阶段拆分**：把 prefill 和 decode 分开看，避免把长 prompt 问题误判成 decode 问题。
 - **结果复盘**：最终输出要回扣 Step 1 的问题：在给定约束下，哪种推理策略最划算，理由是什么。
+
+## Step 6（可选）：Notebook 中运行真实 backend
+
+下面的单元把模型准备、dtype、端口、服务生命周期和 benchmark 串起来。默认 `RUN_REAL_BACKEND = False`，因此没有 GPU 或 vLLM 时仍可以顺利完成本节；在 Colab / ModelScope GPU 环境中，把它改为 `True` 后按需填写模型配置即可。
+
+模型下载和真实服务启动会消耗显存、磁盘与时间，完成实验后务必运行清理单元。
+### 真实 backend 实验的环境要求
+
+Step 6 不是只安装一个 Python 包就能保证复现；vLLM 的 CUDA 扩展、PyTorch CUDA wheel、NVIDIA 驱动和 GPU 架构需要同时匹配。当前已验证的本机兼容组合如下：
+
+| 项目 | 本机已验证配置 | 说明 |
+|---|---|---|
+| OS | Linux x86_64 | vLLM 的主要支持环境 |
+| GPU | NVIDIA GeForce RTX 5070 Ti Laptop GPU（SM120 / Blackwell） | 约 12 GB 显存；小模型可运行 |
+| NVIDIA driver | 570.211.01，CUDA 12.8 | 不要与 CUDA 13.0 wheel 混用 |
+| client 环境 | `llm_algo`，PyTorch 2.11.0+cu128 | 运行 Notebook 和 benchmark client |
+| backend 环境 | `vllm_legacy_cu128`，Python 3.12，PyTorch 2.8.0+cu128，vLLM 0.11.0 | 单独运行 vLLM 服务；通过 HTTP 与 client 解耦 |
+| 模型 | `Qwen/Qwen2.5-0.5B-Instruct` | 权重约 0.92 GiB，适合 smoke test |
+| 启动约束 | `bfloat16`、`max_model_len=2048`、`gpu_memory_utilization=0.8`、`--enforce-eager` | 本机需要关闭 TorchInductor/CUDAGraph |
+
+这里的 vLLM 0.11.0 不是教程要求的最低版本，而是本机经过验证的兼容版本。较新的 vLLM 版本可能自动选择 CUDA 13.0 runtime，或在 RTX 5070 Ti 的 SM120 kernel 路径上启动失败；因此教程应固定已验证版本，而不是无条件安装最新版。vLLM 官方的旧版安装文档也提供了 CUDA 12.8 预编译组合。
+
+真实 backend 实验还需要：可访问 HuggingFace 或 ModelScope 的网络、足够的模型缓存磁盘空间、可用的本地端口（默认 8000），以及允许启动本地进程。没有这些条件时，仍可完成本节的 CPU-first 模拟 benchmark。
+
+**重要限制**：当前实测使用 `--enforce-eager`，并且 FlashInfer 不可用时回退到 PyTorch-native sampler。因此本节实测代表“vLLM eager + Triton/原生采样”的可复现结果，不应直接宣称为最新版 vLLM 默认优化配置的性能。
+
+### 不同运行环境的配置边界
+
+| 环境 | 建议策略 | dtype | 注意事项 |
+|---|---|---|---|
+| 本机 RTX 5070 Ti + 驱动 570 | 固定已验证的 `vLLM 0.11.0 + cu128` | `bfloat16` | 保留 `--enforce-eager`，不要直接升级到默认 CUDA 13 wheel |
+| 本机 RTX 5070 Ti + 驱动 580 | 可以重新测试较新的 vLLM / CUDA wheel | 先用 `bfloat16` | 580 只解决驱动 runtime 兼容性，不保证所有 SM120 kernel 都可用；仍需实际 smoke test |
+| Colab T4 | 使用 Colab 当前预装 CUDA，再安装匹配的 vLLM | `float16` | T4 通常不适合直接照搬本机的 `bfloat16` 配置 |
+| Colab L4 / A100 / H100 | 先探测驱动和 GPU，再选择 vLLM CUDA backend | 通常可用 `bfloat16` | 不要假定每次 Colab 分配到同一种 GPU |
+
+Colab 中应先运行 `!nvidia-smi` 和 `torch.cuda.get_device_name(0)`，再安装与运行时匹配的 vLLM；Colab GPU 型号、驱动和预装 PyTorch 可能随 runtime 改变。若使用当前 vLLM 官方安装方式，可优先让安装器根据 CUDA backend 选择依赖，而不是把本机的 `vllm_legacy_cu128` 环境直接复制过去。
+
+驱动升级到 580 后，首先验证 `nvidia-smi`、`torch.version.cuda` 和 `torch.cuda.is_available()`，再验证 vLLM 服务；驱动版本变新不等于 vLLM 的 Blackwell/SM120 自定义 kernel 一定可用。
+
+```python
+import importlib.util
+import shutil
+import torch
+
+print({'torch': torch.__version__, 'torch_cuda': torch.version.cuda, 'cuda_available': torch.cuda.is_available()})
+if torch.cuda.is_available():
+    print({'device': torch.cuda.get_device_name(0), 'capability': torch.cuda.get_device_capability(0), 'bf16_supported': torch.cuda.is_bf16_supported()})
+print({'vllm_on_current_kernel': importlib.util.find_spec('vllm') is not None, 'vllm_command': shutil.which('vllm')})
+
+# 如果 vLLM 在独立 conda 环境中运行，这里可以保持 vllm_on_current_kernel=False，
+# 改用手动启动服务，再把 BASE_URL 指向已启动的 OpenAI-compatible API。
+```
+
+
+```python
+# 只需要修改这一格
+RUN_REAL_BACKEND = False
+MODEL_SOURCE = 'auto'  # auto / modelscope / huggingface / local
+MODEL_CACHE_DIR = 'model_cache'
+MODEL_PROFILES = {
+    'qwen25_small': 'Qwen/Qwen2.5-0.5B-Instruct',
+    'deepseek_r1_small': 'deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B',
+}
+MODEL_PROFILE = 'qwen25_small'
+MODEL_ID = MODEL_PROFILES[MODEL_PROFILE]
+DTYPE = 'auto'
+VLLM_COMMAND = None  # 为空时自动查找当前环境中的 vllm
+VLLM_ENV = None  # 云端保持当前 runtime；本地多环境时再填写环境名
+MAX_MODEL_LEN = 2048
+GPU_MEMORY_UTILIZATION = 0.8
+ENFORCE_EAGER = True  # 先保证 RTX 50 系列等架构可复现；稳定后可尝试 False
+NUM_PROMPTS = 5  # 与当前 fixed.jsonl 的 5 条请求一致
+CONCURRENCY = 1  # 先完成 smoke test，再改为 4 做并发对照
+WARMUP = 1  # smoke test；正式实验建议提高到 3-10
+
+```
+
+
+```python
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+if RUN_REAL_BACKEND:
+    project_root = next((path for path in [Path.cwd(), *Path.cwd().parents] if (path / 'tools').is_dir()), None)
+    if project_root is None:
+        raise RuntimeError('未找到项目根目录。请从仓库根目录启动 Jupyter，或把仓库根目录加入 sys.path。')
+    os.chdir(project_root)
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+    from tools.backend_runtime import resolve_model, start_vllm, stop_backend
+
+    model_path = resolve_model(MODEL_ID, MODEL_SOURCE, cache_dir=MODEL_CACHE_DIR)
+    server, server_log, port, selected_dtype = start_vllm(
+        model_path, DTYPE, vllm_command=VLLM_COMMAND,
+        vllm_environment=VLLM_ENV,
+        max_model_len=MAX_MODEL_LEN,
+        gpu_memory_utilization=GPU_MEMORY_UTILIZATION,
+        enforce_eager=ENFORCE_EAGER,
+        served_model_name=MODEL_ID,
+    )
+    print({'model_path': model_path, 'dtype': selected_dtype, 'port': port})
+
+    try:
+        output_path = Path('benchmarks/results/66_vllm_real.json')
+        subprocess.run([
+            sys.executable, 'tools/benchmark_inference_backend.py',
+            '--base-url', f'http://127.0.0.1:{port}',
+            '--model', MODEL_ID,
+            '--label', 'vllm-real',
+            '--workload', 'benchmarks/workloads/fixed.jsonl',
+            '--num-prompts', str(NUM_PROMPTS),
+            '--concurrency', str(CONCURRENCY),
+            '--warmup', str(WARMUP),
+            '--output', str(output_path),
+        ], check=True)
+        print(json.loads(output_path.read_text(encoding='utf-8'))['metrics'])
+    finally:
+        stop_backend(server, server_log)
+else:
+    print('跳过真实 backend：保持 CPU-first 模式。')
+
+```
+
+### 本机真实 backend 实测记录
+
+以下结果来自 RTX 5070 Ti Laptop GPU，Qwen/Qwen2.5-0.5B-Instruct，vLLM 0.11.0，PyTorch 2.11.0+cu128，`bfloat16`，`max_model_len=2048`，`gpu_memory_utilization=0.8`，并启用 `--enforce-eager`。workload 为 `benchmarks/workloads/fixed.jsonl`，共 5 条请求，`max_tokens=64`。
+
+| 并发 | 成功/失败 | 请求吞吐（req/s） | 输出吞吐（token/s） | TTFT P50 | TPOT P50 | E2E P50 | 结果文件 |
+|---:|---:|---:|---:|---:|---:|---:|---|
+| 1 | 5/0 | 3.1189 | 182.1461 | 33.776 ms | 4.859 ms | 337.176 ms | `66_vllm_real.json` |
+| 4 | 5/0 | 4.2972 | 250.9544 | 234.566 ms | 11.528 ms | 956.383 ms | `66_vllm_concurrency4.json` |
+
+**如何解读**：并发从 1 提升到 4 后，输出吞吐由 182.15 提升到 250.95 token/s，但 TTFT P50 由 33.78 ms 增至 234.57 ms，E2E P50 由 337.18 ms 增至 956.38 ms。说明本次配置通过批处理提高了吞吐，同时增加了交互延迟；在只有 5 条请求的 smoke test 中，P99 只作记录，不作为稳定结论。
+
+**当前结论**：真实 backend 链路已打通。若目标是交互式单请求，优先关注并发 1 的 TTFT/E2E；若目标是批量吞吐，再继续测试更大的 workload 和并发 sweep，并同时采集 GPU 显存。
+### 手动启动方式（可选附录）
+
+如果需要单独调试服务，也可以在终端运行 `vllm serve <model-id> --dtype bfloat16 --port 8000`，再运行 `tools/benchmark_inference_backend.py`。Notebook 主流程不依赖手动查端口或拼接命令。
